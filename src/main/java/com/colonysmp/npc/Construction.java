@@ -61,10 +61,18 @@ public final class Construction {
             return true;
         }
         Location target = at.center(w);
-        if (!n.mover.near(target, 6.5)) {
-            n.mover.moveTo(target, plugin.settings().walkSpeed, 4.5);
-            n.activity = "Walking to the " + job.type.display + " site";
-            return true;
+        // builders work from outside the footprint so they never wall themselves in
+        Location spot = workSpot(job, bp, w, at);
+        if (spot != null && !n.mover.near(spot, 2.2)) {
+            BlockPos[] bb = bp.bounds(job.origin, job.facing);
+            if (insideBounds(bb, n.body.getLocation())) {
+                n.body.teleport(spot);
+                n.mover.sync();
+            } else {
+                n.mover.moveTo(spot, plugin.settings().walkSpeed, 1.6);
+                n.activity = "Walking to the " + job.type.display + " site";
+                return true;
+            }
         }
         n.mover.stop();
         CitizenBrain.face(n, target);
@@ -151,6 +159,10 @@ public final class Construction {
             job.step++;
             return;
         }
+        if (s.spec() != Blueprint.Spec.TORCH && s.spec() != Blueprint.Spec.BUTTON && s.spec() != Blueprint.Spec.LADDER && occupied(b)) {
+            n.activity = "Waiting for someone to move out of the way";
+            return;
+        }
         Material item = first(col, Blueprint.candidates(s.spec()));
         if (item == null) {
             if (s.spec().optional) {
@@ -202,6 +214,36 @@ public final class Construction {
         }
         placed(b);
         job.step++;
+    }
+
+    /** A standing spot two blocks outside the footprint, on the side nearest the block being worked on. */
+    private Location workSpot(BuildJob job, Blueprint bp, World w, BlockPos at) {
+        BlockPos[] bb = bp.bounds(job.origin, job.facing);
+        int y = job.origin.y();
+        int cx = Math.max(bb[0].x(), Math.min(bb[1].x(), at.x())), cz = Math.max(bb[0].z(), Math.min(bb[1].z(), at.z()));
+        int[][] spots = {{cx, bb[0].z() - 2}, {cx, bb[1].z() + 2}, {bb[0].x() - 2, cz}, {bb[1].x() + 2, cz}};
+        Location best = null;
+        double bd = Double.MAX_VALUE;
+        for (int[] sp : spots) {
+            Location l = Mover.safeSpot(new Location(w, sp[0] + 0.5, y, sp[1] + 0.5));
+            if (l == null || insideBounds(bb, l)) continue;
+            double d = at.distSq(l);
+            if (d < bd) {
+                bd = d;
+                best = l;
+            }
+        }
+        return best;
+    }
+
+    private static boolean insideBounds(BlockPos[] bb, Location l) {
+        int x = l.getBlockX(), y = l.getBlockY(), z = l.getBlockZ();
+        return x >= bb[0].x() && x <= bb[1].x() && z >= bb[0].z() && z <= bb[1].z() && y >= bb[0].y() - 1 && y <= bb[1].y() + 1;
+    }
+
+    /** Someone is standing where the block would go: wait rather than bury them. */
+    private static boolean occupied(Block b) {
+        return !b.getWorld().getNearbyEntities(b.getBoundingBox().expand(-0.05), e -> e instanceof org.bukkit.entity.LivingEntity).isEmpty();
     }
 
     private static boolean needsSupport(Blueprint.Spec s) {

@@ -51,7 +51,7 @@ public final class Simulation {
             if (verify) plugin.townHall().verify(col);
             long day = NpcManager.day(w);
             boolean past = w.getTime() >= plugin.settings().rationTime;
-            if (col.lastRationDay < 0) {
+            if (col.lastRationDay == Colony.NEVER) {
                 col.lastRationDay = past ? day : day - 1;
                 continue;
             }

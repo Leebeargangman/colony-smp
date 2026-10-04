@@ -52,8 +52,14 @@ public final class TownHallListener implements Listener {
         ItemStack it = e.getItemInHand();
         Player p = e.getPlayer();
         if (Items.is(it, Items.CORE)) {
-            e.setCancelled(true);
-            placeCore(p, e.getBlockPlaced(), it, e.getHand());
+            Colony c = checkCore(p, e.getBlockPlaced(), it);
+            if (c == null) {
+                e.setCancelled(true);
+                return;
+            }
+            // the block is placed by the game as usual; the Town Hall is raised once it's really there
+            Block placed = e.getBlockPlaced();
+            Bukkit.getScheduler().runTask(plugin, () -> raise(p, c, placed));
             return;
         }
         // a chest next to the State Chest would turn it into a double chest
@@ -69,56 +75,63 @@ public final class TownHallListener implements Listener {
         }
     }
 
-    private void placeCore(Player p, Block block, ItemStack it, EquipmentSlot hand) {
+    /** The colony this core may be placed for here, or null (with the reason told to the player). */
+    private Colony checkCore(Player p, Block block, ItemStack it) {
         Colony c = plugin.colonies().get(Items.colonyOf(it));
         if (c == null) {
             Text.send(p, "<red>This Town Hall Core belongs to a colony that no longer exists.");
-            return;
+            return null;
         }
         if (!c.isMember(p.getUniqueId())) {
             Text.send(p, "<red>Only members of " + Text.esc(c.name) + " can place its Town Hall Core.");
-            return;
+            return null;
         }
         if (c.core != null) {
             Text.send(p, "<red>" + Text.esc(c.name) + " already has a Town Hall. Use <white>/colony relocate</white> to move it.");
-            return;
+            return null;
         }
         if (!block.getWorld().getName().equals(c.world) || !c.region.contains(block.getX(), block.getZ())) {
             Text.send(p, "<red>Place the Town Hall Core inside your claim.");
-            return;
+            return null;
         }
-        Block chestBlock = null;
+        if (chestSpot(block) == null) {
+            Text.send(p, "<red>The Central State Chest needs a free block beside the core (not next to another chest).");
+            return null;
+        }
+        return c;
+    }
+
+    private static Block chestSpot(Block core) {
         for (BlockFace f : SIDES) {
-            Block b = block.getRelative(f);
+            Block b = core.getRelative(f);
             if (!b.getType().isAir() && !b.isReplaceable()) continue;
             boolean nextToChest = false;
             for (BlockFace g : SIDES) {
-                Material n = b.getRelative(g).getType();
-                if (n == Material.CHEST || n == Material.TRAPPED_CHEST) nextToChest = true;
+                Block n = b.getRelative(g);
+                if (n.equals(core)) continue;
+                if (n.getType() == Material.CHEST || n.getType() == Material.TRAPPED_CHEST) nextToChest = true;
             }
-            if (nextToChest) continue;
-            chestBlock = b;
-            break;
+            if (!nextToChest) return b;
         }
+        return null;
+    }
+
+    /** The core is down: build the State Chest beside it and welcome the first comrades. */
+    private void raise(Player p, Colony c, Block block) {
+        if (c.core != null || plugin.colonies().get(c.id) == null || block.getType() != Material.LODESTONE) return;
+        Block chestBlock = chestSpot(block);
         if (chestBlock == null) {
-            Text.send(p, "<red>The Central State Chest needs a free block beside the core (not next to another chest).");
+            block.setType(Material.AIR);
+            com.colonysmp.command.ColonyCommand.give(p, plugin.items().core(c.id, c.name));
+            Text.send(p, "<red>The Central State Chest needs a free block beside the core.");
             return;
         }
-        // place both blocks ourselves (the event is cancelled so the item is taken by hand)
-        block.setType(Material.LODESTONE, false);
         chestBlock.setType(Material.CHEST, false);
         if (chestBlock.getBlockData() instanceof Chest cd) {
             BlockFace away = block.getFace(chestBlock);
             cd.setFacing(away == null ? BlockFace.SOUTH : away);
             cd.setType(Chest.Type.SINGLE);
             chestBlock.setBlockData(cd, false);
-        }
-        if (p.getGameMode() != org.bukkit.GameMode.CREATIVE) {
-            ItemStack held = p.getInventory().getItem(hand);
-            if (Items.is(held, Items.CORE)) {
-                held.setAmount(held.getAmount() - 1);
-                p.getInventory().setItem(hand, held.getAmount() <= 0 ? null : held);
-            }
         }
         c.core = BlockPos.of(block);
         c.chest = BlockPos.of(chestBlock);

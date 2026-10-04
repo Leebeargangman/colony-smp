@@ -539,12 +539,26 @@ public final class NpcManager implements Listener {
             }
             try {
                 n.mover.tick(this, now);
+                if ((now + n.thinkOffset) % 20 == 0) unstick(n);
                 if ((now + n.thinkOffset) % 10 == 0) brain.think(n, now);
             } catch (RuntimeException ex) {
                 plugin.getLogger().log(java.util.logging.Level.WARNING, "Citizen " + n.c.name + " hit an error", ex);
                 n.resetWork();
                 n.mover.stop();
             }
+        }
+    }
+
+    /** A body buried in blocks (a player built over it, a wall went up) steps out instead of suffocating. */
+    private void unstick(Npc n) {
+        if (n.sleeping || n.c.downed()) return;
+        org.bukkit.block.Block feet = n.body.getLocation().getBlock(), head = feet.getRelative(org.bukkit.block.BlockFace.UP);
+        if (!(feet.getType().isOccluding() || head.getType().isOccluding())) return;
+        Location free = Mover.safeSpot(n.body.getLocation().add(0, 1, 0));
+        if (free == null) free = Mover.safeSpot(n.body.getLocation().add(0, 3, 0));
+        if (free != null) {
+            n.body.teleport(free);
+            n.mover.sync();
         }
     }
 
@@ -627,6 +641,15 @@ public final class NpcManager implements Listener {
             Colony col = plugin.colonies().colonyOf(attacker.c);
             if (col != null && col.isMember(p.getUniqueId()) && attacker.c.status != Status.REBEL) e.setCancelled(true);
         }
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onSuffocate(EntityDamageEvent e) {
+        if (e.getCause() != EntityDamageEvent.DamageCause.SUFFOCATION) return;
+        Npc n = npc(e.getEntity());
+        if (n == null) return;
+        e.setCancelled(true);
+        unstick(n);
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)

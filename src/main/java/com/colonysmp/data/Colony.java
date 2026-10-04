@@ -37,7 +37,9 @@ public final class Colony {
     public double stability = 70;
     public int lowDays;
     public boolean strike;
-    public long lastRationDay = -1;
+    /** Day of the last sunset rationing; NEVER until the first sunset is seen. */
+    public static final long NEVER = Long.MIN_VALUE;
+    public long lastRationDay = NEVER;
     public double lastFed = 1;
     public int reputation = 50;
     public Policy defaultPolicy = Policy.INDOCTRINATE;
@@ -208,7 +210,7 @@ public final class Colony {
         c.stability = s.getDouble("stability", 70);
         c.lowDays = s.getInt("low-days");
         c.strike = s.getBoolean("strike");
-        c.lastRationDay = s.getLong("last-ration-day", -1);
+        c.lastRationDay = s.getLong("last-ration-day", NEVER);
         c.lastFed = s.getDouble("last-fed", 1);
         c.reputation = s.getInt("reputation", 50);
         Policy p = Policy.parse(s.getString("default-policy"));
