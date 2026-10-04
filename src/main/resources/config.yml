@@ -1,0 +1,169 @@
+# ─────────────────────────────────────────────────────────────
+#  ColonySMP - communist colonies for Paper
+#  Every value here can be changed and applied with /colony admin reload
+# ─────────────────────────────────────────────────────────────
+
+claims:
+  # Colony regions are rectangles selected with the Colony Selection Wand
+  min-size: 16
+  max-size: 128
+  # Blocks of empty space required between two colonies
+  min-gap: 4
+  # Players can't hurt each other inside a claim unless their colonies are at war
+  block-pvp: true
+  # Creeper / TNT / fireball block damage is cancelled inside claims (except during a siege)
+  protect-explosions: true
+  # Fire can't burn blocks inside claims
+  protect-fire: true
+  # How many colonies one player may belong to (founder or member)
+  max-colonies-per-player: 1
+  # Show "Entering the People's Commune of ..." on the action bar
+  enter-messages: true
+  # Worlds where colonies can be founded (empty = every world)
+  worlds: []
+
+shield:
+  # Peace Shield given to every new colony (real-time hours)
+  new-colony-hours: 72
+  # Shield given to the loser of a war, so it can't be raided again straight away
+  after-defeat-hours: 24
+
+citizens:
+  # Jobs of the workers spawned when the Town Hall Core is placed
+  starting-jobs: [FARMER, BUILDER]
+  max-population: 40
+  health: 20
+  # Movement speeds in blocks per tick (0.2 = 4 blocks a second)
+  walk-speed: 0.13
+  run-speed: 0.21
+  # How far outside the claim lumberjacks may look for trees (never inside another claim)
+  work-margin: 24
+  # Seconds between work actions at 100% efficiency (lower = faster)
+  farm-interval: 1.5
+  chop-interval: 2.0
+  mine-interval: 2.5
+  build-interval: 1.2
+
+day:
+  # World time (0-24000) of each part of the citizens' routine
+  work-start: 0
+  evening: 11500
+  ration-time: 12300
+  night: 13000
+
+rations:
+  # Hunger points every adult citizen eats each sunset (bread = 5, steak = 8)
+  meal-points: 6
+  child-factor: 0.5
+  slave-factor: 0.5
+  # Stability gained when every citizen is fully fed
+  stability-full: 4
+  # Most stability lost when rations are short but at least half were served
+  stability-partial-max-loss: 6
+  # Stability lost when there is no food at all
+  stability-none: 10
+  # Stability below this counts as a "low" day
+  low-threshold: 35
+  # Consecutive low days before the workers go on strike
+  strike-days: 3
+  # Stability needed to end a strike
+  strike-recover: 50
+  # Work speed while on strike (0 = no work at all)
+  strike-efficiency: 0.0
+  # Food that citizens will never eat out of the State Chest
+  never-eat: [GOLDEN_APPLE, ENCHANTED_GOLDEN_APPLE, GOLDEN_CARROT, ROTTEN_FLESH, SPIDER_EYE, POISONOUS_POTATO, PUFFERFISH, SUSPICIOUS_STEW, CHORUS_FRUIT]
+
+reproduction:
+  # Days of food that must be in the State Chest for a child to be born
+  reserve-days: 3
+  # In-game days before a child grows into an adult worker
+  maturity-days: 3
+  min-stability: 30
+
+prisoners:
+  # Chance a human NPC is downed instead of killed in combat
+  downed-chance: 0.20
+  # Chance for wandering travelers (they surrender easily)
+  traveler-downed-chance: 1.0
+  downed-seconds: 60
+  # Starting Resistance of a new prisoner (random between the two)
+  resistance-min: 45
+  resistance-max: 100
+  # Resistance a warden's daily visit removes (random between the two, scaled by stability)
+  indoctrination-min: 12
+  indoctrination-max: 25
+  # Resistance a prisoner regains on a day nobody visits
+  unvisited-gain: 4
+  # Days without food before a prisoner starves to death
+  starve-days: 5
+  # A guard must be this close to every working slave
+  slave-guard-radius: 20
+  # Seconds a slave can be left unguarded before an uprising
+  slave-grace-seconds: 30
+  # Slaves rise up whenever stability is below this
+  uprising-stability: 40
+  # Rebels that survive this long escape for good
+  rebel-escape-minutes: 5
+
+travelers:
+  enabled: true
+  # Chance each in-game day that a traveler visits a colony (scaled by reputation)
+  chance-per-day: 0.6
+  wait-minutes: 6
+  reputation-start: 50
+  attack-penalty: 5
+  capture-penalty: 15
+  recruit-bonus: 5
+
+war:
+  warmup-minutes: 20
+  siege-minutes: 45
+  # The War Camp must be placed outside every claim, between these distances from the enemy border
+  camp-min-distance: 8
+  camp-max-distance: 64
+  # Every N seconds the defenders' access to their State Chest is checked; if cut, stability drops
+  supply-check-seconds: 30
+  supply-cut-stability: 5
+  # Share of the loser's raw resources taken by the winner
+  spoils-fraction: 0.5
+  # Minutes before a colony can declare another war
+  cooldown-minutes: 60
+  # Defender members that must be online for a declaration (0 = allow offline raids)
+  require-online-defenders: 1
+  # Put back every block attackers broke or placed after the war ends
+  restore-blocks: true
+  restore-delay-seconds: 120
+  # Attackers respawn at their War Camp during a siege
+  respawn-at-camp: true
+
+mobilization:
+  minutes: 10
+  cooldown-minutes: 20
+  stability-cost: 5
+
+storage:
+  # Pages of 45 slots in the Central State Chest
+  pages: 3
+
+quests:
+  # Deposited into the State Chest when the starter quests are finished
+  reward:
+    - STONE_HOE:2
+    - IRON_HOE:1
+    - STONE_AXE:1
+    - STONE_PICKAXE:1
+    - WHEAT_SEEDS:32
+    - CARROT:8
+    - POTATO:8
+    - BEETROOT_SEEDS:16
+    - BONE_MEAL:16
+    - BREAD:16
+
+mines:
+  # Miners dig a staircase down to this Y level, then branch mine
+  target-y: 12
+  tunnel-length: 32
+  branch-length: 16
+  max-per-colony: 3
+
+autosave-minutes: 5
