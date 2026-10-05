@@ -1,0 +1,765 @@
+=====================================================================
+                 COLONYSMP  -  THE NEW PLAYER'S GUIDE
+          Found a commune, feed your people, defend the State
+=====================================================================
+
+Welcome, comrade! This guide takes you from your first stick to your
+first war. Read Part 1 to get started in ten minutes; dip into the
+later parts when you need them. A one-page cheat sheet is at the end.
+
+CONTENTS
+  Part 1   Your first ten minutes
+  Part 2   Your land and the Town Hall
+  Part 3   The Central State Chest
+  Part 4   The Blueprint Book (houses, farms, towers, cells, mines)
+  Part 5   Your citizens and their jobs
+  Part 6   Food, stability, strikes and children
+  Part 7   Members and ranks
+  Part 8   Prisoners: capture, indoctrination and forced labour
+  Part 9   Wandering travelers
+  Part 10  War
+  Part 11  Tips for a thriving commune
+  Part 12  Troubleshooting / FAQ
+  Part 13  Cheat sheet
+
+
+=====================================================================
+PART 1 - YOUR FIRST TEN MINUTES
+=====================================================================
+
+You will: claim land, raise a Town Hall, meet your first two workers
+and finish the three starter quests.
+
+STEP 1 - Craft the Colony Selection Wand
+  Put 1 Stick and 1 Gold Nugget side by side in any crafting grid
+  (stick on the left, nugget on the right).
+
+      [ Stick ][ Gold Nugget ]
+
+  You get a glowing "Colony Selection Wand".
+
+STEP 2 - Choose your land
+  Walk to one corner of the land you want and LEFT-CLICK the ground
+  with the wand. Green sparkles = Position 1.
+  Walk to the opposite corner and RIGHT-CLICK the ground.
+  White sparkles = Position 2.
+
+  Rules:
+    * At least 16 x 16 blocks, at most 128 x 128.
+    * It can't overlap another colony (and needs a small gap of
+      4 blocks between colonies).
+    * Height doesn't matter: your claim goes from bedrock to the sky.
+
+  While you hold the wand, your selection is outlined on the ground:
+  GREEN means it can be claimed, RED means it can't. Other colonies'
+  borders show in ORANGE so you can see where they are. Chat tells
+  you the size and, if something is wrong, exactly what.
+
+  Tip: a 32 x 32 to 48 x 48 claim is a comfortable start. You can't
+  resize later without starting over, so think about room for farms,
+  houses and a mine.
+
+STEP 3 - Establish the colony
+  Hold the wand, SNEAK (Shift) and RIGHT-CLICK. The "Establish Colony"
+  menu opens and shows your land.
+    * Click the green "Establish Colony" button.
+    * Type your colony's name in chat (3-32 characters), or type
+      "default" for "People's Commune of <you>".
+
+  You receive two items:
+    * Town Hall Core   - the heart of your colony
+    * Colony Blueprint Book - for buildings (see Part 4)
+
+  Your colony also gets a 72-HOUR PEACE SHIELD: nobody can declare
+  war on you while it lasts. Use that time to build up!
+
+STEP 4 - Place the Town Hall Core
+  Place the Town Hall Core (it looks like a lodestone) anywhere inside
+  your claim. Pick a central, open spot: your citizens gather here
+  every evening.
+    * It needs one free block beside it: the CENTRAL STATE CHEST is
+      built there automatically.
+    * Don't place it next to another chest.
+
+  The Town Hall rises, the State Chest appears beside it, and your
+  first two comrades walk in: a FARMER and a BUILDER.
+
+STEP 5 - Follow the starter quests
+  A yellow bar at the top of your screen shows your current quest.
+  Type /colony quests to see all three.
+
+  Quest 1 - Found the State
+    Place the Town Hall Core. (Done!)
+
+  Quest 2 - Worker Shelter
+    Build an enclosed room 5 x 5 blocks counting the walls (so 3 x 3
+    of floor inside), with a roof, a wooden door and 2 beds inside.
+    Then hold the Blueprint Book, SNEAK and RIGHT-CLICK the floor
+    inside the room. Chat says "Registered Starter House #...".
+    (Prefer not to build it yourself? See "Ordering buildings" in
+    Part 4: your Builder can build it for you.)
+
+  Quest 3 - Feed the Commune
+    Put 32 food items in the Central State Chest. Bread, wheat,
+    carrots, potatoes, apples and meat all count.
+
+  REWARD: hoes, an axe, a pickaxe, seeds, bone meal and bread are
+  delivered straight into your State Chest.
+
+STEP 6 - Give your Farmer a farm
+  Your Farmer needs a registered farm:
+    1. Make farmland with a hoe (a 9 x 9 field around one water block
+       is ideal; at least 9 tiles).
+    2. Hold the Blueprint Book and RIGHT-CLICK the air until chat says
+       "Blueprint: Farm".
+    3. SNEAK and RIGHT-CLICK the farmland.
+  Make sure there are seeds in the State Chest (the quest reward has
+  some). The Farmer sows, harvests and replants from now on, and every
+  crop goes into the State Chest.
+
+  Congratulations, comrade: your commune is running! Read on to grow it.
+
+
+=====================================================================
+PART 2 - YOUR LAND AND THE TOWN HALL
+=====================================================================
+
+YOUR CLAIM PROTECTS YOU
+  Inside your claim, players who aren't members of your colony can't:
+    * break or place blocks, pour or pick up liquids
+    * open your chests, furnaces and other containers
+    * use your doors, buttons, levers, trapdoors
+    * trample your farmland, hurt your animals, armor stands or frames
+    * hurt your citizens
+    * fight other players (PvP is off inside claims unless the two
+      colonies are at war)
+  Explosions, fire spread, liquids flowing in from outside and pistons
+  pushing across your border can't damage your land either.
+
+  When you walk into a colony, the action bar tells you whose land it is.
+
+  (The one exception is war: during a siege, attackers may break and
+  place blocks in the defender's claim. See Part 10.)
+
+THE TOWN HALL MENU
+  Right-click the Town Hall Core to open the Town Hall: your control
+  panel. From here you can:
+    * See stability, food stock (in days), population, reputation,
+      Peace Shield time, strike or mobilization status
+    * Open the citizen list, the State Chest, your buildings and the
+      prison
+    * See your quests (and hide or show the quest bar)
+    * Issue the State Mobilization Order
+    * See war status and declare war
+    * Set the default prisoner policy
+    * See your members
+    * Move overflow goods into the State Chest
+    * Answer a waiting traveler
+
+MOVING THE TOWN HALL
+  The Chairman can type /colony relocate (not during a war). The core
+  and the chest block are removed, you get the core back, and you can
+  place it somewhere else in your claim. Nothing in the State Chest is
+  lost: its contents are stored by the State, not in the block.
+
+  Lost the core item before placing it? A leader can get a new one with
+  /colony core.
+
+
+=====================================================================
+PART 3 - THE CENTRAL STATE CHEST
+=====================================================================
+
+  The chest beside the Town Hall is the commune's single, shared
+  storehouse. Workers own nothing:
+    * Everything they harvest, chop and mine goes STRAIGHT into it.
+    * They take their TOOLS from it (and get a new one there when a
+      tool breaks).
+    * Guards take their WEAPONS, ARMOUR, BOWS and ARROWS from it.
+    * Every evening the RATIONS come out of it (Part 6).
+    * Builders take their BUILDING MATERIALS from it.
+
+  Using it:
+    * Right-click the chest to open it (members only). It has 3 pages
+      of 45 slots; use the arrows at the bottom to switch pages.
+    * /colony storage opens it from anywhere inside your claim.
+    * Hoppers can feed items into it (nothing can be pulled out by
+      hopper).
+    * Its contents are saved by the plugin, so it works and keeps
+      everything even when nobody is nearby.
+
+  If it fills up, workers drop goods beside it and you get a warning.
+  Goods that couldn't fit (quest rewards, war spoils) wait as
+  "overflow": use /colony spoils (or the gold button in the Town Hall)
+  to move them in once you've made room.
+
+  Keep it stocked with:
+    * FOOD (rations every evening)
+    * TOOLS: hoes, axes, pickaxes (spares!)
+    * SEEDS (wheat seeds, carrots, potatoes, beetroot seeds)
+    * BUILDING BLOCKS: planks, cobblestone, glass, beds, doors
+    * TORCHES (miners place them)
+    * WEAPONS, ARMOUR, BOWS, ARROWS (for guards and emergencies)
+
+
+=====================================================================
+PART 4 - THE BLUEPRINT BOOK
+=====================================================================
+
+  The Colony Blueprint Book plans, registers and orders buildings.
+  Citizens only use buildings that are REGISTERED with the book.
+  Lost it? /colony book gives you another (or craft one: book + gold
+  nugget + paper).
+
+CONTROLS
+  Hold the book ......................... see a glowing outline of the
+                                          selected blueprint where you
+                                          look (GREEN = fits, RED = not)
+  Right-click ........................... next blueprint
+  Sneak + Right-click a block ........... REGISTER a building you built
+  Sneak + Left-click .................... ORDER the Builder to build
+                                          the blueprint you see
+
+  Blueprints, in order: Starter House -> Farm -> Guard Tower ->
+  Prison Cell -> Mine Entrance -> (back to Starter House).
+
+  While holding the book you also see the buildings you've already
+  registered (blue outlines) and build orders (orange outlines).
+
+THE FIVE BUILDINGS
+
+  STARTER HOUSE - homes for your citizens
+    An enclosed room (walls, floor and roof, no gaps) with at least one
+    WOODEN door and at least one bed. Floor inside at least 3 x 3
+    (5 x 5 counting the walls). Bigger rooms are fine.
+    Register: SNEAK + RIGHT-CLICK the floor inside the room.
+    Every bed is a home for one citizen. More beds = more citizens
+    (children are only born when there are free beds).
+
+  FARM - fields for your farmers
+    At least 9 connected farmland (or soul sand for nether wart) tiles.
+    Register: SNEAK + RIGHT-CLICK any farmland tile (or a crop on it).
+    Farmers grow wheat, carrots, potatoes, beetroot and nether wart, and
+    harvest melons and pumpkins from their stems.
+
+  GUARD TOWER - lookout posts for your guards
+    Any tower at least 5 blocks tall with room to stand on top.
+    Register: SNEAK + RIGHT-CLICK the top block of the tower.
+    Guards patrol between your towers. With no towers they walk a
+    ring around the Town Hall.
+
+  PRISON CELL - for prisoners (Part 8)
+    An enclosed room with an IRON door and at least one bed. Floor at
+    least 2 x 2 inside. Put a button outside the door so YOU can get
+    in; your wardens and guards have the keys.
+    Register: SNEAK + RIGHT-CLICK the floor inside the cell.
+    Each bed holds one prisoner.
+
+  MINE ENTRANCE - where miners dig
+    Any natural ground: stone, dirt, grass, sand or gravel.
+    Register: face the direction the mine should go, then SNEAK +
+    RIGHT-CLICK the ground. Miners dig a staircase down (to around
+    Y 12), then a branch mine: a main tunnel with side tunnels.
+    Maximum 3 mines per colony.
+
+  Note: a room with an iron door always registers as a Prison Cell,
+  with a wooden door as a House, whichever blueprint you selected.
+
+  Every night your buildings are re-checked. If you break a wall, take
+  away the beds or dig up a farm, the building is unregistered and you
+  get a message: fix it and register it again.
+
+ORDERING BUILDINGS FROM YOUR BUILDER
+  Your Builder can construct any blueprint except the Mine Entrance:
+    1. Hold the book and pick the blueprint (Right-click).
+    2. Look at the ground where it should go. The door faces you.
+    3. Make sure the outline is GREEN (fits inside your claim, doesn't
+       overlap the Town Hall or other buildings).
+    4. SNEAK + LEFT-CLICK. Chat lists the materials needed.
+
+  The Builder takes materials from the State Chest one block at a time,
+  works from outside the walls, and registers the building when done.
+  If something is missing, the Builder waits and tells you what to add.
+
+  Approximate materials:
+    Starter House: 69 wall/roof blocks (planks, logs or stone),
+                   2 windows (glass, or more wall blocks), 1 wooden
+                   door, 2 beds, 1 torch (optional)
+    Prison Cell:   69 wall/roof blocks (stone preferred), 2 iron bars
+                   (or glass/stone), 1 iron door, 1 bed, a torch and a
+                   button (optional)
+    Guard Tower:   ~38 stone blocks, 24 planks, 16 wooden fences,
+                   6 ladders, 1 wooden door, 1 torch (optional)
+    Farm:          tills grass/dirt for free (needs dirt where the
+                   ground isn't soil) and 1 water bucket for the centre
+                   (the empty bucket goes back in the chest)
+  Uneven ground is filled with cobblestone or dirt from the chest.
+
+  Up to 8 orders can wait in the queue. See or cancel them with
+  /colony buildings (Shift-click an order to cancel it). With nothing
+  to build, Builders cut wood.
+
+
+=====================================================================
+PART 5 - YOUR CITIZENS AND THEIR JOBS
+=====================================================================
+
+  Citizens are villagers with name tags like "Ivan Petrov [Farmer]".
+  Right-click one to open their card:
+    * Job, trait, health, how well they ate last night, work speed
+      (efficiency), tool and bed
+    * What they're doing right now
+    * Job buttons (leaders only): click one to change their job
+    * Locate: makes them glow for 15 seconds
+
+  /colony citizens lists everyone.
+
+THE JOBS
+  FARMER ......... works registered farms. Needs seeds in the chest; a
+                   hoe makes them much faster.
+  BUILDER ........ builds the blueprints you order; cuts wood otherwise.
+  LUMBERJACK ..... fells natural trees in and around your claim (never
+                   your log houses), replants saplings and picks up the
+                   saplings, sticks and apples that fall. Needs an axe.
+  MINER .......... digs your registered mines for stone and ore, mines
+                   out ore veins it finds, seals off lava and water,
+                   places torches from the chest. NEEDS A PICKAXE (it
+                   can't dig without one).
+  GUARD .......... patrols towers, fights monsters, invaders and rebels,
+                   escorts captives to cells, watches forced labourers.
+                   Takes a weapon from the chest; in emergencies it also
+                   takes the best armour, a bow and arrows.
+  WARDEN ......... feeds and re-educates prisoners every day (Part 8).
+                   With no prisoners, gives speeches at the Town Hall
+                   that raise stability.
+  UNASSIGNED ..... does nothing useful. Give them a job!
+
+  When a citizen breaks their tool, they walk to the State Chest, take
+  the best replacement and carry on. No tool in the chest? They work
+  bare-handed and slowly (miners just wait), so keep spares.
+
+TRAITS
+  Every citizen has a trait, for example:
+    Hardworking +20% work speed      Lazy -20% work speed
+    Green Thumb +35% farming         Woodsman +35% logging
+    Prospector +35% mining           Brave +30% combat damage
+    Frugal eats 25% less             Glutton eats 50% more
+    Stubborn / Docile: harder / easier to indoctrinate as a prisoner
+  Match traits to jobs: a Green Thumb belongs on the farm!
+
+THE DAILY ROUTINE
+  Day (dawn to late afternoon) .. work
+  Evening ....................... gather at the Town Hall for supper
+                                  (rations are shared at sunset)
+  Night ......................... sleep in their own bed
+  Citizens without a bed are "homeless": they hang around the Town
+  Hall at night and unhappy citizens make the commune less stable.
+  Workers run away from monsters; guards stay up and keep watch.
+
+  Downed comrades: if one of your citizens is knocked down in a fight
+  (a red "DOWNED" tag), RIGHT-CLICK them within 60 seconds to help them
+  up, or they bleed out.
+
+
+=====================================================================
+PART 6 - FOOD, STABILITY, STRIKES AND CHILDREN
+=====================================================================
+
+RATIONS AT SUNSET
+  Every evening at sunset, everyone gets an EQUAL meal from the State
+  Chest:
+    Adult citizen ........ 6 hunger points (about one loaf of bread)
+    Child ................ half
+    Forced labourer ...... half
+    Prisoners ............ fed by the Warden instead (Part 8)
+  You get a report in chat: how well everyone ate, stability, and how
+  many days of food are left.
+
+  What counts as food (hunger points per item):
+    Steak / cooked porkchop / pumpkin pie 8, bread / baked potato /
+    cooked cod 5, cooked chicken / mutton / salmon 6, carrot 3,
+    apple 4, wheat 1.7 (three wheat = one loaf), hay bale 15,
+    raw meat 2-3, potato 1, and so on.
+  Never eaten (safe to store): golden apples, golden carrots, rotten
+  flesh, spider eyes, poisonous potatoes, pufferfish, chorus fruit,
+  suspicious stew. Renamed items are never eaten either.
+  Cheap food is eaten first, so your steak lasts.
+
+STABILITY (0-100%)
+  Stability is your commune's mood. You start at 70%.
+    Full rations ............................ up (+4 a night)
+    Short rations ........................... down (up to -6)
+    No food at all .......................... down a lot (-10)
+    Homeless citizens ....................... a little down
+    Forced labourers ........................ a little down
+    Idle Wardens giving speeches ............ a little up
+    Mobilizing the workers .................. -5
+    Winning / losing a war .................. +10 / -15
+  Higher stability AND well-fed workers = faster workers. A citizen's
+  villager badge shows how hard they're working.
+
+GENERAL STRIKE
+  If stability stays BELOW 35% for 3 NIGHTS IN A ROW, the workers go
+  on strike. They stop working and protest at the Town Hall. The strike
+  ends when stability climbs back to 50% (full rations count double
+  during a strike). Chat warns you when you're getting close.
+
+CHILDREN
+  A child is born (at most one a day) when:
+    * there is a FREE BED in a registered house,
+    * the State Chest holds at least 3 DAYS OF FOOD for everyone,
+    * stability is at least 30% and nobody is on strike.
+  Children play, sleep in a bed and eat half rations. After 3 days they
+  grow up and pick a useful job by themselves (you can change it).
+  Population limit: 40.
+
+  So to grow: build more houses (beds!) and keep the food stock high.
+
+  Note: the commune only lives while someone is near the Town Hall
+  (like crops, which only grow in loaded areas). Nobody has to stay
+  online, and nothing is lost while you're away.
+
+
+=====================================================================
+PART 7 - MEMBERS AND RANKS
+=====================================================================
+
+  RANKS
+    Chairman (the founder) - everything, including relocating the
+                             Town Hall and dissolving the colony
+    Commissar (officer)    - assigns jobs, sets prisoner policies,
+                             mobilizes, declares war, invites/kicks
+    Comrade (member)       - uses the State Chest, registers and orders
+                             buildings, helps with everything else
+
+  COMMANDS
+    /colony invite <player>   invite someone (they click [Join])
+    /colony join <colony>     accept an invitation
+    /colony leave             leave your colony (not the Chairman)
+    /colony kick <player>     remove a member
+    /colony promote <player>  make a Comrade a Commissar
+    /colony demote <player>   make a Commissar a Comrade
+    /colony rename <name>     rename the colony
+    /colony abandon           (Chairman) dissolve the colony; the State
+                              Chest spills its contents at the chest
+
+  You can belong to one colony at a time.
+
+
+=====================================================================
+PART 8 - PRISONERS: CAPTURE, INDOCTRINATION AND FORCED LABOUR
+=====================================================================
+
+  You'll need a registered PRISON CELL (Part 4) and some ROPE.
+
+  ROPE: 3 String in a column (makes 2).
+      [ String ]
+      [ String ]
+      [ String ]
+
+STEP 1 - Down someone
+  When a person would die in combat, there's a 20% chance they go DOWN
+  instead: they lie on the ground with a red "DOWNED" tag for 60
+  seconds, then bleed out. People include enemy citizens, villagers,
+  wandering traders, pillagers, vindicators, evokers and witches.
+  Wandering travelers always surrender instead of dying (Part 9).
+  (Hitting someone who is already down finishes them.)
+
+STEP 2 - Bind them
+  RIGHT-CLICK the downed person while holding ROPE. They're bound and
+  follow you on a lead. Anything they carried (weapons, armour, tools)
+  goes into YOUR State Chest.
+
+STEP 3 - Lock them up
+  Either:
+    * walk them into your prison cell (or right up to its door), or
+    * SNEAK + RIGHT-CLICK them to hand them to your GUARDS, who walk
+      them to a free cell for you.
+  Chat confirms "... was locked in Prison Cell #...". If every cell is
+  full, they wait (bound) until a bed is free.
+
+STEP 4 - Choose their sentence
+  Right-click the prisoner (or use /colony prison, or the Town Hall)
+  and pick a policy:
+
+  INDOCTRINATION (the default)
+    Each prisoner has a RESISTANCE meter (0-100%, shown on their name
+    tag). Once a day a WARDEN unlocks the cell, brings a meal from the
+    State Chest and re-educates them, lowering Resistance (more when
+    stability is high). At 0% they JOIN YOUR COLONY as an EQUAL CITIZEN
+    with a job of their own.
+      * Assign a Warden! Without one, nobody visits.
+      * A day without a visit raises Resistance a little.
+      * A prisoner with no food for 5 days starves. Keep food in the
+        chest (you can also right-click a prisoner with food to feed
+        them by hand).
+
+  FORCED LABOUR
+    Needs IRON SHACKLES (in your inventory or the State Chest):
+      [ Iron Ingot ][ Chain ][ Iron Ingot ]
+    The prisoner is shackled and sent to heavy labour: MINING (if you
+    have a mine) or LOGGING (switch it on their card). They work during
+    the day, eat half rations and are locked back in their cell at
+    night.
+
+    !!! THE GUARD RULE !!!
+    Every working labourer must have a GUARD within 20 BLOCKS. Your
+    guards try to keep watch automatically (one guard per work gang,
+    miners and loggers being separate gangs), so have enough guards.
+    You get a warning if someone is left unguarded.
+
+    UPRISING: if a labourer is left unguarded for 30 seconds, OR your
+    stability drops BELOW 40%, the labourers rise up. They break their
+    shackles, steal the best weapons from your State Chest and attack
+    your people. Down them and rebind them with rope, or they escape
+    after 5 minutes (taking your weapons with them).
+
+  RELEASE
+    The prisoner's card has a Release button (leaders): they walk free
+    and leave.
+
+  DEFAULT POLICY
+    Set what new prisoners get in the Town Hall menu or with
+    /colony policy <indoctrinate|enslave>. (Forced labour as default
+    still needs shackles in the chest.)
+
+
+=====================================================================
+PART 9 - WANDERING TRAVELERS
+=====================================================================
+
+  Now and then (during the day) a traveler with a backpack name tag
+  walks to your Town Hall. Each has a trait, such as a skilled farmer.
+  Chat offers clickable buttons:
+
+    [Recruit]    They join your colony as a new citizen. You need a
+                 free bed and a day of food in the State Chest for one
+                 more mouth.
+    [Turn Away]  They leave.
+
+  You can also right-click them for the same choices, or type
+  /colony traveler recruit | dismiss. If nobody answers in about 6
+  minutes, they move on.
+
+  TAKING THEM BY FORCE
+  Attack a traveler and they surrender (go down) instead of dying. Bind
+  them with rope and they become your prisoner. But word spreads:
+    Attacking a traveler ............. -5 reputation
+    Capturing or killing one ......... -15 reputation
+    Recruiting one ................... +5 reputation
+  Reputation (0-100, shown in /colony info) decides how often travelers
+  come. Below 15, they stop coming altogether.
+
+
+=====================================================================
+PART 10 - WAR
+=====================================================================
+
+  Wars are fought between colonies over loot: the winner takes HALF of
+  the loser's raw resources. Only the Chairman and Commissars can start
+  (or surrender) a war.
+
+WHO CAN BE ATTACKED
+  * Colonies with a Town Hall and no PEACE SHIELD. New colonies have a
+    72-hour shield; the loser of a war gets a 24-hour shield.
+  * Declaring a war ENDS YOUR OWN SHIELD.
+  * At least one member of the target colony must be online.
+  * A colony can only be in one war at a time, and attackers must wait
+    an hour between wars.
+
+STEP 1 - Craft a WAR BANNER
+  Red Banner + Iron Sword + Gold Ingot (anywhere in the grid).
+
+STEP 2 - Declare war
+  Hold the War Banner and RIGHT-CLICK THE AIR: a list of colonies
+  opens (with shield status, distance and online members). Click one
+  and confirm. Or type /colony declare <colony>.
+  Both colonies see a red boss bar with a 20-MINUTE WARM-UP.
+
+STEP 3 - Raise your WAR CAMP (attackers)
+  During the warm-up, PLACE the War Banner OUTSIDE every claim,
+  between 8 and 64 blocks from the enemy's border. This is your War
+  Camp: you respawn there during the siege. If there is no camp when
+  the warm-up ends, you forfeit the war.
+
+STEP 4 - Prepare (defenders)
+  * Stock the State Chest with swords, axes, armour, bows and arrows.
+    When the siege starts your GUARDS run to the chest and take the
+    best gear.
+  * Assign more guards and build guard towers.
+  * Clear the paths to your State Chest.
+
+STEP 5 - The SIEGE (up to 45 minutes)
+  Attackers may now break and place blocks in the defender's claim
+  (they still can't open containers) and fight the defenders.
+
+  ATTACKERS WIN by:
+    * DESTROYING THE TOWN HALL CORE (break it), or
+    * CUTTING THE SUPPLY LINES: making it impossible for the defenders'
+      citizens to reach their State Chest (wall off every path, or put
+      a block on its lid; SNEAK to place a block against a chest).
+      Every 30 seconds without access costs the defenders 5 stability;
+      at 0% the commune collapses and the attackers win.
+
+  DEFENDERS WIN by:
+    * holding out until the siege timer runs out, or
+    * TEARING DOWN THE WAR CAMP (break the attackers' banner).
+
+  Either side can type /colony surrender.
+
+  STATE MOBILIZATION ORDER
+    In an emergency (a siege, an uprising, a monster raid) a leader can
+    use /colony mobilize (or the sword in the Town Hall). For 10
+    minutes every farmer, builder, lumberjack and miner takes a weapon
+    from the State Chest and fights as militia. Production stops and it
+    costs 5 stability. /colony mobilize stop sends them back to work
+    early. The order can be given again 20 minutes after the 10 minutes
+    are up.
+
+AFTER THE WAR
+  * The WINNER takes 50% of the loser's RAW RESOURCES from the State
+    Chest: ores, ingots, logs, crops, food and other plain stackable
+    goods. Tools, armour, weapons and named items are never taken.
+  * The loser gets a 24-hour Peace Shield and loses 15 stability; the
+    winner gains 10.
+  * Every block broken or placed during the siege is PUT BACK two
+    minutes after it ends (including the Town Hall Core).
+
+  Outside of war, other colonies' citizens can't be hurt, and if
+  someone keeps attacking your citizens, your guards will fight them.
+
+
+=====================================================================
+PART 11 - TIPS FOR A THRIVING COMMUNE
+=====================================================================
+
+  * FOOD FIRST. Two farms early on keep everyone fed. Check "days of
+    food left" in the nightly report: aim for at least 3 (that's also
+    what makes children appear).
+  * BEDS = GROWTH. Every house bed is a future citizen. Order Starter
+    Houses from your Builder and keep planks and beds in the chest.
+  * SPARE TOOLS. Keep 2-3 of each tool in the chest so nobody waits.
+  * MATCH TRAITS TO JOBS. Green Thumb on the farm, Prospector in the
+    mine, Brave as a guard.
+  * GUARDS EARLY. Monsters wander into colonies at night. One or two
+    guards with swords and a guard tower or two make a big difference.
+  * DON'T STARVE YOUR STABILITY. Three bad nights in a row means a
+    strike, and forced labourers rise up below 40%.
+  * WARDENS ARE CHEAP STABILITY. With no prisoners they give speeches.
+  * MINE FOR WEALTH. Miners bring stone, coal, iron and more. Give them
+    pickaxes and torches.
+  * USE YOUR SHIELD. The 72-hour Peace Shield is your time to build
+    walls, towers and an armoury before anyone can attack.
+  * PROTECT THE PATH TO THE CHEST. In a siege, attackers will try to
+    wall it off. Don't bury your own chest in a cramped room with one
+    door.
+
+
+=====================================================================
+PART 12 - TROUBLESHOOTING / FAQ
+=====================================================================
+
+  "My selection is red."
+    Too small (under 16 x 16), too big (over 128 x 128), or too close
+    to another colony. Chat tells you which.
+
+  "I can't place the Town Hall Core."
+    It must be inside your claim, with a free block beside it for the
+    chest, and not next to another chest.
+
+  "My house won't register."
+    It must be fully enclosed: no missing blocks, no open doorway (use
+    a door), a roof, a wooden door and a bed. Click the floor INSIDE.
+    Glass panes, fences and doors count as walls.
+
+  "My Farmer just stands around."
+    Register a farm, and put seeds (wheat seeds, carrots, potatoes or
+    beetroot seeds) in the State Chest.
+
+  "My Miner says 'Needs a pickaxe'."
+    Put a pickaxe in the State Chest. Also register a Mine Entrance.
+
+  "My Lumberjack can't find trees."
+    They only cut natural trees (with natural leaves) inside your claim
+    or up to 24 blocks around it.
+
+  "The Builder is waiting."
+    Its card (and chat) says what it needs. Add it to the State Chest.
+
+  "Someone is homeless."
+    Register more beds in houses. Every citizen needs one.
+
+  "Nobody visits my prisoners."
+    Assign a Warden (right-click a citizen and pick Warden).
+
+  "My workers stopped working!"
+    Check for a strike (Town Hall menu or /colony info): stability has
+    been under 35% for 3 nights. Feed them full rations to recover.
+
+  "I can't declare war."
+    The target has a Peace Shield, is already at war, has no Town Hall
+    or no members online, or your colony is still on its cooldown. You
+    need a War Banner in your inventory and to be Chairman or Commissar.
+
+  "My citizens disappeared!"
+    They only exist while the Town Hall area is loaded. Walk back to
+    your colony and they return.
+
+  "The State Chest is full."
+    Make room, then /colony spoils to bring in the overflow.
+
+
+=====================================================================
+PART 13 - CHEAT SHEET
+=====================================================================
+
+  RECIPES
+    Colony Selection Wand  Stick + Gold Nugget (side by side)
+    Rope (x2)              3 String in a column
+    Iron Shackles          Iron Ingot, Chain, Iron Ingot (in a row)
+    War Banner             Red Banner + Iron Sword + Gold Ingot
+    Blueprint Book         Book + Gold Nugget + Paper (or /colony book)
+
+  WAND
+    Left-click block ........ Position 1
+    Right-click block ....... Position 2
+    Sneak + Right-click ..... Establish Colony
+
+  BLUEPRINT BOOK
+    Right-click ............. next blueprint
+    Sneak + Right-click ..... register the building you clicked
+    Sneak + Left-click ...... order the Builder to build it
+
+  CITIZENS
+    Right-click ............. citizen card (jobs, stats)
+    Right-click (downed) .... help your comrade up
+    Rope + Right-click ...... bind a downed person
+    Sneak + Right-click ..... hand a captive to the guards
+    Food + Right-click ...... feed a prisoner by hand
+
+  KEY NUMBERS (server defaults)
+    Claim size 16x16 to 128x128 | Peace Shield 72 h (24 h after a loss)
+    Ration 6 food points a day per adult | Strike: <35% for 3 nights
+    Child: free bed + 3 days of food | Grows up in 3 days
+    Downed chance 20% for 60 s | Guard within 20 blocks of labourers
+    Uprising below 40% stability | War warm-up 20 min, siege 45 min
+    War Camp 8-64 blocks from the enemy border | Spoils 50%
+
+  COMMANDS
+    /colony info [colony]        /colony quests [hide|show]
+    /colony citizens             /colony prison
+    /colony buildings            /colony storage [page]
+    /colony mobilize [stop]      /colony declare <colony>
+    /colony war                  /colony surrender
+    /colony invite <player>      /colony join <colony>
+    /colony leave                /colony kick|promote|demote <player>
+    /colony rename <name>        /colony policy <indoctrinate|enslave>
+    /colony traveler <recruit|dismiss>
+    /colony book                 /colony core
+    /colony spoils               /colony relocate
+    /colony abandon              /colony list
+    /colony help
+
+  Your server admins may have changed some numbers. Glory to the
+  Commune, comrade!
+=====================================================================
