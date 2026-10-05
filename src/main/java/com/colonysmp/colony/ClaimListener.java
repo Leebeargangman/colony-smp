@@ -135,12 +135,9 @@ public final class ClaimListener implements Listener {
         boolean container = st instanceof Container;
         boolean siege = plugin.wars().siegeAttacker(p, c);
         if (container) {
-            e.setUseInteractedBlock(org.bukkit.event.Event.Result.DENY);
-            if (siege && e.getItem() != null && e.getItem().getType().isBlock()) {
-                // attackers may build against containers (to wall in a State Chest), never open them
-                e.setUseItemInHand(org.bukkit.event.Event.Result.ALLOW);
-                return;
-            }
+            // attackers may build against containers (to wall in a State Chest) but never open them: sneaking with a
+            // block in hand never opens a container, so that case is left to the game untouched
+            if (siege && p.isSneaking() && e.getItem() != null && e.getItem().getType().isBlock()) return;
             e.setCancelled(true);
             deny(p, c, "open containers");
             return;

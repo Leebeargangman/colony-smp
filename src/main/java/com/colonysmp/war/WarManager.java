@@ -439,7 +439,7 @@ public final class WarManager implements Listener {
         def.addStability(-plugin.settings().supplyCutStability);
         for (Player p : def.onlineMembers()) {
             Text.send(p, "<red>⚠ Your citizens can't reach the Central State Chest!</red> <gray>Stability " + Math.round(def.stability) + "% (-"
-                    + Math.round(plugin.settings().supplyCutStability) + "). Clear the way before it hits 0%.");
+                    + Math.round(plugin.settings().supplyCutStability) + ")." + (def.stability > 0 ? " Clear the way before it hits 0%." : ""));
         }
         for (Player p : atk.onlineMembers()) Text.bar(p, "<gold>Supply lines cut! " + Text.esc(def.name) + " stability: " + Math.round(def.stability) + "%");
     }
