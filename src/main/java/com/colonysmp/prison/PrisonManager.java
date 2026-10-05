@@ -336,7 +336,17 @@ public final class PrisonManager implements Listener {
         n.c.escortGuard = null;
         n.c.awaitingEscort = true;
         n.body.setLeashHolder(null);
-        Text.send(p, "<white>" + Text.esc(n.c.name) + "</white> will be escorted to a free cell by your Guards.");
+        Colony col = plugin.colonies().colonyOf(n.c);
+        boolean guards = col != null && col.citizens.values().stream().anyMatch(c -> c.status == Status.CITIZEN && c.job == Job.GUARD);
+        if (col == null || col.buildings(BuildingType.PRISON).isEmpty()) {
+            Text.send(p, "<yellow>" + Text.esc(n.c.name) + " waits, bound. You have no Prison Cell: register one with the Blueprint Book.");
+        } else if (plugin.sim().freeCell(col, n.c) == null) {
+            Text.send(p, "<yellow>" + Text.esc(n.c.name) + " waits, bound. Every prison cell is full: add a bed to a cell or build another.");
+        } else if (!guards) {
+            Text.send(p, "<yellow>" + Text.esc(n.c.name) + " waits, bound. Assign a Guard to escort them, or lead them to a cell yourself.");
+        } else {
+            Text.send(p, "<white>" + Text.esc(n.c.name) + "</white> will be escorted to a free cell by your Guards.");
+        }
     }
 
     public boolean feedByHand(Player p, Npc n, ItemStack hand) {

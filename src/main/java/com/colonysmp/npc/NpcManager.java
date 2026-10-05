@@ -703,6 +703,11 @@ public final class NpcManager implements Listener {
         ItemStack hand = p.getInventory().getItemInMainHand();
         Colony col = plugin.colonies().colonyOf(n.c);
         if (col == null) return;
+        // handing a captive over comes first: right after binding, the rope is still in hand
+        if (n.c.status == Status.CAPTIVE && col.isMember(p.getUniqueId()) && p.isSneaking()) {
+            plugin.prison().handToGuards(p, n);
+            return;
+        }
         if (Items.is(hand, Items.ROPE)) {
             plugin.prison().useRope(p, n, hand);
             return;
@@ -710,10 +715,6 @@ public final class NpcManager implements Listener {
         if (n.c.downed()) {
             if (col.isMember(p.getUniqueId())) plugin.prison().rescue(p, n);
             else Text.send(p, "<gray>" + Text.esc(n.c.name) + " is down. Bind them with <white>Rope</white> to take them prisoner.");
-            return;
-        }
-        if (n.c.status == Status.CAPTIVE && col.isMember(p.getUniqueId()) && p.isSneaking()) {
-            plugin.prison().handToGuards(p, n);
             return;
         }
         if (n.c.status == Status.PRISONER && col.isMember(p.getUniqueId()) && plugin.prison().feedByHand(p, n, hand)) return;
