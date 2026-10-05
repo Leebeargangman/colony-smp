@@ -11,16 +11,18 @@ CONTENTS
   Part 1   Your first ten minutes
   Part 2   Your land and the Town Hall
   Part 3   The Central State Chest
-  Part 4   The Blueprint Book (houses, farms, towers, cells, mines)
+  Part 4   The Blueprint Book (houses, farms, towers, cells, schools, mines)
   Part 5   Your citizens and their jobs
   Part 6   Food, stability, strikes and children
-  Part 7   Members and ranks
-  Part 8   Prisoners: capture, indoctrination and forced labour
-  Part 9   Wandering travelers
-  Part 10  War
-  Part 11  Tips for a thriving commune
-  Part 12  Troubleshooting / FAQ
-  Part 13  Cheat sheet
+  Part 7   Needs, happiness, health and school
+  Part 8   Copying buildings with the wand
+  Part 9   Members and ranks
+  Part 10  Prisoners: capture, indoctrination and forced labour
+  Part 11  Wandering travelers
+  Part 12  War
+  Part 13  Tips for a thriving commune
+  Part 14  Troubleshooting / FAQ
+  Part 15  Cheat sheet
 
 
 =====================================================================
@@ -129,7 +131,9 @@ YOUR CLAIM PROTECTS YOU
     * break or place blocks, pour or pick up liquids
     * open your chests, furnaces and other containers
     * use your doors, buttons, levers, trapdoors
-    * trample your farmland, hurt your animals, armor stands or frames
+    * hurt your animals, armor stands or frames
+  And NOBODY (not even you or your citizens) tramples farmland inside
+  a claim: it never turns back to dirt.
     * hurt your citizens
     * fight other players (PvP is off inside claims unless the two
       colonies are at war)
@@ -139,7 +143,7 @@ YOUR CLAIM PROTECTS YOU
   When you walk into a colony, the action bar tells you whose land it is.
 
   (The one exception is war: during a siege, attackers may break and
-  place blocks in the defender's claim. See Part 10.)
+  place blocks in the defender's claim. See Part 12.)
 
 THE TOWN HALL MENU
   Right-click the Town Hall Core to open the Town Hall: your control
@@ -172,12 +176,19 @@ PART 3 - THE CENTRAL STATE CHEST
 
   The chest beside the Town Hall is the commune's single, shared
   storehouse. Workers own nothing:
-    * Everything they harvest, chop and mine goes STRAIGHT into it.
-    * They take their TOOLS from it (and get a new one there when a
-      tool breaks).
-    * Guards take their WEAPONS, ARMOUR, BOWS and ARROWS from it.
-    * Every evening the RATIONS come out of it (Part 6).
-    * Builders take their BUILDING MATERIALS from it.
+    * Everything they harvest, chop, mine, fish and shear goes
+      STRAIGHT into it.
+    * Nothing leaves it by magic. Whatever a citizen needs, they WALK
+      TO THE CHEST and carry it in their satchel (up to 4 stacks):
+        - TOOLS (and a new one when a tool breaks)
+        - SEEDS for the farmers, TORCHES for the miners
+        - BUILDING MATERIALS, a batch at a time, for the builders
+        - RAW FOOD and FUEL for the cook, ORE and FUEL for the smith
+        - FEED for the herder's animals, a BOOK for the teacher
+        - WEAPONS, ARMOUR, BOWS and ARROWS for guards and militia
+        - a MEAL for each prisoner the warden visits
+        - their own SUPPER every evening (Part 6)
+      Leftovers are carried back.
 
   Using it:
     * Right-click the chest to open it (members only). It has 3 pages
@@ -194,11 +205,14 @@ PART 3 - THE CENTRAL STATE CHEST
   to move them in once you've made room.
 
   Keep it stocked with:
-    * FOOD (rations every evening)
-    * TOOLS: hoes, axes, pickaxes (spares!)
+    * FOOD (supper every evening)
+    * TOOLS: hoes, axes, pickaxes, shears, fishing rods (spares! or let
+      a Smith make them)
     * SEEDS (wheat seeds, carrots, potatoes, beetroot seeds)
     * BUILDING BLOCKS: planks, cobblestone, glass, beds, doors
     * TORCHES (miners place them)
+    * COAL or wood (fuel for the cook's and smith's furnaces)
+    * BOOKS (one per school per day makes lessons better)
     * WEAPONS, ARMOUR, BOWS, ARROWS (for guards and emergencies)
 
 
@@ -221,12 +235,13 @@ CONTROLS
                                           the blueprint you see
 
   Blueprints, in order: Starter House -> Farm -> Guard Tower ->
-  Prison Cell -> Mine Entrance -> (back to Starter House).
+  Prison Cell -> School -> Mine Entrance -> your copied buildings
+  (Part 8) -> (back to Starter House).
 
   While holding the book you also see the buildings you've already
   registered (blue outlines) and build orders (orange outlines).
 
-THE FIVE BUILDINGS
+THE SIX BUILDINGS
 
   STARTER HOUSE - homes for your citizens
     An enclosed room (walls, floor and roof, no gaps) with at least one
@@ -248,12 +263,19 @@ THE FIVE BUILDINGS
     Guards patrol between your towers. With no towers they walk a
     ring around the Town Hall.
 
-  PRISON CELL - for prisoners (Part 8)
+  PRISON CELL - for prisoners (Part 10)
     An enclosed room with an IRON door and at least one bed. Floor at
     least 2 x 2 inside. Put a button outside the door so YOU can get
     in; your wardens and guards have the keys.
     Register: SNEAK + RIGHT-CLICK the floor inside the cell.
     Each bed holds one prisoner.
+
+  SCHOOL - where children and students learn (Part 7)
+    An enclosed room with a WOODEN door and a LECTERN inside. Floor at
+    least 3 x 3 (5 x 5 is better). Bookshelves in the room make lessons
+    better (+5% each, up to +50%).
+    Register: SNEAK + RIGHT-CLICK the floor inside the room.
+    Up to 10 pupils and 2 teachers per school.
 
   MINE ENTRANCE - where miners dig
     Any natural ground: stone, dirt, grass, sand or gravel.
@@ -263,7 +285,8 @@ THE FIVE BUILDINGS
     Maximum 3 mines per colony.
 
   Note: a room with an iron door always registers as a Prison Cell,
-  with a wooden door as a House, whichever blueprint you selected.
+  a room with a lectern as a School, and other rooms as a House,
+  whichever blueprint you selected.
 
   Every night your buildings are re-checked. If you break a wall, take
   away the beds or dig up a farm, the building is unregistered and you
@@ -277,9 +300,11 @@ ORDERING BUILDINGS FROM YOUR BUILDER
        overlap the Town Hall or other buildings).
     4. SNEAK + LEFT-CLICK. Chat lists the materials needed.
 
-  The Builder takes materials from the State Chest one block at a time,
-  works from outside the walls, and registers the building when done.
-  If something is missing, the Builder waits and tells you what to add.
+  The Builder walks to the State Chest, loads a batch of what the next
+  part of the job needs (up to 4 kinds of block, a stack of each),
+  carries it to the site and builds from a spot within reach, never
+  boxing themselves in. Finished buildings register themselves. If
+  something is missing, the Builder waits and tells you what to add.
 
   Approximate materials:
     Starter House: 69 wall/roof blocks (planks, logs or stone),
@@ -290,6 +315,8 @@ ORDERING BUILDINGS FROM YOUR BUILDER
                    button (optional)
     Guard Tower:   ~38 stone blocks, 24 planks, 16 wooden fences,
                    6 ladders, 1 wooden door, 1 torch (optional)
+    School:        139 wall/roof blocks, 4 windows, 1 wooden door,
+                   1 lectern, 4 bookshelves and 3 torches (optional)
     Farm:          tills grass/dirt for free (needs dirt where the
                    ground isn't soil) and 1 water bucket for the centre
                    (the empty bucket goes back in the chest)
@@ -306,8 +333,8 @@ PART 5 - YOUR CITIZENS AND THEIR JOBS
 
   Citizens are villagers with name tags like "Ivan Petrov [Farmer]".
   Right-click one to open their card:
-    * Job, trait, health, how well they ate last night, work speed
-      (efficiency), tool and bed
+    * Job, trait, health, HAPPINESS, REST and EDUCATION bars, how well
+      they ate last night, work speed (efficiency), tool and bed
     * What they're doing right now
     * Job buttons (leaders only): click one to change their job
     * Locate: makes them glow for 15 seconds
@@ -329,10 +356,37 @@ THE JOBS
                    escorts captives to cells, watches forced labourers.
                    Takes a weapon from the chest; in emergencies it also
                    takes the best armour, a bow and arrows.
-  WARDEN ......... feeds and re-educates prisoners every day (Part 8).
+  WARDEN ......... feeds and re-educates prisoners every day (Part 10).
                    With no prisoners, gives speeches at the Town Hall
                    that raise stability.
+  FISHER ......... fishes from the shore of any pond, lake or river in
+                   your claim (open water, 3x3 or bigger): cod, salmon,
+                   sometimes junk or treasure. Needs a fishing rod.
+  HERDER ......... looks after the animals in your claim: shears sheep
+                   (needs shears), gathers eggs, breeds each kind up to
+                   8 with feed carried from the chest (wheat for cows
+                   and sheep, carrots/potatoes for pigs, seeds for
+                   chickens) and slaughters the surplus for meat,
+                   leather and wool. Lead some animals into a pen!
+  COOK ........... carries raw meat, fish and potatoes plus fuel to a
+                   SMOKER, FURNACE or CAMPFIRE in your colony, cooks them
+                   (more food points!) and carries the meals back. Bakes
+                   bread from wheat when there's nothing raw.
+  SMITH .......... (education 25) smelts raw iron, gold and copper at a
+                   FURNACE or BLAST FURNACE, repairs worn tools and armour
+                   at an ANVIL, and makes spare tools for your workers
+                   and iron armour for your guards (anvil, smithing table
+                   or crafting table). Needs fuel for smelting.
+  DOCTOR ......... (education 40) runs to downed comrades and gets them
+                   back up, and treats anyone injured.
+  TEACHER ........ (education 30) teaches at a School (Part 7).
+  STUDENT ........ studies at a School all day to raise their education.
   UNASSIGNED ..... does nothing useful. Give them a job!
+
+  Skilled jobs (Smith, Teacher, Doctor) need education. The job button
+  shows what's needed; send citizens to school first (Part 7).
+  Workstations are found automatically anywhere in your claim: just
+  place a furnace, smoker, campfire, anvil or crafting table.
 
   When a citizen breaks their tool, they walk to the State Chest, take
   the best replacement and carry on. No tool in the chest? They work
@@ -348,13 +402,20 @@ TRAITS
   Match traits to jobs: a Green Thumb belongs on the farm!
 
 THE DAILY ROUTINE
-  Day (dawn to late afternoon) .. work
-  Evening ....................... gather at the Town Hall for supper
-                                  (rations are shared at sunset)
+  Day (dawn to late afternoon) .. work (children go to school if you
+                                  have one, otherwise they play)
+  Evening ....................... walk to the State Chest for supper,
+                                  put back what they carried, then
+                                  gather at the Town Hall
   Night ......................... sleep in their own bed
-  Citizens without a bed are "homeless": they hang around the Town
-  Hall at night and unhappy citizens make the commune less stable.
+  Citizens without a bed are "homeless": they doze at the Town Hall at
+  night (never fully rested) and are unhappy.
   Workers run away from monsters; guards stay up and keep watch.
+
+  Citizens WALK everywhere: through doors and fence gates, up ladders
+  to the top of guard towers, in and out of prison cells (wardens and
+  guards have the keys to iron doors). Only a citizen stuck for a long
+  time with no way through is moved, and only when nobody is looking.
 
   Downed comrades: if one of your citizens is knocked down in a fight
   (a red "DOWNED" tag), RIGHT-CLICK them within 60 seconds to help them
@@ -365,13 +426,15 @@ THE DAILY ROUTINE
 PART 6 - FOOD, STABILITY, STRIKES AND CHILDREN
 =====================================================================
 
-RATIONS AT SUNSET
-  Every evening at sunset, everyone gets an EQUAL meal from the State
-  Chest:
+SUPPER AND RATIONS
+  Every evening your citizens walk to the State Chest and eat their
+  supper there. At sunset the rest (children, labourers and anyone who
+  couldn't get there) are fed straight from the chest. Everyone gets
+  an EQUAL meal:
     Adult citizen ........ 6 hunger points (about one loaf of bread)
     Child ................ half
     Forced labourer ...... half
-    Prisoners ............ fed by the Warden instead (Part 8)
+    Prisoners ............ fed by the Warden instead (Part 10)
   You get a report in chat: how well everyone ate, stability, and how
   many days of food are left.
 
@@ -421,7 +484,94 @@ CHILDREN
 
 
 =====================================================================
-PART 7 - MEMBERS AND RANKS
+PART 7 - NEEDS, HAPPINESS, HEALTH AND SCHOOL
+=====================================================================
+
+  Food isn't everything. Each citizen's card shows three bars:
+
+  REST (0-100)
+    Drops while they're awake, refills while they sleep in a bed.
+    Below 30 they're TIRED and work slower. Completely exhausted, they
+    stop for a nap wherever they are. Homeless citizens only doze, so
+    they never get fully rested: build houses!
+
+  HEALTH
+    Mends slowly when they've eaten, faster in bed, and quickly with a
+    DOCTOR around (Doctors also get downed comrades back up).
+
+  HAPPINESS (0-100)
+    Rises and falls with how they live:
+      + well fed, well rested, a bed of their own, healthy
+      + high stability, a job that suits their trait
+      + a skilled job; a school for the children
+      - hunger, tiredness, homelessness, injuries
+      - a strike, being called up as militia
+      - educated people stuck in unskilled work grumble a little
+    Happy citizens work up to 20% faster and raise stability every
+    night; unhappy ones slow down and lower it. A citizen who stays
+    MISERABLE (below 15) for 3 nights may PACK UP AND LEAVE.
+    The Town Hall and /colony info show the colony's average.
+
+  EDUCATION (0-100) AND SCHOOLS
+    Educated citizens work faster (up to +30%), are a bit happier, and
+    only they can take skilled jobs:
+      Smith 25 | Teacher 30 | Doctor 40
+    New colonists and recruits arrive with 10-50; children start at 0.
+
+    To run a school:
+      1. Build an enclosed room with a wooden door and a LECTERN (or
+         order the School blueprint), add some BOOKSHELVES, and
+         register it with the Blueprint Book.
+      2. Make someone a TEACHER (they need education 30).
+      3. Children go to school by day on their own. Make adults
+         STUDENTS to send them too (they don't work while studying).
+      4. Keep BOOKS in the State Chest: the teacher carries one over
+         each day, and lessons that day are 50% better.
+    Every 30 seconds the teacher gives a lesson to everyone in the
+    room (10 pupils per school). Children learn twice as fast, and a
+    better-educated teacher teaches better.
+    /colony school shows your schools and average education.
+
+
+=====================================================================
+PART 8 - COPYING BUILDINGS WITH THE WAND
+=====================================================================
+
+  Built something you like? Copy it, and your Builders will build it
+  again anywhere in your colony, as many times as you want.
+
+  1. Hold the COLONY WAND. LEFT-CLICK one corner of the building and
+     RIGHT-CLICK the opposite corner: top AND bottom, it's a 3D box.
+     (Include the floor if you want it copied too.) The box is
+     outlined in green while you hold the wand. Up to 48 blocks on
+     each side.
+  2. Stand on the side that should be the FRONT (usually the door
+     side), SNEAK + RIGHT-CLICK, and click "Copy as Blueprint".
+  3. Type a name in chat. The copy is now selected in your Blueprint
+     Book.
+  4. Hold the book, look where the copy should go (turn around to
+     rotate it: the front faces you), check the outline is GREEN and
+     SNEAK + LEFT-CLICK. Chat lists every material needed.
+
+  The Builders clear the space, lay the full blocks first, then the
+  things that sit on them (doors, beds, torches, stairs, glass,
+  carpets...), and pour water and lava last (they need buckets).
+  Stand-ins are fine: dirt for grass, cobblestone for stone. Plants and
+  leaves are skipped if the chest has none. Beds, lecterns and farmland
+  in a finished copy are registered as houses, schools and farms
+  automatically.
+
+  /colony blueprints opens the list: click one to select it, leaders
+  can Shift + Right-click to delete one (orders for it are cancelled).
+  Also: /colony blueprints list | info <name> | select <name> |
+  delete <name>. A colony keeps up to 10 copies.
+
+  (Not in a colony yet? Sneak + Right-click with the wand founds one
+  instead, as in Part 1.)
+
+
+=====================================================================
+PART 9 - MEMBERS AND RANKS
 =====================================================================
 
   RANKS
@@ -447,7 +597,7 @@ PART 7 - MEMBERS AND RANKS
 
 
 =====================================================================
-PART 8 - PRISONERS: CAPTURE, INDOCTRINATION AND FORCED LABOUR
+PART 10 - PRISONERS: CAPTURE, INDOCTRINATION AND FORCED LABOUR
 =====================================================================
 
   You'll need a registered PRISON CELL (Part 4) and some ROPE.
@@ -462,7 +612,7 @@ STEP 1 - Down someone
   instead: they lie on the ground with a red "DOWNED" tag for 60
   seconds, then bleed out. People include enemy citizens, villagers,
   wandering traders, pillagers, vindicators, evokers and witches.
-  Wandering travelers always surrender instead of dying (Part 9).
+  Wandering travelers always surrender instead of dying (Part 11).
   (Hitting someone who is already down finishes them.)
 
 STEP 2 - Bind them
@@ -484,10 +634,10 @@ STEP 4 - Choose their sentence
 
   INDOCTRINATION (the default)
     Each prisoner has a RESISTANCE meter (0-100%, shown on their name
-    tag). Once a day a WARDEN unlocks the cell, brings a meal from the
-    State Chest and re-educates them, lowering Resistance (more when
-    stability is high). At 0% they JOIN YOUR COLONY as an EQUAL CITIZEN
-    with a job of their own.
+    tag). Once a day a WARDEN fetches a meal from the State Chest,
+    unlocks the cell, walks in and re-educates them, lowering
+    Resistance (more when stability is high). At 0% they JOIN YOUR
+    COLONY as an EQUAL CITIZEN with a job of their own.
       * Assign a Warden! Without one, nobody visits.
       * A day without a visit raises Resistance a little.
       * A prisoner with no food for 5 days starves. Keep food in the
@@ -510,9 +660,10 @@ STEP 4 - Choose their sentence
 
     UPRISING: if a labourer is left unguarded for 30 seconds, OR your
     stability drops BELOW 40%, the labourers rise up. They break their
-    shackles, steal the best weapons from your State Chest and attack
-    your people. Down them and rebind them with rope, or they escape
-    after 5 minutes (taking your weapons with them).
+    shackles, force the cell door, run to your State Chest to grab the
+    best weapons and attack your people. Down them and rebind them
+    with rope, or they escape after 5 minutes (taking your weapons
+    with them).
 
   RELEASE
     The prisoner's card has a Release button (leaders): they walk free
@@ -525,7 +676,7 @@ STEP 4 - Choose their sentence
 
 
 =====================================================================
-PART 9 - WANDERING TRAVELERS
+PART 11 - WANDERING TRAVELERS
 =====================================================================
 
   Now and then (during the day) a traveler with a backpack name tag
@@ -552,7 +703,7 @@ PART 9 - WANDERING TRAVELERS
 
 
 =====================================================================
-PART 10 - WAR
+PART 12 - WAR
 =====================================================================
 
   Wars are fought between colonies over loot: the winner takes HALF of
@@ -610,8 +761,8 @@ STEP 5 - The SIEGE (up to 45 minutes)
   STATE MOBILIZATION ORDER
     In an emergency (a siege, an uprising, a monster raid) a leader can
     use /colony mobilize (or the sword in the Town Hall). For 10
-    minutes every farmer, builder, lumberjack and miner takes a weapon
-    from the State Chest and fights as militia. Production stops and it
+    minutes every worker runs to the State Chest, takes a weapon and
+    fights as militia. Production stops and it
     costs 5 stability. /colony mobilize stop sends them back to work
     early. The order can be given again 20 minutes after the 10 minutes
     are up.
@@ -630,7 +781,7 @@ AFTER THE WAR
 
 
 =====================================================================
-PART 11 - TIPS FOR A THRIVING COMMUNE
+PART 13 - TIPS FOR A THRIVING COMMUNE
 =====================================================================
 
   * FOOD FIRST. Two farms early on keep everyone fed. Check "days of
@@ -646,6 +797,17 @@ PART 11 - TIPS FOR A THRIVING COMMUNE
   * DON'T STARVE YOUR STABILITY. Three bad nights in a row means a
     strike, and forced labourers rise up below 40%.
   * WARDENS ARE CHEAP STABILITY. With no prisoners they give speeches.
+  * BUILD A SCHOOL EARLY. Children educated from day one grow into
+    fast workers, teachers, smiths and doctors.
+  * A COOK DOUBLES YOUR MEAT. Raw beef is 3 food points, steak is 8.
+    Give the cook a smoker and some coal.
+  * LET A SMITH MAKE THE TOOLS. With iron ingots, cobblestone or
+    planks plus sticks in the chest, the Smith keeps a spare of every
+    tool your workers use and repairs the worn ones.
+  * WATCH THE BARS. A row of tired faces means not enough beds. Low
+    happiness means hunger, homelessness or injuries.
+  * COPY YOUR BEST HOUSE. Build one nice house yourself, copy it with
+    the wand and let the Builders fill the town with it.
   * MINE FOR WEALTH. Miners bring stone, coal, iron and more. Give them
     pickaxes and torches.
   * USE YOUR SHIELD. The 72-hour Peace Shield is your time to build
@@ -656,7 +818,7 @@ PART 11 - TIPS FOR A THRIVING COMMUNE
 
 
 =====================================================================
-PART 12 - TROUBLESHOOTING / FAQ
+PART 14 - TROUBLESHOOTING / FAQ
 =====================================================================
 
   "My selection is red."
@@ -675,6 +837,37 @@ PART 12 - TROUBLESHOOTING / FAQ
   "My Farmer just stands around."
     Register a farm, and put seeds (wheat seeds, carrots, potatoes or
     beetroot seeds) in the State Chest.
+
+  "My farm keeps turning back to dirt."
+    It can't be trampled inside your claim any more; dirt or grass on a
+    registered farm is re-tilled by the Farmers automatically.
+
+  "A citizen is napping / slow."
+    They're tired: they need a bed in a registered house and a full
+    night's sleep.
+
+  "A citizen left the colony!"
+    They were miserable for 3 nights. Check food, beds, health and
+    stability; a school and a Doctor help too.
+
+  "I can't make someone a Smith / Teacher / Doctor."
+    They need more education (25 / 30 / 40). Make them a Student at a
+    School with a Teacher, or train the children.
+
+  "My Cook / Smith says there's nothing to do."
+    Cook: put raw meat, fish or potatoes in the chest, and coal or wood
+    for a furnace/smoker (a campfire needs no fuel). Smith: raw ore and
+    fuel to smelt, worn tools plus their material to repair, or iron /
+    cobblestone / planks and sticks for new tools. Both need their
+    workstation somewhere inside your claim.
+
+  "My Fisher can't find water."
+    They need open water (3x3 or bigger) inside the claim with dry
+    ground beside it.
+
+  "My copy won't fit / the outline is red."
+    It must fit inside your claim and not overlap the Town Hall,
+    registered buildings or other orders. Turn around to rotate it.
 
   "My Miner says 'Needs a pickaxe'."
     Put a pickaxe in the State Chest. Also register a Mine Entrance.
@@ -710,7 +903,7 @@ PART 12 - TROUBLESHOOTING / FAQ
 
 
 =====================================================================
-PART 13 - CHEAT SHEET
+PART 15 - CHEAT SHEET
 =====================================================================
 
   RECIPES
@@ -723,10 +916,11 @@ PART 13 - CHEAT SHEET
   WAND
     Left-click block ........ Position 1
     Right-click block ....... Position 2
-    Sneak + Right-click ..... Establish Colony
+    Sneak + Right-click ..... Establish Colony (or, in a colony: copy
+                              the selected building as a blueprint)
 
   BLUEPRINT BOOK
-    Right-click ............. next blueprint
+    Right-click ............. next blueprint (then your copies)
     Sneak + Right-click ..... register the building you clicked
     Sneak + Left-click ...... order the Builder to build it
 
@@ -744,11 +938,15 @@ PART 13 - CHEAT SHEET
     Downed chance 20% for 60 s | Guard within 20 blocks of labourers
     Uprising below 40% stability | War warm-up 20 min, siege 45 min
     War Camp 8-64 blocks from the enemy border | Spoils 50%
+    Tired below 30 rest | Miserable 3 nights = may leave
+    Education: Smith 25, Teacher 30, Doctor 40 | Lesson every 30 s
+    Copies up to 48x48x48, 10 per colony
 
   COMMANDS
     /colony info [colony]        /colony quests [hide|show]
     /colony citizens             /colony prison
     /colony buildings            /colony storage [page]
+    /colony blueprints [...]     /colony school
     /colony mobilize [stop]      /colony declare <colony>
     /colony war                  /colony surrender
     /colony invite <player>      /colony join <colony>

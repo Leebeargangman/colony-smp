@@ -124,6 +124,11 @@ public final class ClaimListener implements Listener {
         if (b == null) return;
         Colony c = plugin.colonies().at(b);
         Player p = e.getPlayer();
+        // nobody tramples farmland in a colony, members included
+        if (c != null && e.getAction() == Action.PHYSICAL && b.getType() == Material.FARMLAND && plugin.settings().protectFarmland) {
+            e.setCancelled(true);
+            return;
+        }
         if (c == null || c.isMember(p.getUniqueId()) || plugin.isBypassing(p)) return;
         if (e.getAction() == Action.PHYSICAL) {
             // no trampling farmland or triggering plates in someone else's colony
@@ -329,6 +334,10 @@ public final class ClaimListener implements Listener {
         Block b = e.getBlock();
         Colony c = plugin.colonies().at(b);
         if (c == null) return;
+        if (b.getType() == Material.FARMLAND && e.getTo() == Material.DIRT && plugin.settings().protectFarmland) {
+            e.setCancelled(true); // trampled by a player, a mob or a citizen
+            return;
+        }
         if (e.getEntity() instanceof Player p) {
             if (!canBuild(p, b, true)) e.setCancelled(true);
             return;
@@ -342,6 +351,23 @@ public final class ClaimListener implements Listener {
             if (!plugin.wars().siegeActive(c)) e.setCancelled(true);
         }
         if (Tag.DOORS.isTagged(b.getType()) && e.getEntity() instanceof org.bukkit.entity.Zombie) e.setCancelled(true);
+    }
+
+    /** Farmland in a colony doesn't dry back into dirt... */
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onFade(org.bukkit.event.block.BlockFadeEvent e) {
+        if (e.getBlock().getType() == Material.FARMLAND && plugin.settings().protectFarmland && plugin.colonies().at(e.getBlock()) != null) e.setCancelled(true);
+    }
+
+    /** ...and stays moist, so crops keep growing at full speed. */
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onMoisture(org.bukkit.event.block.MoistureChangeEvent e) {
+        if (!plugin.settings().protectFarmland || plugin.colonies().at(e.getBlock()) == null) return;
+        if (e.getBlock().getBlockData() instanceof org.bukkit.block.data.type.Farmland now
+                && e.getNewState().getBlockData() instanceof org.bukkit.block.data.type.Farmland next
+                && next.getMoisture() < now.getMoisture()) {
+            e.setCancelled(true);
+        }
     }
 
     // ───────────── entering / leaving ─────────────

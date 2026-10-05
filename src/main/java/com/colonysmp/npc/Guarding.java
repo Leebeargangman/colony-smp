@@ -74,7 +74,10 @@ public final class Guarding {
             n.activity = alert ? "Drawing arms from the State Chest!" : "Fetching a weapon from the State Chest";
             return false;
         }
+        boolean armed = c.weapon != null;
         equipBest(c, col, alert);
+        // a worker's weapon drawn for the mobilization goes back to the State afterwards
+        if (c.militia && !armed && c.weapon != null) c.militiaIssued = true;
         n.gearChecked = true;
         m.refresh(n);
         Fx.sound(chest, "minecraft:item.armor.equip_iron", 0.8f, 1f);
@@ -296,6 +299,20 @@ public final class Guarding {
 
     void thinkRebel(Npc n, Colony col, long now) {
         LivingEntity t = target(n, col, now);
+        // first, a raid on the State Chest for weapons (unless someone is already on them)
+        Location chest = col.chestLocation();
+        boolean close = t != null && t.getLocation().distanceSquared(n.body.getLocation()) < 16;
+        if (!close && n.c.weapon == null && !n.gearChecked && chest != null && col.storage.has(it -> Tools.isMelee(Tools.kind(it)))) {
+            if (!n.mover.near(chest, 2.8)) {
+                n.mover.moveTo(chest, plugin.settings().runSpeed, 2.2);
+                n.activity = "Raiding the State Chest for weapons!";
+                return;
+            }
+            n.c.weapon = col.storage.takeBest(it -> Tools.isMelee(Tools.kind(it)), Tools::score);
+            n.gearChecked = true;
+            m.refresh(n);
+            Fx.sound(chest, "minecraft:block.chest.open", 1f, 0.8f);
+        }
         if (t != null) {
             engage(n, col, t, now);
             return;

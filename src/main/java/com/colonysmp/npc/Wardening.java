@@ -7,6 +7,7 @@ import com.colonysmp.data.Colony;
 import com.colonysmp.data.Policy;
 import com.colonysmp.data.Status;
 import com.colonysmp.util.BlockPos;
+import com.colonysmp.util.Food;
 import com.colonysmp.util.Fx;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -72,6 +73,11 @@ public final class Wardening {
             return;
         }
         if (n.visitStage == 0) {
+            // a meal for the prisoner, carried from the State Chest
+            if (NpcManager.eatable(n.c, plugin) == 0) {
+                NpcManager.Fetch f = m.fetch(n, col, it -> Food.isFood(it, plugin.settings().neverEat), 6, "a meal for " + p.name);
+                if (f == NpcManager.Fetch.FETCHING) return;
+            }
             Location out = plugin.prison().outsideDoor(col, cell);
             if (out == null) out = pn.body.getLocation();
             if (!n.mover.near(out, 1.7)) {
@@ -79,32 +85,40 @@ public final class Wardening {
                 n.activity = "Going to visit prisoner " + p.name;
                 return;
             }
-            n.mover.stop();
-            if (!cell.doors.isEmpty()) {
-                BlockPos door = cell.doors.get(0);
-                if (door.loaded(w)) n.mover.openFor(door.block(w), now, 120);
-            }
-            Location in = plugin.prison().cellSpot(col, cell);
             n.visitReturn = out;
-            if (in != null) {
-                in.setYaw(n.body.getLocation().getYaw());
-                n.body.teleport(in);
-                n.mover.sync();
-            }
             n.visitStage = 1;
+            n.visitUntil = now + 600;
+        }
+        if (n.visitStage == 1) {
+            // the warden has the keys: in through the cell door
+            if (!cell.doors.isEmpty() && cell.doors.get(0).loaded(w)) n.mover.passDoor(cell.doors.get(0).block(w), now, 100);
+            if (!n.mover.near(pn.body.getLocation(), 1.8) && now < n.visitUntil) {
+                n.mover.moveTo(pn.body.getLocation(), plugin.settings().walkSpeed, 1.5);
+                n.activity = "Entering " + cell.label();
+                return;
+            }
+            n.mover.stop();
+            n.visitStage = 2;
             n.visitUntil = now + 100;
             n.activity = "Re-educating " + p.name;
             return;
         }
-        CitizenBrain.face(n, pn.body.getLocation());
-        CitizenBrain.face(pn, n.body.getLocation());
-        w.spawnParticle(Particle.ENCHANT, pn.body.getLocation().add(0, 1.6, 0), 12, 0.4, 0.4, 0.4, 0.6);
-        if (ThreadLocalRandom.current().nextInt(4) == 0) Fx.sound(n.body.getLocation(), "minecraft:item.book.page_turn", 0.6f, 1f);
-        if (now < n.visitUntil) return;
-        plugin.prison().indoctrinate(col, p, n);
-        if (n.visitReturn != null) {
-            n.body.teleport(n.visitReturn);
-            n.mover.sync();
+        if (n.visitStage == 2) {
+            CitizenBrain.face(n, pn.body.getLocation());
+            CitizenBrain.face(pn, n.body.getLocation());
+            w.spawnParticle(Particle.ENCHANT, pn.body.getLocation().add(0, 1.6, 0), 12, 0.4, 0.4, 0.4, 0.6);
+            if (ThreadLocalRandom.current().nextInt(4) == 0) Fx.sound(n.body.getLocation(), "minecraft:item.book.page_turn", 0.6f, 1f);
+            if (now < n.visitUntil) return;
+            plugin.prison().indoctrinate(col, p, n);
+            n.visitStage = 3;
+            n.visitUntil = now + 600;
+        }
+        // and back out, locking up behind them
+        if (!cell.doors.isEmpty() && cell.doors.get(0).loaded(w)) n.mover.passDoor(cell.doors.get(0).block(w), now, 100);
+        if (n.visitReturn != null && !n.mover.near(n.visitReturn, 1.3) && now < n.visitUntil) {
+            n.mover.moveTo(n.visitReturn, plugin.settings().walkSpeed, 1.0);
+            n.activity = "Leaving " + cell.label();
+            return;
         }
         end(n);
     }

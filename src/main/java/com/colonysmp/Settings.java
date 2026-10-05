@@ -17,7 +17,7 @@ public final class Settings {
 
     // claims
     public final int claimMin, claimMax, claimGap, maxColoniesPerPlayer;
-    public final boolean blockPvp, protectExplosions, protectFire, enterMessages;
+    public final boolean blockPvp, protectExplosions, protectFire, protectFarmland, enterMessages;
     public final List<String> worlds;
 
     // shield
@@ -28,7 +28,19 @@ public final class Settings {
     public final int maxPopulation;
     public final double citizenHealth, walkSpeed, runSpeed;
     public final int workMargin;
-    public final double farmInterval, chopInterval, mineInterval, buildInterval;
+    public final double farmInterval, chopInterval, mineInterval, buildInterval, fishInterval, cookInterval, smithInterval;
+    public final int herdSize, stuckTeleportSeconds, stuckForceSeconds;
+
+    // needs
+    public final double restLoss, tired, emigrateBelow, emigrateChance;
+    public final int emigrateNights;
+
+    // education
+    public final double perLesson, childLearning, bookLearning;
+    public final int schoolCapacity, educationMin, educationMax;
+
+    // blueprints
+    public final int blueprintMaxSize, blueprintMaxBlocks, blueprintMax;
 
     // day
     public final int workStart, evening, rationTime, night;
@@ -84,6 +96,7 @@ public final class Settings {
         blockPvp = c.getBoolean("claims.block-pvp", true);
         protectExplosions = c.getBoolean("claims.protect-explosions", true);
         protectFire = c.getBoolean("claims.protect-fire", true);
+        protectFarmland = c.getBoolean("claims.protect-farmland", true);
         maxColoniesPerPlayer = Math.max(1, c.getInt("claims.max-colonies-per-player", 1));
         enterMessages = c.getBoolean("claims.enter-messages", true);
         worlds = c.getStringList("claims.worlds");
@@ -111,6 +124,29 @@ public final class Settings {
         chopInterval = Math.max(0.1, c.getDouble("citizens.chop-interval", 2.0));
         mineInterval = Math.max(0.1, c.getDouble("citizens.mine-interval", 2.5));
         buildInterval = Math.max(0.1, c.getDouble("citizens.build-interval", 1.2));
+        fishInterval = Math.max(1, c.getDouble("citizens.fish-interval", 12));
+        cookInterval = Math.max(0.2, c.getDouble("citizens.cook-interval", 2.5));
+        smithInterval = Math.max(0.2, c.getDouble("citizens.smith-interval", 4));
+        herdSize = Math.max(2, c.getInt("citizens.herd-size", 8));
+        stuckTeleportSeconds = Math.max(3, c.getInt("citizens.stuck-teleport-seconds", 20));
+        stuckForceSeconds = Math.max(stuckTeleportSeconds, c.getInt("citizens.stuck-force-seconds", 60));
+
+        restLoss = Math.max(0, c.getDouble("needs.rest-loss", 5));
+        tired = clamp(c.getDouble("needs.tired", 30), 0, 100);
+        emigrateBelow = clamp(c.getDouble("needs.emigrate-below", 15), 0, 100);
+        emigrateNights = Math.max(1, c.getInt("needs.emigrate-nights", 3));
+        emigrateChance = clamp(c.getDouble("needs.emigrate-chance", 0.5), 0, 1);
+
+        perLesson = Math.max(0, c.getDouble("education.per-lesson", 1.5));
+        childLearning = Math.max(0, c.getDouble("education.child-multiplier", 2));
+        bookLearning = Math.max(1, c.getDouble("education.book-multiplier", 1.5));
+        schoolCapacity = Math.max(1, c.getInt("education.school-capacity", 10));
+        educationMin = (int) clamp(c.getInt("education.starting-min", 10), 0, 100);
+        educationMax = (int) clamp(c.getInt("education.starting-max", 50), educationMin, 100);
+
+        blueprintMaxSize = Math.max(4, c.getInt("blueprints.max-size", 48));
+        blueprintMaxBlocks = Math.max(64, c.getInt("blueprints.max-blocks", 20000));
+        blueprintMax = Math.max(1, c.getInt("blueprints.max-per-colony", 10));
 
         workStart = c.getInt("day.work-start", 0);
         evening = c.getInt("day.evening", 11500);

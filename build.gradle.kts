@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "com.colonysmp"
-version = "1.0.0"
+version = "1.1.0"
 
 repositories {
     mavenCentral()
@@ -26,6 +26,7 @@ tasks.withType<JavaCompile> {
 }
 
 tasks.processResources {
+    inputs.property("version", project.version)
     filesMatching("plugin.yml") {
         expand("version" to project.version)
     }

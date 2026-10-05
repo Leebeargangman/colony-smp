@@ -47,6 +47,7 @@ public final class TownHallMenu extends Menu {
         info.add("<gray>Land: <white>" + col.region.width() + "x" + col.region.length());
         info.add("<gray>Population: <white>" + pop + "</white> <dark_gray>(" + col.citizens.size() + " people incl. prisoners)");
         info.add("<gray>Stability: " + Text.stabilityColor(col.stability) + Math.round(col.stability) + "% " + Text.bar(col.stability / 100, 20, Text.stabilityColor(col.stability), "<dark_gray>"));
+        info.add("<gray>Happiness: <white>" + Math.round(com.colonysmp.npc.Needs.average(col)) + "/100 <dark_gray>(food, rest, homes, health, school, stability)");
         info.add("<gray>Food: <white>" + Math.round(food) + "</white> points" + (need > 0 ? " <dark_gray>(" + String.format("%.1f", food / need) + " days)" : ""));
         info.add("<gray>Last rations: <white>" + Math.round(col.lastFed * 100) + "%");
         info.add("<gray>Traveler reputation: <white>" + col.reputation + "/100");

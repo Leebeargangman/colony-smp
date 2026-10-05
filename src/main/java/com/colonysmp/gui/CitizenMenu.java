@@ -28,7 +28,7 @@ public final class CitizenMenu extends Menu {
     private final Citizen c;
 
     public CitizenMenu(ColonySMP plugin, Player viewer, Colony col, Citizen c) {
-        super(viewer, 5, "<dark_red>☭ <white>" + Text.esc(c.name));
+        super(viewer, 6, "<dark_red>☭ <white>" + Text.esc(c.name));
         this.plugin = plugin;
         this.col = col;
         this.c = c;
@@ -49,6 +49,11 @@ public final class CitizenMenu extends Menu {
         lore.add("<gray>Trait: <white>" + c.trait.display + " <dark_gray>(" + c.trait.description + ")");
         double hp = n != null ? n.body.getHealth() : c.health;
         lore.add("<gray>Health: <white>" + Math.round(hp) + "/" + Math.round(plugin.settings().citizenHealth));
+        if (c.status == Status.CITIZEN || c.status == Status.CHILD || c.status == Status.SLAVE) {
+            lore.add("<gray>Happiness: " + need(c.happiness) + " <dark_gray>" + mood(c.happiness));
+            lore.add("<gray>Rest:      " + need(c.rest) + (c.rest < plugin.settings().tired ? " <red>tired" : ""));
+            lore.add("<gray>Education: <aqua>" + Math.round(c.education) + " " + Text.bar(c.education / 100, 10, "<aqua>", "<dark_gray>") + " <dark_gray>" + c.educationTier());
+        }
         if (c.status.free() || c.status == Status.SLAVE) {
             lore.add("<gray>Fed last night: <white>" + Math.round(c.fed * 100) + "%");
             lore.add("<gray>Efficiency: <white>" + Math.round(plugin.npcs().efficiency(col, c, c.job) * 100) + "%");
@@ -74,6 +79,19 @@ public final class CitizenMenu extends Menu {
         return it;
     }
 
+    private static String need(double v) {
+        String col = v >= 60 ? "<green>" : v >= 30 ? "<yellow>" : "<red>";
+        return col + Math.round(v) + " " + Text.bar(v / 100, 10, col, "<dark_gray>");
+    }
+
+    private static String mood(double h) {
+        if (h >= 80) return "(joyful)";
+        if (h >= 60) return "(content)";
+        if (h >= 40) return "(so-so)";
+        if (h >= 20) return "(unhappy)";
+        return "(miserable - may leave)";
+    }
+
     @Override
     protected void draw() {
         boolean lead = col.leads(viewer.getUniqueId()) || plugin.isBypassing(viewer);
@@ -82,27 +100,41 @@ public final class CitizenMenu extends Menu {
             int slot = 19;
             for (Job j : Job.values()) {
                 boolean cur = c.job == j;
+                boolean able = c.education >= j.education;
                 List<String> lore = new ArrayList<>();
                 lore.add("<gray>" + j.description);
+                if (j.education > 0) lore.add((able ? "<green>" : "<red>") + "Needs education " + j.education + " (has " + Math.round(c.education) + ")");
                 if (j == Job.FARMER) lore.add("<dark_gray>Needs a registered farm and a hoe");
                 if (j == Job.MINER) lore.add("<dark_gray>Needs a registered mine and a pickaxe");
                 if (j == Job.LUMBERJACK) lore.add("<dark_gray>Needs trees nearby and an axe");
                 if (j == Job.BUILDER) lore.add("<dark_gray>Order buildings with the Blueprint Book");
                 if (j == Job.GUARD) lore.add("<dark_gray>Draws weapons and armour from the State Chest");
                 if (j == Job.WARDEN) lore.add("<dark_gray>Needs prisoners under Indoctrination");
+                if (j == Job.FISHER) lore.add("<dark_gray>Needs water in the colony and a fishing rod");
+                if (j == Job.HERDER) lore.add("<dark_gray>Needs animals in the colony (shears for sheep)");
+                if (j == Job.COOK) lore.add("<dark_gray>Needs a furnace, smoker or campfire in the colony");
+                if (j == Job.SMITH) lore.add("<dark_gray>Needs an anvil, furnace or blast furnace in the colony");
+                if (j == Job.DOCTOR) lore.add("<dark_gray>Works anywhere; faster with a brewing stand");
+                if (j == Job.TEACHER || j == Job.STUDENT) lore.add("<dark_gray>Needs a registered School (lectern inside)");
                 lore.add("");
-                lore.add(cur ? "<green>Current job" : lead ? "<yellow>Click to assign" : "<gray>Leaders assign jobs");
+                lore.add(cur ? "<green>Current job" : !able ? "<red>Not educated enough - send them to school" : lead ? "<yellow>Click to assign" : "<gray>Leaders assign jobs");
                 ItemStack icon = Items.icon(j.icon, (cur ? "<green>» " : "<white>") + j.display, lore);
                 if (cur) {
                     ItemMeta meta = icon.getItemMeta();
                     meta.setEnchantmentGlintOverride(true);
                     icon.setItemMeta(meta);
                 }
-                set(slot++, icon, click -> {
+                set(slot, icon, click -> {
                     if (!lead || cur) return;
+                    if (!able) {
+                        Text.send(viewer, "<red>" + Text.esc(c.name) + " needs education " + j.education + " to be a " + j.display + " (has " + Math.round(c.education) + "). Make them a Student at a School first.");
+                        return;
+                    }
                     assign(j);
                     refresh();
                 });
+                slot++;
+                if (slot == 26) slot = 28;
             }
         }
         if (c.status == Status.PRISONER || c.status == Status.SLAVE) {
@@ -144,7 +176,7 @@ public final class CitizenMenu extends Menu {
                     click -> new ConfirmMenu(viewer, "<white>Release " + Text.esc(c.name) + "?", List.of("<gray>They will leave for good."),
                             () -> plugin.prison().release(viewer, col, c), this::open).open());
         }
-        button(40, Material.COMPASS, "<aqua>Locate", List.of("<gray>Makes them glow for 15 seconds."), click -> {
+        button(49, Material.COMPASS, "<aqua>Locate", List.of("<gray>Makes them glow for 15 seconds."), click -> {
             Npc n = plugin.npcs().npc(c);
             if (n == null) {
                 Text.send(viewer, "<gray>" + Text.esc(c.name) + " is too far away (their part of the colony isn't loaded).");
@@ -155,7 +187,7 @@ public final class CitizenMenu extends Menu {
             Text.send(viewer, Text.esc(c.name) + " is at <white>" + l.getBlockX() + ", " + l.getBlockY() + ", " + l.getBlockZ() + "</white>.");
             viewer.closeInventory();
         });
-        button(36, Material.ARROW, "<gray>Back", List.of(), click -> new CitizensMenu(plugin, viewer, col, !c.status.free(), 0).open());
+        button(45, Material.ARROW, "<gray>Back", List.of(), click -> new CitizensMenu(plugin, viewer, col, !c.status.free(), 0).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }
 
@@ -183,6 +215,7 @@ public final class CitizenMenu extends Menu {
         }
         if (j == Job.FARMER && col.buildings(com.colonysmp.data.BuildingType.FARM).isEmpty()) Text.send(viewer, "<yellow>Tip: register a farm with the Blueprint Book so they have fields to work.");
         if (j == Job.MINER && col.buildings(com.colonysmp.data.BuildingType.MINE).isEmpty()) Text.send(viewer, "<yellow>Tip: register a Mine Entrance with the Blueprint Book first.");
+        if ((j == Job.TEACHER || j == Job.STUDENT) && col.buildings(com.colonysmp.data.BuildingType.SCHOOL).isEmpty()) Text.send(viewer, "<yellow>Tip: build a School (an enclosed room with a door and a lectern) and register it with the Blueprint Book.");
         Text.send(viewer, Text.esc(c.name) + " is now a <white>" + j.display + "</white>.");
         plugin.requestSave();
     }

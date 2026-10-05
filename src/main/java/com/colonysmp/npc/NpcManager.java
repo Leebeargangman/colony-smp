@@ -148,7 +148,13 @@ public final class NpcManager implements Listener {
         if (col.strike) return plugin.settings().strikeEfficiency;
         double stab = 0.5 + col.stability / 100.0 * 0.75;
         double fed = 0.55 + 0.45 * Math.max(0, Math.min(1, c.fed));
-        return stab * fed * c.trait.work(job);
+        return stab * fed * c.trait.work(job) * Needs.factor(c, plugin.settings().tired);
+    }
+
+    /** Ticks between actions for work that doesn't use a tool. */
+    public long interval(double seconds, double eff) {
+        if (eff <= 0.01) return Long.MAX_VALUE / 4;
+        return Math.max(4, Math.round(seconds * 20 / eff));
     }
 
     public long interval(double seconds, double eff, ItemStack tool) {
@@ -213,6 +219,90 @@ public final class NpcManager implements Listener {
         return true;
     }
 
+    // ───────────── the satchel: supplies are fetched from the State Chest on foot ─────────────
+
+    public enum Fetch { READY, FETCHING, NONE }
+
+    /**
+     * Makes sure the citizen carries some of what they need. If they don't, they walk to the State Chest and
+     * take up to {@code amount}. NONE means the chest has none either.
+     */
+    public Fetch fetch(Npc n, Colony col, java.util.function.Predicate<ItemStack> what, int amount, String label) {
+        if (n.c.carried(what) > 0) return Fetch.READY;
+        if (!col.storage.has(what)) return Fetch.NONE;
+        Location chest = col.chestLocation();
+        if (chest == null) return Fetch.NONE;
+        if (!n.mover.near(chest, 2.8)) {
+            n.mover.moveTo(chest, plugin.settings().walkSpeed, 2.2);
+            n.activity = "Fetching " + label + " from the State Chest";
+            return Fetch.FETCHING;
+        }
+        n.mover.stop();
+        unload(n, col, what.negate());
+        int room = n.c.freeCarrySlots() * 64 + n.c.carried(what);
+        for (ItemStack it : col.storage.take(what, Math.min(amount, Math.max(1, room)))) {
+            ItemStack left = n.c.stow(it);
+            if (left != null) col.storage.add(left);
+        }
+        Fx.sound(chest, "minecraft:block.chest.open", 0.5f, 1.1f);
+        return n.c.carried(what) > 0 ? Fetch.READY : Fetch.NONE;
+    }
+
+    /** Food items in a citizen's satchel. */
+    public static int eatable(Citizen c, ColonySMP plugin) {
+        return c.carried(it -> com.colonysmp.util.Food.isFood(it, plugin.settings().neverEat));
+    }
+
+    /** Eats up to the given hunger points out of a citizen's satchel, cheapest first. Returns the points eaten. */
+    public static double eatCarried(Citizen c, double points, java.util.Set<org.bukkit.Material> never) {
+        double eaten = 0;
+        while (eaten < points - 1e-6) {
+            ItemStack cheapest = null;
+            for (ItemStack it : c.carry) {
+                if (!com.colonysmp.util.Food.isFood(it, never)) continue;
+                if (cheapest == null || com.colonysmp.util.Food.points(it.getType(), never) < com.colonysmp.util.Food.points(cheapest.getType(), never)) cheapest = it;
+            }
+            if (cheapest == null) break;
+            eaten += com.colonysmp.util.Food.points(cheapest.getType(), never);
+            cheapest.setAmount(cheapest.getAmount() - 1);
+            if (cheapest.getAmount() <= 0) c.carry.remove(cheapest);
+        }
+        return Math.min(eaten, points);
+    }
+
+    /** Is the citizen standing at the State Chest? */
+    public boolean atChest(Npc n, Colony col) {
+        Location chest = col.chestLocation();
+        return chest != null && n.mover.near(chest, 2.8);
+    }
+
+    /** Puts satchel items matching the filter back in the State Chest (call when at the chest). */
+    public void unload(Npc n, Colony col, java.util.function.Predicate<ItemStack> which) {
+        List<ItemStack> back = new ArrayList<>();
+        java.util.Iterator<ItemStack> it = n.c.carry.iterator();
+        while (it.hasNext()) {
+            ItemStack s = it.next();
+            if (!which.test(s)) continue;
+            back.add(s);
+            it.remove();
+        }
+        deposit(col, back);
+    }
+
+    /** Walks leftover supplies back to the State Chest. Returns true while doing so. */
+    public boolean returnLeftovers(Npc n, Colony col) {
+        if (n.c.carry.isEmpty()) return false;
+        Location chest = col.chestLocation();
+        if (chest == null) return false;
+        if (!n.mover.near(chest, 2.8)) {
+            n.mover.moveTo(chest, plugin.settings().walkSpeed, 2.2);
+            n.activity = "Returning supplies to the State Chest";
+            return true;
+        }
+        unload(n, col, x -> true);
+        return false;
+    }
+
     /** Wears the citizen's tool; if it breaks, they'll fetch a new one from the State Chest. */
     public void wearTool(Npc n, Colony col) {
         if (n.c.tool == null) return;
@@ -241,6 +331,8 @@ public final class NpcManager implements Listener {
         c.trait = Trait.random();
         c.skin = SKINS[ThreadLocalRandom.current().nextInt(SKINS.length)];
         c.health = plugin.settings().citizenHealth;
+        var s = plugin.settings();
+        c.education = status == Status.CHILD ? 0 : ThreadLocalRandom.current().nextInt(s.educationMin, s.educationMax + 1);
         plugin.colonies().addCitizen(col, c);
         return c;
     }
@@ -545,6 +637,15 @@ public final class NpcManager implements Listener {
                 plugin.getLogger().log(java.util.logging.Level.WARNING, "Citizen " + n.c.name + " hit an error", ex);
                 n.resetWork();
                 n.mover.stop();
+            }
+        }
+        if (now % 600 == 0) {
+            for (Colony col : plugin.colonies().all()) {
+                try {
+                    if (active(col)) brain.schooling.lessons(col);
+                } catch (RuntimeException ex) {
+                    plugin.getLogger().log(java.util.logging.Level.WARNING, "School lessons failed for " + col.name, ex);
+                }
             }
         }
     }

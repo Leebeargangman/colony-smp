@@ -175,6 +175,26 @@ public final class Storage {
         return amount - left;
     }
 
+    /** Removes up to amount matching items and returns them (keeping their data). */
+    public List<ItemStack> take(Predicate<ItemStack> filter, int amount) {
+        List<ItemStack> out = new ArrayList<>();
+        int left = amount;
+        for (Inventory inv : pages) {
+            for (int s = 0; s < SLOTS && left > 0; s++) {
+                ItemStack it = inv.getItem(s);
+                if (it == null || it.getType().isAir() || !filter.test(it)) continue;
+                int n = Math.min(left, it.getAmount());
+                ItemStack got = it.clone();
+                got.setAmount(n);
+                out.add(got);
+                left -= n;
+                if (n >= it.getAmount()) inv.setItem(s, null);
+                else it.setAmount(it.getAmount() - n);
+            }
+        }
+        return out;
+    }
+
     /** Removes and returns a single item (amount 1) that scores best, or null. */
     public ItemStack takeBest(Predicate<ItemStack> filter, ToDoubleFunction<ItemStack> score) {
         Inventory bestInv = null;

@@ -5,7 +5,10 @@ import com.colonysmp.util.ItemCodec;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 /**
  * Everything the State knows about one person. The body (a villager) is spawned and despawned with the
@@ -59,7 +62,24 @@ public final class Citizen {
     // rebels
     public long rebelSince;
 
+    // needs (0-100)
+    /** Sleep: drops while awake, refilled in bed. */
+    public double rest = 100;
+    /** Overall contentment, from food, rest, home, health, education and the colony's mood. */
+    public double happiness = 60;
+    /** Schooling: raises work speed and opens skilled jobs. */
+    public double education;
+    /** Nights in a row spent miserable (very unhappy citizens may emigrate). */
+    public int miserableNights;
+
+    /** Supplies the citizen carries from the State Chest to where they're used (a small satchel). */
+    public final List<ItemStack> carry = new ArrayList<>();
+    public static final int CARRY_SLOTS = 4;
+
     // runtime only
+    /** Day the citizen last ate supper at the State Chest, and the hunger points they got. */
+    public transient long supperDay = Long.MIN_VALUE;
+    public transient double supperEaten;
     public transient long downedUntil;
     public transient UUID escortPlayer;
     public transient UUID escortGuard;
@@ -76,6 +96,58 @@ public final class Citizen {
 
     public boolean adult() {
         return status != Status.CHILD;
+    }
+
+    // ───────────── satchel ─────────────
+
+    public int carried(Predicate<ItemStack> what) {
+        int n = 0;
+        for (ItemStack it : carry) if (what.test(it)) n += it.getAmount();
+        return n;
+    }
+
+    /** Takes up to n matching items out of the satchel; returns how many were taken. */
+    public int useCarried(Predicate<ItemStack> what, int n) {
+        int left = n;
+        for (int i = carry.size() - 1; i >= 0 && left > 0; i--) {
+            ItemStack it = carry.get(i);
+            if (!what.test(it)) continue;
+            int take = Math.min(left, it.getAmount());
+            left -= take;
+            if (take >= it.getAmount()) carry.remove(i);
+            else it.setAmount(it.getAmount() - take);
+        }
+        return n - left;
+    }
+
+    /** Puts an item in the satchel; returns what didn't fit (or null). */
+    public ItemStack stow(ItemStack in) {
+        ItemStack item = in.clone();
+        for (ItemStack it : carry) {
+            if (item.getAmount() <= 0) break;
+            if (!it.isSimilar(item) || it.getAmount() >= it.getMaxStackSize()) continue;
+            int move = Math.min(item.getAmount(), it.getMaxStackSize() - it.getAmount());
+            it.setAmount(it.getAmount() + move);
+            item.setAmount(item.getAmount() - move);
+        }
+        while (item.getAmount() > 0 && carry.size() < CARRY_SLOTS) {
+            ItemStack put = item.clone();
+            put.setAmount(Math.min(item.getMaxStackSize(), item.getAmount()));
+            carry.add(put);
+            item.setAmount(item.getAmount() - put.getAmount());
+        }
+        return item.getAmount() > 0 ? item : null;
+    }
+
+    public int freeCarrySlots() {
+        return CARRY_SLOTS - carry.size();
+    }
+
+    public String educationTier() {
+        if (education >= 75) return "Scholar";
+        if (education >= 50) return "Educated";
+        if (education >= 25) return "Literate";
+        return "Unschooled";
     }
 
     public String title() {
@@ -115,6 +187,16 @@ public final class Citizen {
         s.set("militia", militia);
         s.set("militia-issued", militiaIssued);
         s.set("rebel-since", rebelSince);
+        s.set("rest", rest);
+        s.set("happiness", happiness);
+        s.set("education", education);
+        s.set("miserable-nights", miserableNights);
+        List<String> bag = new ArrayList<>();
+        for (ItemStack it : carry) {
+            String enc = ItemCodec.encode(it);
+            if (enc != null) bag.add(enc);
+        }
+        s.set("carry", bag);
     }
 
     public static Citizen load(UUID id, ConfigurationSection s) {
@@ -166,6 +248,14 @@ public final class Citizen {
         c.militia = s.getBoolean("militia");
         c.militiaIssued = s.getBoolean("militia-issued");
         c.rebelSince = s.getLong("rebel-since");
+        c.rest = s.getDouble("rest", 100);
+        c.happiness = s.getDouble("happiness", 60);
+        c.education = s.getDouble("education", 20);
+        c.miserableNights = s.getInt("miserable-nights");
+        for (String enc : s.getStringList("carry")) {
+            ItemStack it = ItemCodec.decode(enc);
+            if (it != null && c.carry.size() < CARRY_SLOTS) c.carry.add(it);
+        }
         // a rebel or captive when the server stopped: the uprising / escort is over, back into custody
         if (c.status == Status.REBEL) c.status = Status.CAPTIVE;
         return c;

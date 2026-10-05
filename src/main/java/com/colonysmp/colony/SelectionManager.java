@@ -76,7 +76,10 @@ public final class SelectionManager implements Listener {
         Action a = e.getAction();
         if ((a == Action.RIGHT_CLICK_AIR || a == Action.RIGHT_CLICK_BLOCK) && p.isSneaking()) {
             e.setCancelled(true);
-            new EstablishMenu(plugin, p).open();
+            Colony mine = plugin.colonies().of(p);
+            // colony members copy structures with the wand; everyone else founds a colony
+            if (mine != null) new com.colonysmp.gui.WandMenu(plugin, p, mine).open();
+            else new EstablishMenu(plugin, p).open();
             return;
         }
         if (a == Action.LEFT_CLICK_BLOCK && e.getClickedBlock() != null) {
@@ -84,13 +87,13 @@ public final class SelectionManager implements Listener {
             Selection s = sel(p);
             s.p1 = BlockPos.of(e.getClickedBlock());
             mark(p, e.getClickedBlock(), true);
-            report(p, s, "<green>Position 1</green> set at <white>" + s.p1.x() + ", " + s.p1.z());
+            report(p, s, "<green>Position 1</green> set at <white>" + s.p1.x() + ", " + s.p1.y() + ", " + s.p1.z());
         } else if (a == Action.RIGHT_CLICK_BLOCK && e.getClickedBlock() != null) {
             e.setCancelled(true);
             Selection s = sel(p);
             s.p2 = BlockPos.of(e.getClickedBlock());
             mark(p, e.getClickedBlock(), false);
-            report(p, s, "<white>Position 2</white> set at <white>" + s.p2.x() + ", " + s.p2.z());
+            report(p, s, "<white>Position 2</white> set at <white>" + s.p2.x() + ", " + s.p2.y() + ", " + s.p2.z());
         } else if (a == Action.LEFT_CLICK_AIR) {
             Selection s = selections.get(p.getUniqueId());
             if (s != null && s.region() != null) {
@@ -133,6 +136,13 @@ public final class SelectionManager implements Listener {
             return;
         }
         s.showUntil = System.currentTimeMillis() + 15_000;
+        if (plugin.colonies().of(p) != null) {
+            Copier.Box box = Copier.box(s.p1, s.p2);
+            String why = Copier.check(plugin, p.getWorld(), box);
+            Text.send(p, head + "<gray>. Selection <white>" + box.size() + "</white>" + (why == null
+                    ? ". <yellow>Shift + Right-Click</yellow> to copy it as a blueprint for your Builders." : ": <red>" + why));
+            return;
+        }
         String err = plugin.colonies().validate(s.world, r, null);
         String size = r.width() + "x" + r.length();
         if (err == null) {
@@ -160,7 +170,14 @@ public final class SelectionManager implements Listener {
             }
             if (s == null || !w.getName().equals(s.world)) continue;
             Region r = s.region();
-            if (r != null) {
+            if (r != null && plugin.colonies().of(p) != null) {
+                // colony members select 3D boxes to copy
+                Copier.Box box = Copier.box(s.p1, s.p2);
+                boolean ok = Copier.check(plugin, w, box) == null;
+                if (Math.abs(box.minX() - p.getX()) < 64 && Math.abs(box.minZ() - p.getZ()) < 64) {
+                    Fx.box(p, box.minX(), box.minY(), box.minZ(), box.maxX(), box.maxY(), box.maxZ(), ok ? GREEN : RED, 1.0, 1.0f, true);
+                }
+            } else if (r != null) {
                 boolean ok = plugin.colonies().validate(s.world, r, null) == null;
                 outline(p, r, y, ok ? GREEN : RED);
             }

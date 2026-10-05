@@ -15,6 +15,8 @@ claims:
   protect-explosions: true
   # Fire can't burn blocks inside claims
   protect-fire: true
+  # Farmland inside claims is never trampled into dirt (by anyone) and doesn't dry out
+  protect-farmland: true
   # How many colonies one player may belong to (founder or member)
   max-colonies-per-player: 1
   # Show "Entering the People's Commune of ..." on the action bar
@@ -43,6 +45,16 @@ citizens:
   chop-interval: 2.0
   mine-interval: 2.5
   build-interval: 1.2
+  fish-interval: 12.0
+  cook-interval: 2.5
+  smith-interval: 4.0
+  # A Herder keeps this many animals of each kind and culls the rest for meat
+  herd-size: 8
+  # Citizens only step straight to their destination (teleport) as a last resort: after being stuck
+  # this many seconds with no player within 32 blocks to see it...
+  stuck-teleport-seconds: 20
+  # ...or after this long even if someone is watching
+  stuck-force-seconds: 60
 
 day:
   # World time (0-24000) of each part of the citizens' routine
@@ -72,6 +84,35 @@ rations:
   strike-efficiency: 0.0
   # Food that citizens will never eat out of the State Chest
   never-eat: [GOLDEN_APPLE, ENCHANTED_GOLDEN_APPLE, GOLDEN_CARROT, ROTTEN_FLESH, SPIDER_EYE, POISONOUS_POTATO, PUFFERFISH, SUSPICIOUS_STEW, CHORUS_FRUIT]
+
+needs:
+  # Rest (0-100) lost per in-game hour awake; a night in bed refills it
+  rest-loss: 5
+  # Below this a citizen is tired: slower, and naps when they can
+  tired: 30
+  # Citizens whose happiness stays below this for emigrate-nights nights in a row may leave
+  emigrate-below: 15
+  emigrate-nights: 3
+  emigrate-chance: 0.5
+
+education:
+  # Education gained per lesson (every 30 seconds) by a student in a school with a teacher present
+  per-lesson: 1.5
+  # Children learn faster
+  child-multiplier: 2.0
+  # Books in the State Chest make lessons better; each school uses one book a day
+  book-multiplier: 1.5
+  # Students per school
+  school-capacity: 10
+  # Education of the first colonists and recruits (random between the two)
+  starting-min: 10
+  starting-max: 50
+
+blueprints:
+  # Largest structure the wand can copy (each side) and most blocks in it
+  max-size: 48
+  max-blocks: 20000
+  max-per-colony: 10
 
 reproduction:
   # Days of food that must be in the State Chest for a child to be born

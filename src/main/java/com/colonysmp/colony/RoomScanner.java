@@ -26,7 +26,7 @@ public final class RoomScanner {
     private static final BlockFace[] DIRS = {BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST, BlockFace.UP, BlockFace.DOWN};
 
     public record Room(String error, Set<BlockPos> interior, BlockPos min, BlockPos max,
-                       List<BlockPos> beds, List<BlockPos> doors, List<BlockPos> ironDoors) {
+                       List<BlockPos> beds, List<BlockPos> doors, List<BlockPos> ironDoors, List<BlockPos> lecterns, int bookshelves) {
         public boolean enclosed() {
             return error == null;
         }
@@ -93,12 +93,17 @@ public final class RoomScanner {
                 queue.add(n);
             }
         }
-        List<BlockPos> beds = new ArrayList<>(), doors = new ArrayList<>(), iron = new ArrayList<>();
+        List<BlockPos> beds = new ArrayList<>(), doors = new ArrayList<>(), iron = new ArrayList<>(), lecterns = new ArrayList<>();
+        int shelves = 0;
         Set<BlockPos> bedSeen = new HashSet<>(), doorSeen = new HashSet<>();
         for (BlockPos wp : walls) {
             Block b = wp.block(w);
             Material m = b.getType();
-            if (Tag.BEDS.isTagged(m) && b.getBlockData() instanceof Bed bed) {
+            if (m == Material.LECTERN) {
+                lecterns.add(wp);
+            } else if (m == Material.BOOKSHELF || m == Material.CHISELED_BOOKSHELF) {
+                shelves++;
+            } else if (Tag.BEDS.isTagged(m) && b.getBlockData() instanceof Bed bed) {
                 BlockPos head = bed.getPart() == Bed.Part.HEAD ? wp : wp.relative(bed.getFacing());
                 if (bedSeen.add(head)) beds.add(head);
             } else if (Tag.DOORS.isTagged(m) && b.getBlockData() instanceof Bisected bi) {
@@ -108,11 +113,11 @@ public final class RoomScanner {
                 else doors.add(lower);
             }
         }
-        return new Room(null, seen, new BlockPos(minX, minY, minZ), new BlockPos(maxX, maxY, maxZ), beds, doors, iron);
+        return new Room(null, seen, new BlockPos(minX, minY, minZ), new BlockPos(maxX, maxY, maxZ), beds, doors, iron, lecterns, shelves);
     }
 
     private static Room fail(String why) {
-        return new Room(why, Set.of(), new BlockPos(0, 0, 0), new BlockPos(0, 0, 0), List.of(), List.of(), List.of());
+        return new Room(why, Set.of(), new BlockPos(0, 0, 0), new BlockPos(0, 0, 0), List.of(), List.of(), List.of(), List.of(), 0);
     }
 
     /** Is there a free standing spot (feet and head open, solid below) at this position? */

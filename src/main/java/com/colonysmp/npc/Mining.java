@@ -58,6 +58,8 @@ public final class Mining {
             m.brain().idle(n, col, now, "Needs a pickaxe from the State Chest");
             return;
         }
+        // torches for the tunnels are carried down from the State Chest
+        if (n.c.carried(Mining::torch) == 0 && m.fetch(n, col, Mining::torch, 16, "torches") == NpcManager.Fetch.FETCHING) return;
         // ore showing in the walls first
         while (!n.veins.isEmpty()) {
             BlockPos v = n.veins.get(0);
@@ -112,7 +114,7 @@ public final class Mining {
         dig(n, col, b, now);
         plug(w, cell.pos);
         if (cell.floor) floor(w, cell.pos.add(0, -1, 0));
-        if (cell.torch) torch(col, w, cell.pos, mine.facing);
+        if (cell.torch) torch(n, w, cell.pos, mine.facing);
         if (b.getType().isAir()) mine.progress++;
         for (BlockFace f : new BlockFace[]{BlockFace.UP, BlockFace.DOWN, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST}) {
             BlockPos np = cell.pos.relative(f);
@@ -152,13 +154,17 @@ public final class Mining {
         if (b.isPassable() || b.isLiquid()) b.setType(Material.COBBLESTONE);
     }
 
-    private void torch(Colony col, World w, BlockPos head, BlockFace facing) {
+    static boolean torch(ItemStack it) {
+        return it.getType() == Material.TORCH && Storage.plain(it);
+    }
+
+    private void torch(Npc n, World w, BlockPos head, BlockFace facing) {
         Block at = head.block(w);
         if (!at.getType().isAir()) return;
         BlockFace left = Blueprint.right(facing).getOppositeFace();
         Block wall = at.getRelative(left);
         if (!wall.getType().isOccluding()) return;
-        if (col.storage.remove(it -> it.getType() == Material.TORCH && Storage.plain(it), 1) != 1) return;
+        if (n.c.useCarried(Mining::torch, 1) != 1) return;
         var data = Material.WALL_TORCH.createBlockData();
         if (data instanceof Directional d) d.setFacing(left.getOppositeFace());
         at.setBlockData(data, false);

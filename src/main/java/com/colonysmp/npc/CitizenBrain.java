@@ -5,6 +5,7 @@ import com.colonysmp.colony.BlueprintManager;
 import com.colonysmp.data.Colony;
 import com.colonysmp.data.Job;
 import com.colonysmp.util.BlockPos;
+import com.colonysmp.util.Fx;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.World;
@@ -27,6 +28,12 @@ public final class CitizenBrain {
     public final Construction construction;
     public final Guarding guarding;
     public final Wardening wardening;
+    public final Needs needs;
+    public final Schooling schooling;
+    public final Fishing fishing;
+    public final Herding herding;
+    public final Doctoring doctoring;
+    final Workshop workshop;
 
     CitizenBrain(ColonySMP plugin, NpcManager m) {
         this.plugin = plugin;
@@ -37,6 +44,12 @@ public final class CitizenBrain {
         this.construction = new Construction(plugin, m);
         this.guarding = new Guarding(plugin, m);
         this.wardening = new Wardening(plugin, m);
+        this.needs = new Needs(plugin);
+        this.schooling = new Schooling(plugin, m);
+        this.fishing = new Fishing(plugin, m);
+        this.herding = new Herding(plugin, m);
+        this.doctoring = new Doctoring(plugin, m);
+        this.workshop = new Workshop(plugin, m);
     }
 
     void think(Npc n, long now) {
@@ -51,6 +64,7 @@ public final class CitizenBrain {
             n.activity = "Downed";
             return;
         }
+        needs.tick(n, col, now);
         switch (n.c.status) {
             case CAPTIVE -> plugin.prison().thinkCaptive(n, col, now);
             case PRISONER -> plugin.prison().thinkPrisoner(n, col, now);
@@ -77,7 +91,9 @@ public final class CitizenBrain {
             return;
         }
         switch (ph) {
-            case WORK -> work(n, col, now);
+            case WORK -> {
+                if (!needs.napping(n, now)) work(n, col, now);
+            }
             case EVENING -> evening(n, col, now);
             case NIGHT -> sleep(n, col, now);
         }
@@ -87,11 +103,19 @@ public final class CitizenBrain {
         switch (n.c.job) {
             case FARMER -> farming.think(n, col, now);
             case BUILDER -> {
-                if (!construction.think(n, col, now)) logging.think(n, col, now, "Cutting wood (no build orders)");
+                if (!construction.think(n, col, now) && !m.returnLeftovers(n, col)) logging.think(n, col, now, "Cutting wood (no build orders)");
             }
             case LUMBERJACK -> logging.think(n, col, now, null);
             case MINER -> mining.think(n, col, now);
             case WARDEN -> wardening.think(n, col, now);
+            case TEACHER -> schooling.teach(n, col, now);
+            case FISHER -> fishing.think(n, col, now);
+            case HERDER -> herding.think(n, col, now);
+            case COOK, SMITH -> workshop.think(n, col, now);
+            case DOCTOR -> doctoring.think(n, col, now);
+            case STUDENT -> {
+                if (!schooling.study(n, col, now)) idle(n, col, now, "No School with room - register one with the Blueprint Book");
+            }
             case GUARD -> guarding.think(n, col, now);
             case NONE -> idle(n, col, now, "Unassigned - waiting for a job");
         }
@@ -122,12 +146,37 @@ public final class CitizenBrain {
     private void evening(Npc n, Colony col, long now) {
         Location core = col.coreLocation();
         if (core == null) return;
+        if (supper(n, col)) return;
         if (n.idleSpot == null || n.idleSpot.distanceSquared(core) > 49 || now > n.idleUntil) {
             n.idleSpot = m.spotNear(core, 2, 5);
             n.idleUntil = now + 600;
         }
         n.mover.moveTo(n.idleSpot, plugin.settings().walkSpeed, 1.2);
         n.activity = "Gathering at the Town Hall for supper";
+    }
+
+    /** Supper: walk to the State Chest, put back what's in the satchel and eat a ration. True while busy. */
+    private boolean supper(Npc n, Colony col) {
+        long today = NpcManager.day(n.body.getWorld());
+        if (n.c.supperDay == today) return false;
+        var s = plugin.settings();
+        double need = com.colonysmp.colony.Simulation.share(n.c, s) * s.mealPoints;
+        if (need <= 0 || col.storage.foodPoints(s.neverEat) <= 0 && n.c.carry.isEmpty()) return false;
+        Location chest = col.chestLocation();
+        if (chest == null) return false;
+        if (!m.atChest(n, col)) {
+            n.mover.moveTo(chest, s.walkSpeed, 2.2);
+            n.activity = "Going to the State Chest for supper";
+            return true;
+        }
+        n.mover.stop();
+        m.unload(n, col, it -> true);
+        n.c.supperEaten = col.storage.consumeFood(need, s.neverEat);
+        n.c.supperDay = today;
+        Fx.sound(n.body.getLocation(), "minecraft:entity.generic.eat", 0.7f, 1f);
+        n.body.getWorld().spawnParticle(Particle.ITEM, n.body.getEyeLocation(), 6, 0.15, 0.1, 0.15, 0.04, new org.bukkit.inventory.ItemStack(org.bukkit.Material.BREAD));
+        n.activity = n.c.supperEaten >= need * 0.999 ? "Ate supper" : "Ate a short ration - the State Chest is low on food";
+        return true;
     }
 
     public void sleep(Npc n, Colony col, long now) {
@@ -219,6 +268,8 @@ public final class CitizenBrain {
             sleep(n, col, now);
             return;
         }
+        // children go to school by day
+        if (ph == NpcManager.Phase.WORK && schooling.study(n, col, now)) return;
         Location home = n.c.bed != null ? n.c.bed.center(w) : col.coreLocation();
         if (home == null) return;
         wander(n, home, 7, now, "Playing");

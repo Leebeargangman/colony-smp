@@ -12,7 +12,7 @@ import java.util.concurrent.ThreadLocalRandom;
 /** Tool and weapon classification, quality, durability and damage. */
 public final class Tools {
 
-    public enum Kind { HOE, AXE, PICKAXE, SHOVEL, SWORD, BOW, CROSSBOW, TRIDENT, MACE, HELMET, CHESTPLATE, LEGGINGS, BOOTS, SHIELD, OTHER }
+    public enum Kind { HOE, AXE, PICKAXE, SHOVEL, SWORD, BOW, CROSSBOW, TRIDENT, MACE, HELMET, CHESTPLATE, LEGGINGS, BOOTS, SHIELD, FISHING_ROD, SHEARS, OTHER }
 
     private Tools() {}
 
@@ -32,6 +32,8 @@ public final class Tools {
         if (n.equals("TRIDENT")) return Kind.TRIDENT;
         if (n.equals("MACE")) return Kind.MACE;
         if (n.equals("SHIELD")) return Kind.SHIELD;
+        if (n.equals("FISHING_ROD")) return Kind.FISHING_ROD;
+        if (n.equals("SHEARS")) return Kind.SHEARS;
         if (n.endsWith("_HELMET") || n.equals("TURTLE_HELMET")) return Kind.HELMET;
         if (n.endsWith("_CHESTPLATE")) return Kind.CHESTPLATE;
         if (n.endsWith("_LEGGINGS")) return Kind.LEGGINGS;
@@ -57,7 +59,7 @@ public final class Tools {
         if (n.startsWith("GOLDEN_")) return 2;
         if (n.startsWith("WOODEN_") || n.startsWith("LEATHER_")) return 1;
         if (n.equals("TRIDENT") || n.equals("MACE")) return 5;
-        if (n.equals("BOW") || n.equals("CROSSBOW") || n.equals("SHIELD")) return 3;
+        if (n.equals("BOW") || n.equals("CROSSBOW") || n.equals("SHIELD") || n.equals("FISHING_ROD") || n.equals("SHEARS")) return 3;
         return 0;
     }
 

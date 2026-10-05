@@ -196,14 +196,19 @@ public final class PrisonManager implements Listener {
 
     /** A downed citizen helped up by their own colony. */
     public void rescue(Player p, Npc n) {
+        revive(n, 6);
+        Text.send(p, "You helped <white>" + Text.esc(n.c.name) + "</white> back to their feet.");
+    }
+
+    /** Gets a downed citizen back on their feet (a player's help or a Doctor's). */
+    public void revive(Npc n, double health) {
         n.c.downedUntil = 0;
         n.body.setPose(Pose.STANDING, false);
-        n.body.setHealth(Math.min(maxHealth(n.body), 6));
+        n.body.setHealth(Math.min(maxHealth(n.body), health));
         n.mover.sync();
         plugin.npcs().rename(n);
         n.body.getWorld().spawnParticle(Particle.HEART, n.body.getLocation().add(0, 1.5, 0), 5, 0.3, 0.3, 0.3, 0);
         Fx.sound(n.body.getLocation(), "minecraft:entity.villager.yes", 1f, 1f);
-        Text.send(p, "You helped <white>" + Text.esc(n.c.name) + "</white> back to their feet.");
     }
 
     // ───────────── binding ─────────────
@@ -404,17 +409,54 @@ public final class PrisonManager implements Listener {
     private void follow(Npc n, Location to) {
         Location me = n.body.getLocation();
         double d = me.distance(to);
-        if (d > 14) {
+        if (d > 48) {
+            // the escort flew, pearled or teleported away: the captive is brought along
             Location s = Mover.safeSpot(to);
             if (s != null) {
                 n.body.teleport(s);
                 n.mover.sync();
             }
         } else if (d > 2.6) {
-            n.mover.moveTo(to, plugin.settings().runSpeed, 2.0);
+            // hurry to keep up on the rope
+            n.mover.moveTo(to, Math.min(0.34, plugin.settings().runSpeed + (d - 2.6) * 0.02), 2.0);
         } else {
             n.mover.stop();
         }
+    }
+
+    /** Opens a cell's door for this body and lets it walk through for a while (iron doors too). */
+    private void openCell(Npc n, Building cell, long ticks) {
+        World w = n.body.getWorld();
+        if (cell == null || cell.doors.isEmpty() || !cell.doors.get(0).loaded(w)) return;
+        n.mover.passDoor(cell.doors.get(0).block(w), plugin.tick(), ticks);
+    }
+
+    /** Walks a body through its cell's door to a spot inside. Returns false once it is in. */
+    private boolean walkIn(Npc n, Colony col, Building cell, String activity) {
+        if (inside(cell, n.body.getLocation())) {
+            n.passTo = null;
+            return false;
+        }
+        if (n.passTo == null || !inside(cell, n.passTo)) n.passTo = cellSpot(col, cell);
+        if (n.passTo == null) return false;
+        openCell(n, cell, 120);
+        n.mover.moveTo(n.passTo, plugin.settings().walkSpeed, 0.8);
+        n.activity = activity;
+        return true;
+    }
+
+    /** Walks a body out of its cell to the spot outside the door. Returns false once it is out. */
+    private boolean walkOut(Npc n, Colony col, Building cell, String activity) {
+        if (!inside(cell, n.body.getLocation())) {
+            n.passTo = null;
+            return false;
+        }
+        if (n.passTo == null || inside(cell, n.passTo)) n.passTo = outsideDoor(col, cell);
+        if (n.passTo == null) return false;
+        openCell(n, cell, 120);
+        n.mover.moveTo(n.passTo, plugin.settings().walkSpeed, 1.0);
+        n.activity = activity;
+        return true;
     }
 
     /** A captive standing in (or at the door of) a cell with a free bed is locked up. */
@@ -466,13 +508,9 @@ public final class PrisonManager implements Listener {
         c.escortGuard = null;
         n.body.setLeashHolder(null);
         plugin.sim().assignBeds(col);
-        Location in = cellSpot(col, cell);
-        if (in != null) {
-            n.body.teleport(in);
-            n.mover.sync();
-        }
         n.mover.stop();
-        Fx.sound(n.body.getLocation(), "minecraft:block.iron_door.close", 1f, 0.8f);
+        walkIn(n, col, cell, "Being locked in " + cell.label());
+        Fx.sound(n.body.getLocation(), "minecraft:block.iron_door.open", 1f, 0.8f);
         if (col.defaultPolicy == Policy.ENSLAVE) {
             if (takeShackles(null, col)) enslave(col, c);
         }
@@ -551,13 +589,7 @@ public final class PrisonManager implements Listener {
             plugin.npcs().refresh(n);
             return;
         }
-        if (!inside(cell, n.body.getLocation()) && !n.sleeping) {
-            Location in = cellSpot(col, cell);
-            if (in != null) {
-                n.body.teleport(in);
-                n.mover.sync();
-            }
-        }
+        if (!n.sleeping && walkIn(n, col, cell, "Being locked in " + cell.label())) return;
         if (plugin.npcs().phase(n.body.getWorld()) == NpcManager.Phase.NIGHT) {
             plugin.npcs().brain().sleep(n, col, now);
             n.activity = n.sleeping ? "Sleeping in " + cell.label() : "Locked in " + cell.label();
@@ -574,7 +606,8 @@ public final class PrisonManager implements Listener {
         long today = NpcManager.day(w);
         p.lastVisitDay = today;
         double meal = plugin.settings().mealPoints;
-        double got = col.storage.consumeFood(meal, plugin.settings().neverEat);
+        // the meal is the one the warden carried over from the State Chest
+        double got = NpcManager.eatCarried(warden.c, meal, plugin.settings().neverEat);
         boolean fed = got >= meal * 0.5;
         if (fed) {
             p.lastFedDay = today;
@@ -593,7 +626,7 @@ public final class PrisonManager implements Listener {
         for (Player m : col.onlineMembers()) {
             if (pn != null && m.getWorld() == w && m.getLocation().distanceSquared(pn.body.getLocation()) < 40 * 40) {
                 Text.bar(m, "<yellow>" + Text.esc(p.name) + "</yellow> <gray>resistance <white>" + Math.round(p.resistance) + "%</white> (-" + Math.round(amount) + ")"
-                        + (fed ? "" : " <red>- no food in the State Chest!"));
+                        + (fed ? "" : " <red>- the warden had no food to bring (State Chest empty?)"));
             }
         }
         if (p.resistance <= 0) convert(col, p);
@@ -611,13 +644,8 @@ public final class PrisonManager implements Listener {
         plugin.sim().assignBeds(col);
         Npc n = plugin.npcs().npc(p);
         if (n != null) {
-            if (cell != null) {
-                Location out = outsideDoor(col, cell);
-                if (out != null) {
-                    n.body.teleport(out);
-                    n.mover.sync();
-                }
-            }
+            // the cell door is opened for them: they walk out on their own
+            if (cell != null) openCell(n, cell, 400);
             plugin.npcs().refresh(n);
             n.body.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, n.body.getLocation().add(0, 1, 0), 30, 0.4, 0.6, 0.4, 0.2);
         }
@@ -715,16 +743,7 @@ public final class PrisonManager implements Listener {
         NpcManager.Phase ph = plugin.npcs().phase(n.body.getWorld());
         if (ph == NpcManager.Phase.WORK) {
             if (n.sleeping) plugin.npcs().brain().wake(n);
-            if (inside(cell, n.body.getLocation())) {
-                Location out = outsideDoor(col, cell);
-                if (!cell.doors.isEmpty() && cell.doors.get(0).loaded(n.body.getWorld())) {
-                    n.mover.openFor(cell.doors.get(0).block(n.body.getWorld()), now, 30);
-                }
-                if (out != null) {
-                    n.body.teleport(out);
-                    n.mover.sync();
-                }
-            }
+            if (walkOut(n, col, cell, "Let out of " + cell.label() + " for forced labour")) return;
             if (n.c.labour == Job.MINER && col.buildings(BuildingType.MINE).stream().anyMatch(b -> !b.exhausted)) {
                 plugin.npcs().brain().mining.think(n, col, now);
             } else {
@@ -741,13 +760,9 @@ public final class PrisonManager implements Listener {
                 n.activity = "Marched back to " + cell.label();
                 return;
             }
-            Location in = cellSpot(col, cell);
-            if (in != null) {
-                n.body.teleport(in);
-                n.mover.sync();
-            }
-            Fx.sound(n.body.getLocation(), "minecraft:block.iron_door.close", 0.8f, 1f);
+            if (walkIn(n, col, cell, "Locked back in " + cell.label())) return;
         }
+        n.passTo = null;
         n.mover.stop();
         if (ph == NpcManager.Phase.NIGHT) plugin.npcs().brain().sleep(n, col, now);
         n.activity = n.sleeping ? "Sleeping in " + cell.label() : "Locked in " + cell.label();
@@ -848,19 +863,14 @@ public final class PrisonManager implements Listener {
             c.status = Status.REBEL;
             c.rebelSince = now;
             c.unmonitoredSeconds = 0;
-            if (c.weapon == null) c.weapon = col.storage.takeBest(it -> Tools.isMelee(Tools.kind(it)), Tools::score);
             Npc b = plugin.npcs().npc(c);
             if (b != null) {
                 if (b.sleeping) plugin.npcs().brain().wake(b);
                 Building cell = c.cell == null ? null : col.buildings.get(c.cell);
-                if (cell != null && inside(cell, b.body.getLocation())) {
-                    Location out = outsideDoor(col, cell);
-                    if (out != null) {
-                        b.body.teleport(out);
-                        b.mover.sync();
-                    }
-                }
+                // they force the cell door and storm out
+                if (cell != null) openCell(b, cell, 600);
                 b.resetWork();
+                b.gearChecked = false;
                 plugin.npcs().refresh(b);
                 b.body.getWorld().spawnParticle(Particle.CRIT, b.body.getLocation().add(0, 1, 0), 20, 0.3, 0.5, 0.3, 0.2);
                 Fx.sound(b.body.getLocation(), "minecraft:block.chain.break", 1f, 0.7f);

@@ -70,21 +70,32 @@ public final class Simulation {
         Settings s = plugin.settings();
         plugin.blueprints().validate(col);
         assignBeds(col);
-        double need = 0;
+        double need = 0, pending = 0, atSupper = 0;
         List<Citizen> eaters = new ArrayList<>();
         for (Citizen c : col.citizens.values()) {
             double f = share(c, s);
             if (f <= 0) continue;
-            need += f * s.mealPoints;
-            eaters.add(c);
+            double meal = f * s.mealPoints;
+            need += meal;
+            // citizens who walked to the State Chest for supper already ate their share
+            if (c.supperDay == day) {
+                atSupper += Math.min(meal, c.supperEaten);
+                c.fed = Math.min(1, c.supperEaten / meal);
+            } else {
+                pending += meal;
+                eaters.add(c);
+            }
         }
         double before = col.stability;
         double fraction = 1;
         double eaten = 0;
         if (need > 0) {
-            eaten = col.storage.consumeFood(need, s.neverEat);
+            // everyone else (children, labourers, citizens who couldn't get there) is fed from the chest directly
+            double got = pending > 0 ? col.storage.consumeFood(pending, s.neverEat) : 0;
+            double share = pending > 0 ? Math.min(1, got / pending) : 1;
+            for (Citizen c : eaters) c.fed = share;
+            eaten = got + atSupper;
             fraction = Math.min(1, eaten / need);
-            for (Citizen c : eaters) c.fed = fraction;
             col.lastFed = fraction;
             double delta;
             if (fraction >= 0.999) delta = s.stabilityFull * (col.strike ? 2 : 1);
@@ -105,6 +116,8 @@ public final class Simulation {
             if (!busy) speakers++;
         }
         col.addStability(-Math.min(3, homeless * 0.5) + Math.min(3, speakers) - Math.min(2, slaves * 0.25));
+        // the people's mood (and the miserable leaving)
+        plugin.npcs().brain().needs.nightly(col);
         // strike
         if (col.stability < s.lowThreshold) col.lowDays++;
         else col.lowDays = 0;
@@ -353,16 +366,11 @@ public final class Simulation {
             if (c.status != Status.CITIZEN || !c.job.worker()) continue;
             c.militia = true;
             called++;
-            if (c.weapon == null) {
-                ItemStack w = col.storage.takeBest(it -> Tools.isMelee(Tools.kind(it)), Tools::score);
-                if (w != null) {
-                    c.weapon = w;
-                    c.militiaIssued = true;
-                }
-            }
+            // they run to the State Chest to draw weapons (Guarding.gear)
             Npc n = plugin.npcs().npc(c);
             if (n != null) {
                 n.resetWork();
+                n.gearChecked = false;
                 plugin.npcs().brain().wake(n);
                 plugin.npcs().refresh(n);
             }

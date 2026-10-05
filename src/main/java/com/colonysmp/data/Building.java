@@ -7,7 +7,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import java.util.ArrayList;
 import java.util.List;
 
-/** A registered structure: a house, cell, farm, guard tower or mine. */
+/** A registered structure: a house, cell, school, farm, guard tower or mine. (School: tiles are its lecterns, progress its bookshelves.) */
 public final class Building {
 
     public final String id;
@@ -27,6 +27,8 @@ public final class Building {
     /** Mine: dig steps done so far. */
     public int progress;
     public boolean exhausted;
+    /** School: the day a book was last used up for lessons. */
+    public transient long bookDay = Long.MIN_VALUE;
 
     public Building(String id, BuildingType type) {
         this.id = id;

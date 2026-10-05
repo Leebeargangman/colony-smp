@@ -8,6 +8,7 @@ import org.bukkit.Sound;
 import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.data.Bisected;
 import org.bukkit.block.data.BlockData;
 import org.bukkit.block.data.Openable;
 import org.bukkit.entity.Mob;
@@ -19,13 +20,16 @@ import java.util.Iterator;
 import java.util.List;
 
 /**
- * Walks an NPC body along a path from Paper's pathfinder. The body has no brain of its own (it is "unaware"),
- * so it never wanders off: it goes exactly where the State sends it. Paths that can't be walked (fence gates,
- * ladders, half-dug tunnels) fall back to stepping straight to the destination after a few tries.
+ * Walks an NPC body along a path. The body has no brain of its own (it is "unaware"), so it never wanders off:
+ * it goes exactly where the State sends it. Paths come from Paper's villager pathfinder, with a block-grid
+ * search as the fallback for ladders, iron doors and fresh tunnels. Long trips are walked in legs. Only a
+ * citizen that has been stuck for a long time is moved straight to its destination, and only while no player
+ * is watching (or after a much longer wait).
  */
 public final class Mover {
 
     private static final Vector ZERO = new Vector();
+    private static final int GRID_NODES = 3000;
 
     private final Mob body;
     private Location dest;
@@ -33,12 +37,15 @@ public final class Mover {
     private List<Location> path;
     private int idx;
     private Location pos;
-    private long nextPathAt, pausedUntil, lastProgressAt;
+    private long nextPathAt, pausedUntil, lastProgressAt, stuckSince;
     private int fails;
+    private double planDist;
     private boolean arrived;
     private boolean ironKeys;
     private final List<long[]> doors = new ArrayList<>();
     private final List<Block> doorBlocks = new ArrayList<>();
+    private Block passDoor;
+    private long passUntil;
 
     public Mover(Mob body) {
         this.body = body;
@@ -47,6 +54,28 @@ public final class Mover {
     /** Wardens and guards carry the keys: they open iron doors too. */
     public void setIronKeys(boolean keys) {
         ironKeys = keys;
+    }
+
+    /**
+     * Lets this body through one particular door for a while, even an iron one: prisoners being locked up or
+     * let out, wardens on a visit. The door is opened now and closes again behind them.
+     */
+    public void passDoor(Block door, long now, long ticks) {
+        if (door == null) return;
+        if (door.getBlockData() instanceof Bisected bi && bi.getHalf() == Bisected.Half.TOP) door = door.getRelative(org.bukkit.block.BlockFace.DOWN);
+        boolean same = passDoor != null && passDoor.equals(door) && now <= passUntil;
+        passDoor = door;
+        passUntil = Math.max(passUntil, now + ticks);
+        if (!same) {
+            openFor(door, now, Math.min(ticks, 60));
+            path = null;
+        }
+    }
+
+    private boolean mayPass(Block b, long now) {
+        if (passDoor == null || now > passUntil) return false;
+        if (!b.getWorld().equals(passDoor.getWorld())) return false;
+        return b.getX() == passDoor.getX() && b.getZ() == passDoor.getZ() && (b.getY() == passDoor.getY() || b.getY() == passDoor.getY() + 1);
     }
 
     public boolean moving() {
@@ -61,6 +90,11 @@ public final class Mover {
         return dest;
     }
 
+    /** True while no way to the destination has been found (the citizen is waiting and retrying). */
+    public boolean blocked() {
+        return dest != null && fails >= 2;
+    }
+
     public void moveTo(Location to, double speed, double arrive) {
         if (to == null || to.getWorld() == null) return;
         if (dest != null && dest.getWorld() == to.getWorld() && dest.distanceSquared(to) < 1.0) {
@@ -68,7 +102,6 @@ public final class Mover {
             this.arrive = arrive;
             return;
         }
-        if (dest == null) arrived = false;
         boolean keep = path != null && dest != null && dest.getWorld() == to.getWorld() && dest.distanceSquared(to) < 9;
         dest = to.clone();
         this.speed = speed;
@@ -77,6 +110,8 @@ public final class Mover {
         if (!keep) {
             path = null;
             fails = 0;
+            stuckSince = 0;
+            nextPathAt = 0;
         }
     }
 
@@ -91,6 +126,8 @@ public final class Mover {
     public void stop() {
         dest = null;
         path = null;
+        fails = 0;
+        stuckSince = 0;
     }
 
     /** Lets physics move the body (knockback) before walking on. */
@@ -119,35 +156,68 @@ public final class Mover {
         }
         if (path == null) {
             if (now < nextPathAt || !mgr.pathBudget()) return;
-            plan(now, cur);
+            plan(mgr, now, cur);
             if (path == null) return;
         }
-        follow(now);
+        follow(mgr, now);
     }
 
-    private void plan(long now, Location cur) {
+    private void plan(NpcManager mgr, long now, Location cur) {
         nextPathAt = now + 20;
+        double reach = arrive + 0.75;
+        List<Location> paper = paperPath();
+        List<Location> pts = paper;
+        if (!reaches(paper, reach)) {
+            // Paper gave up or stopped short (ladders, iron doors, gaps): try the grid search
+            List<Location> grid = GridPath.find(cur, dest, arrive, ironKeys, b -> mayPass(b, now), GRID_NODES);
+            if (reaches(grid, reach) || left(grid) < left(paper)) pts = grid;
+        }
+        double now0 = flat(cur, dest);
+        if (pts == null || pts.isEmpty() || !reaches(pts, reach) && now0 - left(pts) < 1.5) {
+            fail(mgr, now);
+            return;
+        }
+        path = pts;
+        idx = 0;
+        pos = cur.clone();
+        lastProgressAt = now;
+        planDist = now0;
+        // skip a first node we're already standing on
+        if (path.get(0).distanceSquared(cur) < 0.36) idx = 1;
+    }
+
+    private List<Location> paperPath() {
         Pathfinder.PathResult r = null;
         try {
             r = body.getPathfinder().findPath(dest);
         } catch (RuntimeException ignored) {
             // the pathfinder can throw for unloaded regions; treat as no path
         }
-        if (r == null || r.getPoints().size() < 1) {
-            fail(now);
-            return;
-        }
+        if (r == null || r.getPoints().isEmpty()) return null;
         List<Location> pts = new ArrayList<>();
         for (Location l : r.getPoints()) pts.add(stand(l));
-        path = pts;
-        idx = 0;
-        pos = cur.clone();
-        lastProgressAt = now;
-        // skip a first node we're already standing on
-        if (!path.isEmpty() && path.get(0).distanceSquared(cur) < 0.36) idx = 1;
+        return pts;
     }
 
-    private void follow(long now) {
+    private boolean reaches(List<Location> pts, double reach) {
+        if (pts == null || pts.isEmpty()) return false;
+        Location last = pts.get(pts.size() - 1);
+        return flat(last, dest) <= reach && Math.abs(last.getY() - dest.getY()) < 3;
+    }
+
+    /** How far from the destination a path ends (infinite for no path). */
+    private double left(List<Location> pts) {
+        if (pts == null || pts.isEmpty()) return Double.MAX_VALUE;
+        Location last = pts.get(pts.size() - 1);
+        return flat(last, dest) + Math.abs(last.getY() - dest.getY()) * 0.5;
+    }
+
+    private static double flat(Location a, Location b) {
+        double dx = a.getX() - b.getX(), dz = a.getZ() - b.getZ();
+        return Math.sqrt(dx * dx + dz * dz);
+    }
+
+    private void follow(NpcManager mgr, long now) {
         double remaining = speed;
         Location p = pos.clone();
         Location before = pos.clone();
@@ -174,39 +244,57 @@ public final class Mover {
         double dx = p.getX() - before.getX(), dz = p.getZ() - before.getZ();
         if (dx * dx + dz * dz > 1e-4) {
             p.setYaw((float) Math.toDegrees(Math.atan2(-dx, dz)));
-            lastProgressAt = now;
         } else {
             p.setYaw(body.getLocation().getYaw());
         }
+        if (p.distanceSquared(before) > 1e-4) lastProgressAt = now;
         p.setPitch(0);
         body.setVelocity(ZERO);
         body.teleport(p);
         pos = p;
         if (idx >= path.size()) {
             path = null;
-            if (!near(dest, arrive + 0.75)) fail(now);
+            if (near(dest, arrive + 0.75)) return;
+            if (planDist - flat(p, dest) >= 1.0) {
+                // a leg of a long trip: keep going from here
+                fails = 0;
+                stuckSince = 0;
+                nextPathAt = now;
+            } else {
+                fail(mgr, now);
+            }
         } else if (now - lastProgressAt > 60) {
             path = null;
-            fail(now);
+            fail(mgr, now);
         }
     }
 
-    private void fail(long now) {
+    private void fail(NpcManager mgr, long now) {
         fails++;
-        nextPathAt = now + 10L * fails;
-        if (fails >= 3) {
-            // can't walk there: step straight to it (gates, ladders, fresh tunnels)
+        nextPathAt = now + Math.min(100, 20L * fails);
+        if (stuckSince == 0) stuckSince = now;
+        long stuck = now - stuckSince;
+        var s = mgr.plugin().settings();
+        boolean unseen = stuck >= s.stuckTeleportSeconds * 20L && !watched();
+        if (unseen || stuck >= s.stuckForceSeconds * 20L) {
+            // truly stuck (walled in, or the destination has no way in): step straight there
             Location safe = safeSpot(dest);
             if (safe != null) {
                 safe.setYaw(body.getLocation().getYaw());
                 body.setVelocity(ZERO);
                 body.teleport(safe);
                 pos = safe;
+                arrived = true;
+                stop();
             }
-            arrived = true;
-            fails = 0;
-            stop();
         }
+    }
+
+    /** Is a player close enough to see this citizen (or its destination)? */
+    private boolean watched() {
+        Location here = body.getLocation();
+        if (!here.getWorld().getNearbyPlayers(here, 32).isEmpty()) return true;
+        return dest != null && dest.getWorld() == here.getWorld() && !dest.getWorld().getNearbyPlayers(dest, 32).isEmpty();
     }
 
     /** The standing point on a path node (on top of slabs, farmland, carpets...). */
@@ -265,14 +353,15 @@ public final class Mover {
         Material m = b.getType();
         boolean wooden = Tag.WOODEN_DOORS.isTagged(m) || Tag.FENCE_GATES.isTagged(m);
         boolean iron = m == Material.IRON_DOOR;
-        if (!wooden && !(iron && ironKeys)) return;
+        if (!wooden && !(iron && (ironKeys || mayPass(b, now)))) return;
         BlockData d = b.getBlockData();
         if (!(d instanceof Openable o) || o.isOpen()) return;
         o.setOpen(true);
         b.setBlockData(o, true);
         b.getWorld().playSound(b.getLocation(), iron ? Sound.BLOCK_IRON_DOOR_OPEN : Sound.BLOCK_WOODEN_DOOR_OPEN, 0.7f, 1f);
         doorBlocks.add(b);
-        doors.add(new long[]{now + 50});
+        // gates shut quickly so animals don't wander out
+        doors.add(new long[]{now + (Tag.FENCE_GATES.isTagged(m) ? 15 : 50)});
     }
 
     private void closeDoors(long now) {
@@ -307,6 +396,11 @@ public final class Mover {
             o.setOpen(true);
             door.setBlockData(o, true);
             door.getWorld().playSound(door.getLocation(), door.getType() == Material.IRON_DOOR ? Sound.BLOCK_IRON_DOOR_OPEN : Sound.BLOCK_WOODEN_DOOR_OPEN, 0.7f, 1f);
+        }
+        int i = doorBlocks.indexOf(door);
+        if (i >= 0) {
+            doors.get(i)[0] = Math.max(doors.get(i)[0], now + closeAfter);
+            return;
         }
         doorBlocks.add(door);
         doors.add(new long[]{now + closeAfter});

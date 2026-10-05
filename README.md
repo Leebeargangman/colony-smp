@@ -1,9 +1,11 @@
 # ColonySMP
 
 Communist colonies for Paper servers. Players claim land, raise a Town Hall and run a commune of villager
-citizens who farm, log, mine, build and guard, all for one shared **Central State Chest**. Feed them at
-sunset or they strike. Take prisoners and re-educate them, or put them to forced labour (and keep them
-guarded). Declare war with a War Banner and besiege your neighbours.
+citizens who farm, log, mine, fish, herd, cook, smith, heal, teach, build and guard, all for one shared
+**Central State Chest**. Feed them at sunset or they strike; keep them rested, housed and happy or they
+leave. Send their children to school. Copy any building with the wand and have the Builders build it
+again. Take prisoners and re-educate them, or put them to forced labour (and keep them guarded). Declare
+war with a War Banner and besiege your neighbours.
 
 No client mods or resource pack needed.
 
@@ -17,7 +19,7 @@ No client mods or resource pack needed.
 
 ## Install
 
-1. Put `ColonySMP-1.0.0.jar` in `plugins/`.
+1. Put `ColonySMP-1.1.0.jar` in `plugins/`.
 2. Start the server. `plugins/ColonySMP/config.yml` and `plugins/ColonySMP/colonies.db` are created.
 3. Optional: tweak the config, then `/colony admin reload`.
 
@@ -45,26 +47,48 @@ Build it yourself with `./gradlew build` (or `gradle build`); the jar lands in `
 ## How it works
 
 ### The Central State Chest
-The chest beside the core opens the colony's shared storage (3 pages of 45 slots by default). Workers
-have no inventories: everything they harvest, chop and mine goes straight in, and they take tools, food
-and weapons out of it. It works even when the chunk isn't loaded, hoppers can feed it, and only members
-can open it (`/colony storage` works anywhere inside your claim).
+The chest beside the core opens the colony's shared storage (3 pages of 45 slots by default). Everything
+workers harvest, chop, mine, fish and shear goes straight in. Nothing comes out by magic: whatever a
+citizen uses (tools, seeds, building materials, torches, fuel, raw food to cook, ore to smelt, books,
+feed for the animals, weapons, a prisoner's meal, their own supper) they **walk to the chest and carry
+in their satchel** (4 stacks) to where it's used, and they bring leftovers back. The storage works even
+when the chunk isn't loaded, hoppers can feed it, and only members can open it (`/colony storage` works
+anywhere inside your claim).
 
 ### The Blueprint Book
 - **Hold it** to see a glowing outline of the selected blueprint where you're looking. Green means it
   fits, red means it doesn't. Your registered buildings show in blue and build orders in orange.
-- **Right-click**: next blueprint (Starter House, Farm, Guard Tower, Prison Cell, Mine Entrance).
+- **Right-click**: next blueprint (Starter House, Farm, Guard Tower, Prison Cell, School, Mine Entrance,
+  then your colony's copied buildings).
 - **Shift + Right-click a block**: register an existing building there:
   - *House*: an enclosed room with a wooden door and at least one bed (3x3 floor or bigger). Every bed
     is a home for one citizen.
   - *Prison Cell*: an enclosed room with an iron door and a bed (one prisoner per bed).
+  - *School*: an enclosed room with a wooden door and a lectern (bookshelves inside make lessons better).
   - *Farm*: at least 9 connected farmland (or soul sand) tiles.
   - *Guard Tower*: the top of a tower at least 5 blocks tall. Guards keep watch there.
   - *Mine Entrance*: natural ground. The mine runs the way you're facing.
-- **Shift + Left-click**: order the Builders to construct the blueprint there. They use materials from
-  the State Chest and tell you what's missing.
+- **Shift + Left-click**: order the Builders to construct the blueprint there. They carry materials
+  from the State Chest in batches and tell you what's missing. Finished buildings register themselves.
 
-Buildings are re-checked every night; broken ones are unregistered with a message.
+Buildings are re-checked every night; broken ones are unregistered with a message. Farmland inside a
+claim is never trampled back to dirt, and fields that do end up as dirt or grass are re-tilled by the
+Farmers.
+
+### Copying buildings with the wand
+Members of a colony use the **Colony Wand** to copy structures:
+1. **Left-click** one corner and **Right-click** the opposite corner of what you want, top and bottom
+   (a 3D box, up to 48 blocks on each side). The box is outlined in green while you hold the wand.
+2. Stand on the side you want to be the **front**, **Shift + Right-click** and choose **Copy as
+   Blueprint**, then type a name.
+3. The copy is selected in your **Blueprint Book**: look where it should go (face another way to turn
+   it) and **Shift + Left-click** to order it. The order lists every material needed.
+
+The Builders clear the space, lay the full blocks, then everything that sits on them (doors, beds,
+torches, stairs, glass, carpets...), then water and lava (buckets). Dirt stands in for grass, cobblestone
+for stone; plants and leaves are skipped if the chest has none. Beds, lecterns and farmland in a finished
+copy are registered as houses, schools and farms automatically. `/colony blueprints` lists, selects and
+deletes copies (10 per colony by default).
 
 ### Citizens
 Citizens are villagers whose looks follow their job. Right-click one to see their stats (trait, health,
@@ -77,15 +101,44 @@ how well they ate, efficiency, tool, bed) and to change their job:
 | Lumberjack | Fells natural trees in and around the claim, replants saplings and collects what the leaves drop. Needs an axe. |
 | Miner | Digs a staircase from a Mine Entrance down to `mines.target-y`, then a branch mine; digs out ore veins, seals lava and water, places torches from the chest. Needs a pickaxe. |
 | Guard | Patrols guard towers, fights monsters, invaders and rebels, escorts captives to cells and watches forced labourers. Draws the best weapons, armour, bows and arrows from the chest when danger comes. |
-| Warden | Visits each prisoner daily (see Prisoners). With no prisoners, gives speeches that raise stability. |
+| Warden | Visits each prisoner daily (see Prisoners), carrying a meal from the chest. With no prisoners, gives speeches that raise stability. |
+| Fisher | Fishes from the shore of any water in the claim (cod, salmon, now and then junk or treasure). Needs a fishing rod. |
+| Herder | Shears sheep, gathers eggs, breeds each kind of animal up to the herd size with feed from the chest, and slaughters the surplus for meat, leather and wool. Needs shears for sheep. |
+| Cook | Carries raw meat, fish and potatoes (and fuel) to a smoker, furnace or campfire in the colony, cooks them and brings the meals back. Bakes bread from wheat when there's nothing raw. |
+| Smith (education 25) | Smelts raw ore at a furnace or blast furnace, repairs worn tools and armour at an anvil, and makes spare tools for the workers and iron armour for the guards. |
+| Doctor (education 40) | Runs to downed citizens and gets them back up, and treats the injured. |
+| Teacher (education 30) | Teaches at a School (see Education). |
+| Student | Studies at a School all day to raise their education. |
 
-**Daily routine.** Citizens work by day, gather at the Town Hall in the evening and sleep in their own
-bed at night. Non-combatants flee from monsters.
+**Daily routine.** Citizens work by day. In the evening they walk to the State Chest for supper, then
+gather at the Town Hall, and they sleep in their own bed at night. Non-combatants flee from monsters.
+
+**Walking.** Citizens walk everywhere: through doors and gates, up ladders to the tops of guard towers,
+in and out of prison cells (the warden opens the iron door). Only a citizen who has been stuck with no
+way through for a long while is moved, and only when nobody is watching.
 
 **Tools.** When a tool breaks, the worker walks to the State Chest, takes the best replacement and goes
 back to work. With no tool left they work bare-handed and slowly (miners can't dig without a pickaxe).
 
 **Traits.** Each citizen has a trait such as Hardworking, Green Thumb, Frugal, Glutton or Brave.
+
+### Needs and happiness
+Right-click a citizen to see their bars:
+- **Rest** drops while they're awake and refills in bed. Below 30 they're tired and slow; exhausted
+  citizens stop for a nap. The homeless only doze, so they never get fully rested.
+- **Health** mends slowly when they're fed, faster in bed, and fast with a Doctor around.
+- **Happiness** follows everything else: food, rest, a home, health, the colony's stability, a job that
+  suits their trait (and their schooling), a school for the children, strikes and mobilization. Happy
+  citizens work faster (up to +20%) and lift stability each night; miserable ones slow down, and a
+  citizen who stays miserable for 3 nights may **leave the colony**.
+
+### Education and schools
+Build a **School** (or order the School blueprint), register it, and make someone a **Teacher**. Every
+30 seconds the teacher gives a lesson to the **children** and **Students** in the room (10 per school).
+Children learn twice as fast. A **book** in the State Chest (the teacher carries one over each day) and
+**bookshelves** in the room make lessons better. Education (0-100) makes citizens work up to 30% faster,
+and skilled jobs need it: Smith 25, Teacher 30, Doctor 40. New colonists arrive with some schooling;
+children start with none. `/colony school` shows the schools and the colony's average education.
 
 ### Rations, stability and strikes
 - **At sunset** every citizen gets an equal meal from the State Chest (6 hunger points by default).
@@ -163,6 +216,8 @@ travelers (−5 for attacking, −15 for capturing or killing). Below 15 reputat
 | `/colony declare <colony>` | Declare war (War Banner needed) |
 | `/colony war`, `/colony surrender` | War status / give up |
 | `/colony citizens`, `prison`, `buildings` | Management menus |
+| `/colony blueprints [list\|info\|select\|delete <name>]` | Buildings copied with the wand |
+| `/colony school` | Schools and education |
 | `/colony storage [page]` | Open the State Chest (inside your claim) |
 | `/colony invite <player>`, `join <colony>`, `leave`, `kick`, `promote`, `demote` | Members (Chairman, Commissars, Comrades) |
 | `/colony rename <name>`, `policy <indoctrinate\|enslave>` | Settings |
@@ -171,6 +226,7 @@ travelers (−5 for attacking, −15 for capturing or killing). Below 15 reputat
 | `/colony list` | Every colony |
 | `/colony admin reload\|save\|bypass\|give <item> [player] [n]` | Admin |
 | `/colony admin delete\|stability\|shield\|traveler\|endwar\|tp\|ration\|food <colony> [value]` | Admin |
+| `/colony admin stock <colony> <item> [n]`, `who <colony>`, `addcitizen <colony> [job\|CHILD]`, `job <colony> <name> <job>` | Admin (testing and support) |
 
 Aliases: `/col`, `/commune`. Right-clicking the Town Hall Core opens the **Town Hall** menu with
 everything in one place.
@@ -179,17 +235,19 @@ everything in one place.
 
 ## Configuration
 
-Every number lives in `config.yml`: claim sizes and gap, shield hours, citizen speeds and work intervals,
-the daily routine times, rations and stability, strike rules, reproduction, downed chance and prisoner
-rules, traveler odds and reputation, war timings and camp distances, spoils share, block restoration,
-mobilization, State Chest pages, quest rewards, mine depth and size. `/colony admin reload` applies
-changes.
+Every number lives in `config.yml`: claim sizes and gap, farmland protection, shield hours, citizen
+speeds and work intervals (including fishing, cooking and smithing), herd size, when a stuck citizen may
+be moved, the daily routine times, rations and stability, needs (rest loss, tiredness, emigration),
+education (lesson strength, school size, starting education), copy limits, strike rules, reproduction,
+downed chance and prisoner rules, traveler odds and reputation, war timings and camp distances, spoils
+share, block restoration, mobilization, State Chest pages, quest rewards, mine depth and size.
+`/colony admin reload` applies changes.
 
 ## Persistence
 
 Everything is saved to `plugins/ColonySMP/colonies.db` (SQLite): colonies, claims, Town Hall and chest
-locations, every State Chest item, citizens (jobs, traits, stats, equipment, beds), prisoners (cells,
-resistance, policy), buildings and build orders, mines' progress, shields, cooldowns and wars in progress
+locations, every State Chest item, citizens (jobs, traits, stats, needs, education, satchels, equipment, beds), prisoners (cells,
+resistance, policy), buildings and build orders, copied blueprints, mines' progress, shields, cooldowns and wars in progress
 (their timers pause while the server is down). Saves happen within 30 seconds of a change, every few
 minutes, and on shutdown, as one transaction on a background thread.
 

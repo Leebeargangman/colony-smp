@@ -8,6 +8,7 @@ public enum BuildingType {
     FARM("Farm", Material.WHEAT_SEEDS, "9x9 field of farmland around a water source."),
     TOWER("Guard Tower", Material.STONE_BRICKS, "3x3 tower, 5 blocks tall, with a fenced platform on top."),
     PRISON("Prison Cell", Material.IRON_BARS, "5x5 enclosed room with an iron door and a bed."),
+    SCHOOL("School", Material.LECTERN, "7x7 enclosed room with a door and a lectern (bookshelves help)."),
     MINE("Mine Entrance", Material.IRON_PICKAXE, "Where your Miners start digging. Faces the way you look.");
 
     public final String display;

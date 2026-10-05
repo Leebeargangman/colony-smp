@@ -54,6 +54,8 @@ public final class Colony {
     public final Map<String, Building> buildings = new LinkedHashMap<>();
     public final List<BuildJob> buildQueue = new ArrayList<>();
     public int nextBuildingId = 1;
+    /** Structures copied with the wand, by lower-case name. */
+    public final Map<String, CustomBlueprint> blueprints = new LinkedHashMap<>();
 
     public final Map<UUID, Citizen> citizens = new LinkedHashMap<>();
     public Storage storage;
@@ -171,6 +173,8 @@ public final class Colony {
         s.set("next-building-id", nextBuildingId);
         for (Building b : buildings.values()) b.save(s.createSection("buildings." + b.id));
         for (BuildJob j : buildQueue) j.save(s.createSection("build-queue." + j.id));
+        int bi = 0;
+        for (CustomBlueprint cb : blueprints.values()) cb.save(s.createSection("blueprints." + (bi++)));
         List<String> sp = new ArrayList<>();
         for (ItemStack it : spoils) {
             String enc = ItemCodec.encode(it);
@@ -240,6 +244,14 @@ public final class Colony {
                 ConfigurationSection b = q.getConfigurationSection(k);
                 BuildJob j = b == null ? null : BuildJob.load(k, b);
                 if (j != null) c.buildQueue.add(j);
+            }
+        }
+        ConfigurationSection bps = s.getConfigurationSection("blueprints");
+        if (bps != null) {
+            for (String k : bps.getKeys(false)) {
+                ConfigurationSection b = bps.getConfigurationSection(k);
+                CustomBlueprint cb = b == null ? null : CustomBlueprint.load(b);
+                if (cb != null) c.blueprints.put(CustomBlueprint.key(cb.name), cb);
             }
         }
         for (String enc : s.getStringList("spoils")) {

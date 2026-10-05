@@ -5,6 +5,8 @@ import com.colonysmp.data.BuildJob;
 import com.colonysmp.data.Building;
 import com.colonysmp.data.BuildingType;
 import com.colonysmp.data.Colony;
+import com.colonysmp.data.CustomBlueprint;
+import com.colonysmp.npc.Farming;
 import com.colonysmp.util.BlockPos;
 import com.colonysmp.util.Fx;
 import com.colonysmp.util.Items;
@@ -54,6 +56,8 @@ public final class BlueprintManager implements Listener {
 
     private final ColonySMP plugin;
     private final Map<UUID, BuildingType> mode = new HashMap<>();
+    /** A copied structure picked in the book (its key), instead of a standard plan. */
+    private final Map<UUID, String> custom = new HashMap<>();
     private final Map<UUID, Long> lastClick = new HashMap<>();
 
     public BlueprintManager(ColonySMP plugin) {
@@ -62,6 +66,48 @@ public final class BlueprintManager implements Listener {
 
     public BuildingType mode(Player p) {
         return mode.getOrDefault(p.getUniqueId(), BuildingType.HOUSE);
+    }
+
+    /** The copied structure selected in the book, or null for a standard plan. */
+    public CustomBlueprint customMode(Player p) {
+        String k = custom.get(p.getUniqueId());
+        if (k == null) return null;
+        Colony c = plugin.colonies().of(p);
+        CustomBlueprint cb = c == null ? null : c.blueprints.get(k);
+        if (cb == null) custom.remove(p.getUniqueId());
+        return cb;
+    }
+
+    /** Selects a copied structure in the player's book. */
+    public void selectCustom(Player p, CustomBlueprint cb) {
+        custom.put(p.getUniqueId(), CustomBlueprint.key(cb.name));
+    }
+
+    /** Right-click: the next plan - the standard ones, then the colony's copies. */
+    private String nextMode(Player p) {
+        Colony c = plugin.colonies().of(p);
+        List<String> keys = c == null ? List.of() : new ArrayList<>(c.blueprints.keySet());
+        CustomBlueprint cur = customMode(p);
+        if (cur != null) {
+            int i = keys.indexOf(CustomBlueprint.key(cur.name));
+            if (i >= 0 && i + 1 < keys.size()) {
+                CustomBlueprint nx = c.blueprints.get(keys.get(i + 1));
+                selectCustom(p, nx);
+                return "<white>" + Text.esc(nx.name) + "</white> <dark_gray>- <gray>your copy, " + nx.size() + ", " + nx.solid() + " blocks";
+            }
+            custom.remove(p.getUniqueId());
+            mode.put(p.getUniqueId(), BuildingType.HOUSE);
+            return "<white>" + BuildingType.HOUSE.display + "</white> <dark_gray>- <gray>" + BuildingType.HOUSE.description;
+        }
+        BuildingType t = mode(p);
+        if (t.ordinal() == BuildingType.values().length - 1 && !keys.isEmpty()) {
+            CustomBlueprint nx = c.blueprints.get(keys.get(0));
+            selectCustom(p, nx);
+            return "<white>" + Text.esc(nx.name) + "</white> <dark_gray>- <gray>your copy, " + nx.size() + ", " + nx.solid() + " blocks";
+        }
+        BuildingType next = t.next();
+        mode.put(p.getUniqueId(), next);
+        return "<white>" + next.display + "</white> <dark_gray>- <gray>" + next.description;
     }
 
     public static BlockFace cardinal(float yaw) {
@@ -97,10 +143,9 @@ public final class BlueprintManager implements Listener {
                     Text.send(p, "<gray>Shift + Right-Click a <white>block</white> to register the building there.");
                 }
             } else {
-                BuildingType next = mode(p).next();
-                mode.put(p.getUniqueId(), next);
+                String what = nextMode(p);
                 Fx.sound(p, "minecraft:item.book.page_turn", 1f, 1.1f);
-                Text.send(p, "<yellow>Blueprint:</yellow> <white>" + next.display + "</white> <dark_gray>- <gray>" + next.description);
+                Text.send(p, "<yellow>Blueprint:</yellow> " + what);
             }
         } else if ((a == Action.LEFT_CLICK_AIR || a == Action.LEFT_CLICK_BLOCK) && p.isSneaking()) {
             e.setCancelled(true);
@@ -112,6 +157,7 @@ public final class BlueprintManager implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
         mode.remove(e.getPlayer().getUniqueId());
+        custom.remove(e.getPlayer().getUniqueId());
         lastClick.remove(e.getPlayer().getUniqueId());
     }
 
@@ -123,9 +169,13 @@ public final class BlueprintManager implements Listener {
             Text.send(p, "<red>You can only register buildings inside your own colony.");
             return;
         }
+        if (customMode(p) != null) {
+            Text.send(p, "<yellow>Copies aren't registered: right-click to turn the book back to a standard plan (House, Farm...), then register.");
+            return;
+        }
         BuildingType t = mode(p);
         Result r = switch (t) {
-            case HOUSE, PRISON -> {
+            case HOUSE, PRISON, SCHOOL -> {
                 Block start = clicked.getRelative(face);
                 if (!RoomScanner.open(start)) start = clicked.getRelative(BlockFace.UP);
                 yield registerRoom(c, start, t);
@@ -146,6 +196,8 @@ public final class BlueprintManager implements Listener {
             case HOUSE -> " with <white>" + b.beds.size() + "</white> bed" + (b.beds.size() == 1 ? "" : "s");
             case PRISON -> " holding <white>" + b.beds.size() + "</white> prisoner" + (b.beds.size() == 1 ? "" : "s");
             case FARM -> " with <white>" + b.tiles.size() + "</white> tiles";
+            case SCHOOL -> " with <white>" + b.tiles.size() + "</white> lectern" + (b.tiles.size() == 1 ? "" : "s") + " and <white>" + b.progress
+                    + "</white> bookshel" + (b.progress == 1 ? "f" : "ves") + ". Assign a <white>Teacher</white>; children and <white>Students</white> come here to learn";
             case MINE -> " heading <white>" + b.facing.name().toLowerCase() + "</white>";
             default -> "";
         };
@@ -155,22 +207,43 @@ public final class BlueprintManager implements Listener {
         plugin.requestSave();
     }
 
+    /** What kind of room this is: an iron door makes a prison cell, a lectern a school, otherwise a house. */
+    public static BuildingType roomType(RoomScanner.Room r) {
+        if (!r.ironDoors().isEmpty()) return BuildingType.PRISON;
+        if (!r.lecterns().isEmpty()) return BuildingType.SCHOOL;
+        return BuildingType.HOUSE;
+    }
+
+    private static boolean isRoom(BuildingType t) {
+        return t == BuildingType.HOUSE || t == BuildingType.PRISON || t == BuildingType.SCHOOL;
+    }
+
     public Result registerRoom(Colony c, Block start, BuildingType wanted) {
         RoomScanner.Room r = RoomScanner.scan(start);
         if (!r.enclosed()) return Result.fail(r.error());
         for (BlockPos p : r.interior()) {
             if (!c.region.contains(p)) return Result.fail("The room crosses your claim border.");
         }
-        boolean prison = !r.ironDoors().isEmpty();
-        BuildingType t = prison ? BuildingType.PRISON : BuildingType.HOUSE;
-        if (r.beds().isEmpty()) return Result.fail("A " + (prison ? "prison cell" : "house") + " needs at least one bed inside.");
-        if (!prison && r.doors().isEmpty()) return Result.fail("A house needs a wooden door (an iron door makes it a prison cell).");
-        if (!prison && r.smallSide() < 3) return Result.fail("Too small: houses need at least 3x3 of floor inside (5x5 with the walls).");
-        if (prison && r.smallSide() < 2) return Result.fail("Too small: prison cells need at least 2x2 of floor inside.");
+        BuildingType t = roomType(r);
+        switch (t) {
+            case PRISON -> {
+                if (r.beds().isEmpty()) return Result.fail("A prison cell needs at least one bed inside.");
+                if (r.smallSide() < 2) return Result.fail("Too small: prison cells need at least 2x2 of floor inside.");
+            }
+            case SCHOOL -> {
+                if (r.doors().isEmpty()) return Result.fail("A school needs a wooden door.");
+                if (r.smallSide() < 3) return Result.fail("Too small: schools need at least 3x3 of floor inside (5x5 is better).");
+            }
+            default -> {
+                if (r.beds().isEmpty()) return Result.fail("A house needs at least one bed inside (a lectern makes it a school, an iron door a prison cell).");
+                if (r.doors().isEmpty()) return Result.fail("A house needs a wooden door (an iron door makes it a prison cell).");
+                if (r.smallSide() < 3) return Result.fail("Too small: houses need at least 3x3 of floor inside (5x5 with the walls).");
+            }
+        }
         // re-registering a room updates it instead of adding a copy
         Building existing = null;
         for (Building b : c.buildings.values()) {
-            if (b.type != BuildingType.HOUSE && b.type != BuildingType.PRISON) continue;
+            if (!isRoom(b.type)) continue;
             if ((b.anchor != null && r.interior().contains(b.anchor)) || overlapsBeds(b, r.beds())) {
                 existing = b;
                 break;
@@ -186,15 +259,21 @@ public final class BlueprintManager implements Listener {
         b.max = r.max();
         b.anchor = BlockPos.of(start);
         b.beds.clear();
-        // a bed can only belong to one building
-        for (BlockPos bed : r.beds()) {
-            boolean taken = false;
-            for (Building o : c.buildings.values()) if (o != b && o.beds.contains(bed)) taken = true;
-            if (!taken) b.beds.add(bed);
+        b.tiles.clear();
+        if (t != BuildingType.SCHOOL) {
+            // a bed can only belong to one building
+            for (BlockPos bed : r.beds()) {
+                boolean taken = false;
+                for (Building o : c.buildings.values()) if (o != b && o.beds.contains(bed)) taken = true;
+                if (!taken) b.beds.add(bed);
+            }
+            if (b.beds.isEmpty()) return Result.fail("Those beds already belong to another registered building.");
+        } else {
+            b.tiles.addAll(r.lecterns()); // a school remembers its lecterns (where the teacher stands)
+            b.progress = r.bookshelves();
         }
-        if (b.beds.isEmpty()) return Result.fail("Those beds already belong to another registered building.");
         b.doors.clear();
-        b.doors.addAll(prison ? r.ironDoors() : r.doors());
+        b.doors.addAll(t == BuildingType.PRISON ? r.ironDoors() : r.doors());
         c.buildings.put(b.id, b);
         return Result.ok(b);
     }
@@ -205,9 +284,14 @@ public final class BlueprintManager implements Listener {
     }
 
     public Result registerFarm(Colony c, Block clicked) {
+        return registerFarm(c, clicked, Set.of());
+    }
+
+    /** {@code keep}: tiles of the farm being re-scanned, which still count while they're trampled back to dirt. */
+    private Result registerFarm(Colony c, Block clicked, Set<BlockPos> keep) {
         Block tile = clicked;
-        if (!isSoil(tile.getType())) tile = clicked.getRelative(BlockFace.DOWN);
-        if (!isSoil(tile.getType())) return Result.fail("Shift + Right-Click farmland (or a crop growing on it) to register a farm.");
+        if (!isSoil(tile.getType()) && !keep.contains(BlockPos.of(tile))) tile = clicked.getRelative(BlockFace.DOWN);
+        if (!isSoil(tile.getType()) && !keep.contains(BlockPos.of(tile))) return Result.fail("Shift + Right-Click farmland (or a crop growing on it) to register a farm.");
         World w = clicked.getWorld();
         Set<BlockPos> seen = new HashSet<>();
         List<BlockPos> tiles = new ArrayList<>();
@@ -219,12 +303,13 @@ public final class BlueprintManager implements Listener {
         while (!q.isEmpty() && seen.size() < 900) {
             BlockPos p = q.poll();
             Block b = p.block(w);
-            if (isSoil(b.getType()) && c.region.contains(p)) tiles.add(p);
+            if ((isSoil(b.getType()) || keep.contains(p) && Farming.tillable(b)) && c.region.contains(p)) tiles.add(p);
             for (BlockFace f : dirs) {
                 BlockPos n = p.relative(f);
                 if (seen.contains(n) || !n.loaded(w) || !c.region.contains(n)) continue;
-                Material m = n.block(w).getType();
-                if (isSoil(m) || m == Material.WATER) {
+                Block nb = n.block(w);
+                Material m = nb.getType();
+                if (isSoil(m) || m == Material.WATER || keep.contains(n) && Farming.tillable(nb)) {
                     seen.add(n);
                     q.add(n);
                 }
@@ -332,13 +417,18 @@ public final class BlueprintManager implements Listener {
         Block target = p.getTargetBlockExact(32);
         if (target == null) return null;
         BlockFace f = cardinal(p.getLocation().getYaw());
-        if (t == BuildingType.MINE) return new Placement(t, BlockPos.of(target), f, null);
-        Blueprint bp = Blueprint.of(t);
         BlockPos origin = BlockPos.of(target.getRelative(BlockFace.UP));
-        return new Placement(t, origin, f, bp);
+        CustomBlueprint cb = customMode(p);
+        if (cb != null) return new Placement(null, cb, origin, f, Blueprint.custom(cb));
+        if (t == BuildingType.MINE) return new Placement(t, null, BlockPos.of(target), f, null);
+        return new Placement(t, null, origin, f, Blueprint.of(t));
     }
 
-    private record Placement(BuildingType type, BlockPos origin, BlockFace facing, Blueprint bp) {}
+    private record Placement(BuildingType type, CustomBlueprint copy, BlockPos origin, BlockFace facing, Blueprint bp) {
+        String label() {
+            return copy != null ? copy.name : type.display;
+        }
+    }
 
     /** Why this plan can't go here, or null. */
     private String check(Colony c, Placement pl, World w) {
@@ -356,7 +446,7 @@ public final class BlueprintManager implements Listener {
             if (intersects(bb[0], bb[1], b.min, b.max)) return "Overlaps " + b.label();
         }
         for (BuildJob j : c.buildQueue) {
-            Blueprint o = Blueprint.of(j.type);
+            Blueprint o = Blueprint.of(c, j);
             if (o == null) continue;
             BlockPos[] ob = o.bounds(j.origin, j.facing);
             if (intersects(bb[0], bb[1], ob[0], ob[1])) return "Overlaps a building already ordered";
@@ -378,7 +468,7 @@ public final class BlueprintManager implements Listener {
             Text.send(p, "<red>Look at the ground where it should be built.");
             return;
         }
-        if (pl.type == BuildingType.MINE) {
+        if (pl.copy == null && pl.type == BuildingType.MINE) {
             Text.send(p, "<yellow>Mines aren't built: Shift + Right-Click natural ground to register a Mine Entrance facing the way you look.");
             return;
         }
@@ -396,13 +486,17 @@ public final class BlueprintManager implements Listener {
             Text.send(p, "<red>The Builders already have 8 orders. Cancel one with /colony buildings.");
             return;
         }
-        BuildJob j = new BuildJob(String.valueOf(c.nextBuildingId++), pl.type, pl.origin, pl.facing, System.currentTimeMillis());
+        BuildJob j = new BuildJob(String.valueOf(c.nextBuildingId++), pl.type, pl.copy == null ? null : pl.copy.name, pl.origin, pl.facing, System.currentTimeMillis());
         c.buildQueue.add(j);
         Fx.sound(p, "minecraft:entity.villager.work_mason", 1f, 1f);
-        Text.send(p, "<green>Ordered a <white>" + pl.type.display + "</white>. The Builders will need from the State Chest:");
-        for (Map.Entry<String, Integer> e : pl.bp.needs().entrySet()) {
-            Text.raw(p, "<dark_gray>  • <white>" + e.getValue() + "x</white> <gray>" + e.getKey());
+        Text.send(p, "<green>Ordered " + (pl.copy != null ? "a copy of <white>" + Text.esc(pl.copy.name) : "a <white>" + pl.type.display)
+                + "</white>. The Builders will carry from the State Chest:");
+        List<Map.Entry<String, Integer>> needs = new ArrayList<>(pl.bp.needs().entrySet());
+        needs.sort((a, b) -> b.getValue() - a.getValue());
+        for (int i = 0; i < needs.size() && i < 14; i++) {
+            Text.raw(p, "<dark_gray>  • <white>" + needs.get(i).getValue() + "x</white> <gray>" + needs.get(i).getKey());
         }
+        if (needs.size() > 14) Text.raw(p, "<dark_gray>  • <gray>...and " + (needs.size() - 14) + " more kinds (see /colony blueprints info " + (pl.copy != null ? Text.esc(pl.copy.name) : "") + ")");
         if (c.citizens.values().stream().noneMatch(ct -> ct.job == com.colonysmp.data.Job.BUILDER && ct.status == com.colonysmp.data.Status.CITIZEN)) {
             Text.send(p, "<yellow>You have no Builder! Assign one from the Town Hall (right-click a citizen).");
         }
@@ -419,20 +513,22 @@ public final class BlueprintManager implements Listener {
             if (c != null && c.isMember(p.getUniqueId())) drawKnown(p, c);
             Placement pl = placement(p);
             if (pl == null) {
-                Text.bar(p, "<yellow>" + mode(p).display + " <dark_gray>|</dark_gray> <gray>look at the ground <dark_gray>|</dark_gray> <white>Right-Click</white><gray>: next blueprint");
+                CustomBlueprint cb = customMode(p);
+                Text.bar(p, "<yellow>" + (cb != null ? Text.esc(cb.name) : mode(p).display) + " <dark_gray>|</dark_gray> <gray>look at the ground <dark_gray>|</dark_gray> <white>Right-Click</white><gray>: next blueprint");
                 continue;
             }
             Colony here = plugin.colonies().at(p.getWorld().getName(), pl.origin.x(), pl.origin.z());
             boolean mine = here != null && here.isMember(p.getUniqueId());
-            if (pl.type == BuildingType.MINE) {
+            if (pl.copy == null && pl.type == BuildingType.MINE) {
                 drawMine(p, pl, mine);
                 Text.bar(p, "<yellow>Mine Entrance <dark_gray>|</dark_gray> <gray>faces where you look <dark_gray>|</dark_gray> <white>Shift+Right-Click</white> <gray>natural ground to register");
                 continue;
             }
             String err = mine ? check(here, pl, p.getWorld()) : "Outside your colony";
             draw(p, pl, err == null);
-            Text.bar(p, "<yellow>" + pl.type.display + "</yellow> " + (err == null ? "<green>✔ fits" : "<red>✘ " + err)
-                    + " <dark_gray>|</dark_gray> <gold>Shift+Left-Click</gold><gray>: order <dark_gray>|</dark_gray> <white>Shift+Right-Click</white><gray>: register existing");
+            Text.bar(p, "<yellow>" + Text.esc(pl.label()) + "</yellow> " + (err == null ? "<green>✔ fits" : "<red>✘ " + err)
+                    + " <dark_gray>|</dark_gray> <gold>Shift+Left-Click</gold><gray>: order"
+                    + (pl.copy == null ? " <dark_gray>|</dark_gray> <white>Shift+Right-Click</white><gray>: register existing" : " <dark_gray>|</dark_gray> <gray>turn: face another way"));
         }
     }
 
@@ -440,14 +536,15 @@ public final class BlueprintManager implements Listener {
         Blueprint bp = pl.bp;
         BlockPos[] bb = bp.bounds(pl.origin, pl.facing);
         Color c = ok ? GOOD : BAD;
-        double y = pl.origin.y() + (pl.type == BuildingType.FARM ? 0.05 : 0.05);
+        boolean flat = pl.type == BuildingType.FARM;
+        double y = bb[0].y() + 0.05;
         double x1 = bb[0].x(), z1 = bb[0].z(), x2 = bb[1].x() + 1, z2 = bb[1].z() + 1;
         Fx.line(p, x1, y, z1, x2, y, z1, c, 0.5, 1.1f);
         Fx.line(p, x1, y, z2, x2, y, z2, c, 0.5, 1.1f);
         Fx.line(p, x1, y, z1, x1, y, z2, c, 0.5, 1.1f);
         Fx.line(p, x2, y, z1, x2, y, z2, c, 0.5, 1.1f);
-        if (pl.type != BuildingType.FARM) {
-            double top = pl.origin.y() + bp.maxLy + 1;
+        if (!flat) {
+            double top = bb[1].y() + 1;
             Fx.line(p, x1, y, z1, x1, top, z1, c, 0.5, 0.9f);
             Fx.line(p, x2, y, z1, x2, top, z1, c, 0.5, 0.9f);
             Fx.line(p, x1, y, z2, x1, top, z2, c, 0.5, 0.9f);
@@ -499,7 +596,7 @@ public final class BlueprintManager implements Listener {
             Fx.box(p, b.min.x(), b.min.y(), b.min.z(), b.max.x(), b.type == BuildingType.FARM ? b.min.y() : b.max.y(), b.max.z(), KNOWN, 1.0, 0.8f, b.type != BuildingType.FARM);
         }
         for (BuildJob j : c.buildQueue) {
-            Blueprint bp = Blueprint.of(j.type);
+            Blueprint bp = Blueprint.of(c, j);
             if (bp == null) continue;
             BlockPos[] bb = bp.bounds(j.origin, j.facing);
             if (Math.abs(bb[0].x() - px) > 40 || Math.abs(bb[0].z() - pz) > 40) continue;
@@ -521,7 +618,7 @@ public final class BlueprintManager implements Listener {
             Building b = it.next();
             if (b.anchor == null || !b.anchor.loaded(w)) continue;
             switch (b.type) {
-                case HOUSE, PRISON -> {
+                case HOUSE, PRISON, SCHOOL -> {
                     RoomScanner.Room r = RoomScanner.scan(b.anchor.block(w));
                     if (!r.enclosed()) {
                         for (BlockPos bed : b.beds) {
@@ -530,13 +627,13 @@ public final class BlueprintManager implements Listener {
                             if (r.enclosed()) break;
                         }
                     }
-                    if (!r.enclosed() || r.beds().isEmpty()) {
+                    BuildingType now = r.enclosed() ? roomType(r) : null;
+                    if (now == null || (now != BuildingType.SCHOOL && r.beds().isEmpty())) {
                         lost.add(b.label());
                         it.remove();
                         continue;
                     }
-                    boolean prison = !r.ironDoors().isEmpty();
-                    if (prison != (b.type == BuildingType.PRISON)) {
+                    if (now != b.type) {
                         changedType.add(b);
                         it.remove();
                         continue;
@@ -544,9 +641,15 @@ public final class BlueprintManager implements Listener {
                     b.min = r.min();
                     b.max = r.max();
                     b.beds.clear();
-                    b.beds.addAll(r.beds());
+                    b.tiles.clear();
+                    if (now == BuildingType.SCHOOL) {
+                        b.tiles.addAll(r.lecterns());
+                        b.progress = r.bookshelves();
+                    } else {
+                        b.beds.addAll(r.beds());
+                    }
                     b.doors.clear();
-                    b.doors.addAll(prison ? r.ironDoors() : r.doors());
+                    b.doors.addAll(now == BuildingType.PRISON ? r.ironDoors() : r.doors());
                 }
                 case FARM -> {
                     BlockPos start = null;
@@ -554,6 +657,15 @@ public final class BlueprintManager implements Listener {
                         if (t.loaded(w) && isSoil(t.block(w).getType())) {
                             start = t;
                             break;
+                        }
+                    }
+                    // a fully trampled field still counts: the farmers re-till it
+                    if (start == null) {
+                        for (BlockPos t : b.tiles) {
+                            if (t.loaded(w) && Farming.tillable(t.block(w))) {
+                                start = t;
+                                break;
+                            }
                         }
                     }
                     if (start == null) {
@@ -582,7 +694,7 @@ public final class BlueprintManager implements Listener {
         for (Map.Entry<Building, BlockPos> e : farms.entrySet()) {
             Building old = e.getKey();
             c.buildings.remove(old.id);
-            Result r = registerFarm(c, e.getValue().block(w));
+            Result r = registerFarm(c, e.getValue().block(w), new HashSet<>(old.tiles));
             if (r.error != null) {
                 lost.add(old.label());
                 continue;

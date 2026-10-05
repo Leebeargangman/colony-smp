@@ -43,9 +43,9 @@ import java.util.UUID;
 public final class ColonyCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> SUBS = List.of("help", "info", "quests", "mobilize", "declare", "surrender", "war", "storage", "citizens",
-            "prison", "buildings", "invite", "join", "leave", "kick", "promote", "demote", "rename", "policy", "relocate", "abandon",
+            "prison", "buildings", "blueprints", "school", "invite", "join", "leave", "kick", "promote", "demote", "rename", "policy", "relocate", "abandon",
             "book", "core", "list", "spoils", "traveler", "admin");
-    private static final List<String> ADMIN = List.of("reload", "give", "delete", "stability", "shield", "traveler", "endwar", "save", "bypass", "tp", "ration", "food");
+    private static final List<String> ADMIN = List.of("reload", "give", "delete", "stability", "shield", "traveler", "endwar", "save", "bypass", "tp", "ration", "food", "stock", "who", "addcitizen", "job");
 
     private final ColonySMP plugin;
 
@@ -152,6 +152,14 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
             case "buildings" -> {
                 if (need(p, c)) return true;
                 new BuildingsMenu(plugin, p, c, 0).open();
+            }
+            case "school", "schools", "education" -> {
+                if (need(p, c)) return true;
+                school(p, c);
+            }
+            case "blueprints", "blueprint", "copies" -> {
+                if (need(p, c)) return true;
+                blueprints(p, c, args);
             }
             case "hall", "townhall", "menu" -> {
                 if (need(p, c)) return true;
@@ -419,6 +427,15 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
         Text.raw(to, "<gray> Population: <white>" + c.population() + "</white> (" + children + " children)  Prisoners: <white>" + prisoners + "</white>  Forced labour: <white>" + slaves);
         Text.raw(to, "<gray> Stability: " + Text.stabilityColor(c.stability) + Math.round(c.stability) + "%" + (c.strike ? " <dark_red><bold>ON STRIKE" : "")
                 + "  <gray>Food: <white>" + Math.round(food) + " pts" + (need > 0 ? " (" + String.format("%.1f", food / need) + " days)" : ""));
+        double edu = 0;
+        int people = 0;
+        for (Citizen ct : c.citizens.values()) {
+            if (ct.status != Status.CITIZEN && ct.status != Status.CHILD) continue;
+            edu += ct.education;
+            people++;
+        }
+        Text.raw(to, "<gray> Happiness: <white>" + Math.round(com.colonysmp.npc.Needs.average(c)) + "/100  <gray>Education: <white>" + (people == 0 ? 0 : Math.round(edu / people))
+                + "/100  <gray>Blueprints: <white>" + c.blueprints.size());
         Text.raw(to, "<gray> Reputation: <white>" + c.reputation + "/100  <gray>Peace Shield: " + (c.shielded() ? "<aqua>" + Text.duration(c.shieldUntil - now) : "<red>none"));
         WarManager.War w = plugin.wars().warOf(c);
         if (w != null) {
@@ -429,12 +446,84 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
         if (c.mobilized()) Text.raw(to, "<red> Mobilized for " + Text.duration(c.mobilizedUntil - now));
     }
 
+    private void school(Player p, Colony c) {
+        List<com.colonysmp.data.Building> schools = c.buildings(com.colonysmp.data.BuildingType.SCHOOL);
+        double sum = 0;
+        int n = 0, teachers = 0, students = 0, children = 0;
+        for (Citizen ct : c.citizens.values()) {
+            if (ct.status != Status.CITIZEN && ct.status != Status.CHILD) continue;
+            sum += ct.education;
+            n++;
+            if (ct.status == Status.CHILD) children++;
+            else if (ct.job == com.colonysmp.data.Job.TEACHER) teachers++;
+            else if (ct.job == com.colonysmp.data.Job.STUDENT) students++;
+        }
+        Text.raw(p, "<aqua><bold>Education</bold> <gray>- " + Text.esc(c.name));
+        Text.raw(p, " <gray>Average education: <white>" + (n == 0 ? 0 : Math.round(sum / n)) + "/100  <gray>Teachers: <white>" + teachers
+                + "  <gray>Students: <white>" + students + "  <gray>Children: <white>" + children);
+        if (schools.isEmpty()) {
+            Text.raw(p, " <yellow>No school yet. Build an enclosed room with a door and a lectern (bookshelves help), or order the School blueprint, then register it with the Blueprint Book.");
+        }
+        World w = c.world();
+        long today = w == null ? 0 : NpcManager.day(w);
+        for (com.colonysmp.data.Building b : schools) {
+            Text.raw(p, " <white>" + b.label() + " <gray>- " + b.tiles.size() + " lectern(s), " + b.progress + " bookshelves, "
+                    + (b.bookDay == today ? "<green>book in use today" : "<yellow>no book today (keep books in the State Chest)"));
+        }
+        Text.raw(p, "<dark_gray> Skilled jobs: Smith 25, Teacher 30, Doctor 40 education. Educated citizens work up to 30% faster.");
+    }
+
+    private void blueprints(Player p, Colony c, String[] args) {
+        String a = args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : "";
+        if (a.isEmpty()) {
+            new com.colonysmp.gui.BlueprintsMenu(plugin, p, c).open();
+            return;
+        }
+        if (a.equals("list")) {
+            if (c.blueprints.isEmpty()) {
+                Text.send(p, "No blueprints yet. Select a structure with the <gold>Colony Wand</gold> (two opposite corners, top and bottom) and <yellow>Shift + Right-Click</yellow>.");
+                return;
+            }
+            Text.raw(p, "<aqua><bold>Colony Blueprints</bold> <gray>(" + c.blueprints.size() + "/" + plugin.settings().blueprintMax + ")");
+            for (com.colonysmp.data.CustomBlueprint cb : c.blueprints.values()) {
+                Text.raw(p, " <white>" + Text.esc(cb.name) + " <gray>- " + cb.size() + ", " + cb.solid() + " blocks, by " + Text.esc(cb.author));
+            }
+            return;
+        }
+        com.colonysmp.data.CustomBlueprint cb = args.length > 2 ? c.blueprints.get(com.colonysmp.data.CustomBlueprint.key(join(args, 2))) : null;
+        if (cb == null) {
+            Text.send(p, "<red>Usage: /colony blueprints <list|info|select|delete> <name>" + (args.length > 2 ? " (no blueprint called that)" : ""));
+            return;
+        }
+        switch (a) {
+            case "info" -> {
+                Text.raw(p, "<aqua><bold>" + Text.esc(cb.name) + "</bold> <gray>- " + cb.size() + ", " + cb.solid() + " blocks, copied by " + Text.esc(cb.author));
+                List<Map.Entry<String, Integer>> needs = new ArrayList<>(com.colonysmp.colony.Blueprint.custom(cb).needs().entrySet());
+                needs.sort((x, y) -> y.getValue() - x.getValue());
+                for (Map.Entry<String, Integer> e : needs) Text.raw(p, "<dark_gray>  • <white>" + e.getValue() + "x</white> <gray>" + e.getKey());
+            }
+            case "select" -> {
+                plugin.blueprints().selectCustom(p, cb);
+                Text.send(p, "<green>Selected <white>" + Text.esc(cb.name) + "</white> in your Blueprint Book. Look at the ground and <gold>Shift + Left-Click</gold> to order it.");
+            }
+            case "delete", "remove" -> {
+                if (lead(p, c)) return;
+                int n = com.colonysmp.colony.Copier.delete(c, cb);
+                plugin.requestSave();
+                Text.send(p, "Deleted blueprint <white>" + Text.esc(cb.name) + "</white>" + (n > 0 ? " and cancelled " + n + " order(s)." : "."));
+            }
+            default -> Text.send(p, "<red>Usage: /colony blueprints <list|info|select|delete> <name>");
+        }
+    }
+
     public void help(CommandSender to) {
         Text.raw(to, "<dark_red>☭ <gold><bold>ColonySMP</bold></gold> <gray>- commands");
         String[][] lines = {
                 {"info [colony]", "colony overview"},
                 {"quests [hide|show]", "starter quests"},
                 {"citizens | prison | buildings", "management menus"},
+                {"blueprints [list|info|select|delete <name>]", "structures copied with the wand"},
+                {"school", "schools and education"},
                 {"storage [page]", "open the Central State Chest (inside your claim)"},
                 {"mobilize [stop]", "arm your workers as militia"},
                 {"declare <colony>", "declare war (needs a War Banner)"},
@@ -510,7 +599,7 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
                 boolean on = plugin.toggleBypass(p);
                 Text.send(p, "Claim bypass " + (on ? "<green>on" : "<red>off"));
             }
-            case "delete", "stability", "shield", "traveler", "endwar", "tp", "ration", "food" -> {
+            case "delete", "stability", "shield", "traveler", "endwar", "tp", "ration", "food", "stock", "who", "addcitizen", "job" -> {
                 if (a.length < 2) {
                     Text.send(s, "/colony admin " + sub + " <colony> ...");
                     return;
@@ -553,6 +642,69 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
                         plugin.sim().ration(c, w, NpcManager.day(w));
                         Text.send(s, "Ran the nightly rationing for " + Text.esc(c.name) + ".");
                     }
+                    case "addcitizen" -> {
+                        String what = a.length > 2 ? a[2].toUpperCase(Locale.ROOT) : "NONE";
+                        boolean child = what.equals("CHILD");
+                        com.colonysmp.data.Job j = child ? com.colonysmp.data.Job.NONE : com.colonysmp.data.Job.parse(what);
+                        if (j == null) {
+                            Text.send(s, "<red>Unknown job. Jobs: " + Arrays.toString(com.colonysmp.data.Job.values()) + " or CHILD");
+                            return;
+                        }
+                        Citizen ct = plugin.npcs().newCitizen(c, j, child ? Status.CHILD : Status.CITIZEN);
+                        if (child) ct.bornDay = c.world() == null ? 0 : NpcManager.day(c.world());
+                        Location at = c.coreLocation();
+                        if (at != null && plugin.npcs().active(c)) plugin.npcs().spawn(c, ct, plugin.npcs().spotNear(at, 2, 5));
+                        plugin.sim().assignBeds(c);
+                        Text.send(s, "Added " + Text.esc(ct.name) + " (" + ct.title() + ", education " + Math.round(ct.education) + ") to " + Text.esc(c.name) + ".");
+                    }
+                    case "job" -> {
+                        if (a.length < 4) {
+                            Text.send(s, "/colony admin job <colony> <citizen name> <job>");
+                            return;
+                        }
+                        com.colonysmp.data.Job j = com.colonysmp.data.Job.parse(a[a.length - 1]);
+                        String who = String.join(" ", Arrays.copyOfRange(a, 2, a.length - 1)).replace('_', ' ');
+                        Citizen ct = null;
+                        for (Citizen x : c.citizens.values()) if (x.name.equalsIgnoreCase(who)) ct = x;
+                        if (ct == null || j == null) {
+                            Text.send(s, "<red>No citizen called " + Text.esc(who) + ", or unknown job.");
+                            return;
+                        }
+                        ct.job = j;
+                        com.colonysmp.npc.Npc n = plugin.npcs().npc(ct);
+                        if (n != null) {
+                            n.resetWork();
+                            n.mover.stop();
+                            plugin.npcs().refresh(n);
+                        }
+                        Text.send(s, Text.esc(ct.name) + " is now a " + j.display + ".");
+                    }
+                    case "who" -> {
+                        Text.raw(s, "<gold>" + Text.esc(c.name) + " <gray>- citizens");
+                        for (Citizen ct : c.citizens.values()) {
+                            com.colonysmp.npc.Npc n = plugin.npcs().npc(ct);
+                            StringBuilder bag = new StringBuilder();
+                            for (ItemStack it : ct.carry) bag.append(it.getType().name().toLowerCase()).append('x').append(it.getAmount()).append(' ');
+                            Text.raw(s, " <white>" + Text.esc(ct.name) + " <gray>" + ct.title() + " | " + (n == null ? "no body" : Text.esc(n.activity) + " @" + n.body.getLocation().getBlockX() + "," + n.body.getLocation().getBlockY() + "," + n.body.getLocation().getBlockZ())
+                                    + " | rest " + Math.round(ct.rest) + " happy " + Math.round(ct.happiness) + " edu " + Math.round(ct.education) + " | bag " + bag);
+                        }
+                    }
+                    case "stock" -> {
+                        Material m = a.length > 2 ? Material.matchMaterial(a[2]) : null;
+                        if (m == null || !m.isItem()) {
+                            Text.send(s, "/colony admin stock <colony> <item> [amount]");
+                            return;
+                        }
+                        int amount = a.length > 3 ? (int) parse(a[3], 1) : m.getMaxStackSize();
+                        int left = 0;
+                        for (int done = 0; done < amount; ) {
+                            int n = Math.min(m.getMaxStackSize(), amount - done);
+                            ItemStack rest = c.storage.add(new ItemStack(m, n));
+                            if (rest != null) left += rest.getAmount();
+                            done += n;
+                        }
+                        Text.send(s, "Put " + (amount - left) + " " + m.name().toLowerCase() + " in the State Chest of " + Text.esc(c.name) + (left > 0 ? " (" + left + " didn't fit)." : "."));
+                    }
                     case "food" -> {
                         double pts = c.storage.foodPoints(plugin.settings().neverEat);
                         Text.send(s, Text.esc(c.name) + ": " + Math.round(pts) + " food points, daily need " + Math.round(plugin.sim().dailyNeed(c)) + ".");
@@ -565,6 +717,7 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
             default -> {
                 Text.raw(s, "<red>/colony admin reload | save | bypass | give <item> [player] [amount]");
                 Text.raw(s, "<red>/colony admin delete|stability|shield|traveler|endwar|tp|ration|food <colony> [value]");
+                Text.raw(s, "<red>/colony admin stock <colony> <item> [amount] | who <colony> | addcitizen <colony> [job|CHILD] | job <colony> <name> <job>");
             }
         }
     }
@@ -608,12 +761,21 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
                 case "quests" -> out.addAll(filter(List.of("hide", "show"), last));
                 case "mobilize" -> out.addAll(filter(List.of("stop"), last));
                 case "policy" -> out.addAll(filter(List.of("indoctrinate", "enslave"), last));
+                case "blueprints" -> out.addAll(filter(List.of("list", "info", "select", "delete"), last));
                 case "traveler" -> out.addAll(filter(List.of("recruit", "dismiss"), last));
                 case "admin" -> {
                     if (sender.hasPermission("colonysmp.admin")) out.addAll(filter(ADMIN, last));
                 }
                 default -> {
                 }
+            }
+            return out;
+        }
+        if (sub.equals("blueprints") && args.length >= 3 && sender instanceof Player bp) {
+            Colony c = plugin.colonies().of(bp);
+            if (c != null) {
+                String typed = join(args, 2).toLowerCase(Locale.ROOT);
+                for (com.colonysmp.data.CustomBlueprint cb : c.blueprints.values()) if (cb.name.toLowerCase(Locale.ROOT).startsWith(typed)) out.add(cb.name);
             }
             return out;
         }

@@ -38,7 +38,7 @@ public final class BuildingsMenu extends Menu {
         for (int i = 0; i < 45 && from + i < all.size(); i++) {
             Object o = all.get(from + i);
             if (o instanceof BuildJob j) {
-                Blueprint bp = Blueprint.of(j.type);
+                Blueprint bp = Blueprint.of(col, j);
                 int pct = bp == null ? 0 : j.step * 100 / Math.max(1, bp.steps.size());
                 List<String> lore = new ArrayList<>();
                 lore.add("<gold>Ordered - " + pct + "% built");
@@ -46,10 +46,10 @@ public final class BuildingsMenu extends Menu {
                 if (j.waitingFor != null) lore.add("<red>Waiting for " + j.waitingFor);
                 lore.add("");
                 lore.add(lead ? "<yellow>Shift-click to cancel the order" : "<gray>Leaders can cancel orders");
-                set(i, Items.icon(Material.SCAFFOLDING, "<gold>" + j.type.display + " <gray>(order #" + j.id + ")", lore), c -> {
+                set(i, Items.icon(Material.SCAFFOLDING, "<gold>" + j.label() + " <gray>(order #" + j.id + ")", lore), c -> {
                     if (!lead || !c.shift()) return;
                     col.buildQueue.remove(j);
-                    Text.send(viewer, "Cancelled the " + j.type.display + " order. Blocks already placed stay.");
+                    Text.send(viewer, "Cancelled the " + j.label() + " order. Blocks already placed stay.");
                     plugin.requestSave();
                     refresh();
                 });

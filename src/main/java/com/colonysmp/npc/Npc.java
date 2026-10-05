@@ -30,9 +30,16 @@ public final class Npc {
     public final List<BlockPos> veins = new ArrayList<>();
     public long noToolUntil;
     public boolean fetching;
+    /** Cooks and Smiths: the order in hand, fuel left in the fire, when to look for work again. */
+    public Object order;
+    public double fuel;
+    public long planAt;
+    /** Herders and Doctors: who they're seeing to. */
+    public org.bukkit.entity.Entity subject;
 
     // routine
     public boolean sleeping;
+    public long needsAt, napUntil;
     public Location idleSpot;
     public long idleUntil;
 
@@ -51,6 +58,9 @@ public final class Npc {
 
     // escort
     public Citizen escorting;
+
+    // a spot behind a door this body is walking to (into or out of a cell)
+    public Location passTo;
 
     // shown item
     public ItemStack shownHand;
@@ -72,6 +82,8 @@ public final class Npc {
     }
 
     public void resetWork() {
+        order = null;
+        subject = null;
         target = null;
         work = null;
         workIdx = 0;
