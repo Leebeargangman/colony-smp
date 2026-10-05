@@ -306,7 +306,9 @@ public final class BlueprintManager implements Listener {
         BlockPos at = BlockPos.of(clicked);
         for (Building b : c.buildings(BuildingType.MINE)) {
             if (b.anchor != null && b.anchor.distSq(at) < 4) {
+                if (b.facing != facing) b.progress = 0;
                 b.facing = facing;
+                b.exhausted = false;
                 return Result.ok(b);
             }
         }

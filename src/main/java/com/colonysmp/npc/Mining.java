@@ -185,7 +185,8 @@ public final class Mining {
         BlockPos o = mine.anchor;
         BlockFace f = mine.facing;
         BlockFace r = Blueprint.right(f);
-        int target = Math.max(w.getMinHeight() + 6, plugin.settings().mineTargetY);
+        // down to the configured depth, but always at least a few steps (entrances in caves or low ground), never into bedrock
+        int target = Math.max(w.getMinHeight() + 6, Math.min(plugin.settings().mineTargetY, o.y() - 6));
         // staircase: each step one forward and one down, dug three high
         BlockPos prevStand = new BlockPos(o.x() - f.getModX(), o.y() + 1, o.z() - f.getModZ());
         int i = 0;
@@ -201,10 +202,7 @@ public final class Mining {
             lastFeet = feet;
             i++;
         }
-        if (lastFeet == null) {
-            plans.put(key, out);
-            return out;
-        }
+        if (lastFeet == null) lastFeet = o; // no room to go down: tunnel at the entrance's level
         // branch mine at the bottom
         int len = plugin.settings().mineTunnelLength, branch = plugin.settings().mineBranchLength;
         BlockPos stand = lastFeet;
