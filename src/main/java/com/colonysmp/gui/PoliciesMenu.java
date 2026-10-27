@@ -16,7 +16,7 @@ import java.util.Locale;
 public final class PoliciesMenu extends Menu {
 
     public static final List<String> NAMES = List.of("economy", "wages", "tax", "hours", "recruitment", "population", "military", "posture", "emergency",
-            "priority", "foodreserve", "autosell", "autobuy", "neutraltrade", "quarantine", "rationing", "births");
+            "priority", "foodreserve", "autosell", "autobuy", "neutraltrade", "quarantine", "rationing", "births", "autojobs");
 
     private final ColonySMP plugin;
     private final Colony c;
@@ -61,6 +61,7 @@ public final class PoliciesMenu extends Menu {
             case "quarantine" -> p.quarantine = bool(v);
             case "rationing" -> p.rationing = bool(v);
             case "births" -> p.births = bool(v);
+            case "autojobs" -> p.autoJobs = bool(v);
             default -> {
                 return "Policies: " + String.join(", ", NAMES);
             }
@@ -126,6 +127,9 @@ public final class PoliciesMenu extends Menu {
                 "<dark_gray>Click to change"), k -> change(() -> p.autoBuy = !p.autoBuy, "auto-buy"));
         button(30, Material.MAP, "<gold>Trade with neutrals: <white>" + (p.tradeWithNeutrals ? "yes" : "friends only"), List.of("<gray>Who may trade with your colony", "<dark_gray>Click to change"),
                 k -> change(() -> p.tradeWithNeutrals = !p.tradeWithNeutrals, "trade"));
+        button(31, Material.WRITABLE_BOOK, "<gold>Automatic jobs: <white>" + (p.autoJobs ? "on" : "off"), List.of("<gray>Idle citizens are put to work where",
+                "<gray>their skills fit best, new buildings are", "<gray>staffed at once, and talents move to", "<gray>the trade they're good at",
+                "<gray>(jobs you choose by hand are kept)", "<dark_gray>Click to change"), k -> change(() -> p.autoJobs = !p.autoJobs, "automatic jobs"));
         button(40, Material.ARROW, "<white>Back to the Town Hall", List.of(), k -> new TownHallMenu(plugin, viewer, c).open());
         fill(Material.GRAY_STAINED_GLASS_PANE);
     }

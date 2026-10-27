@@ -42,6 +42,8 @@ public final class Citizen {
     public int home;
     public BlockPos bed;
     public Trait trait = Trait.ORDINARY;
+    /** A player chose this job: automatic job placement leaves them be. */
+    public boolean chosenJob;
     /** Villager biome skin (plains, desert, taiga...). */
     public String skin = "plains";
 
@@ -193,6 +195,7 @@ public final class Citizen {
         s.set("home", home);
         s.set("bed", bed == null ? null : bed.toString());
         s.set("trait", trait.name());
+        s.set("chosen-job", chosenJob);
         s.set("skin", skin);
         s.set("age", ageDays);
         for (Map.Entry<Skill, Double> e : skills.all().entrySet()) s.set("skills." + e.getKey().name(), e.getValue());
@@ -255,6 +258,7 @@ public final class Citizen {
         c.home = s.getInt("home");
         c.bed = BlockPos.parse(s.getString("bed"));
         c.trait = Trait.parse(s.getString("trait"));
+        c.chosenJob = s.getBoolean("chosen-job");
         c.skin = s.getString("skin", "plains");
         c.ageDays = s.getDouble("age", 20);
         ConfigurationSection sk = s.getConfigurationSection("skills");

@@ -22,8 +22,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Who does what. Players assign jobs by hand; newcomers and grown-up children are placed automatically, and a
- * working administrator keeps placing the unemployed where the colony most needs hands.
+ * Who does what. Players assign jobs by hand; newcomers and grown-up children are placed automatically, and with
+ * the automatic jobs policy (or a working administrator) the idle are placed where they fit best: new workplaces
+ * are staffed by the people most skilled at the work, and a hidden talent moves to the trade they're good at.
  */
 public final class Jobs {
 
@@ -198,12 +199,8 @@ public final class Jobs {
         Map<Job, Double> need = needs(c);
         for (Opening o : openings(c)) {
             if (o.job().military() || canTake(c, ct, o.job(), o.building()) != null) continue;
-            double s = need.getOrDefault(o.job(), 1.0);
+            double s = need.getOrDefault(o.job(), 1.0) + fit(ct, o.job(), stage);
             if (!o.building().valid) s -= 3;
-            if (ct.trait.likes(o.job())) s += 2;
-            if (o.job().skill != null) s += ct.level(o.job().skill) * 0.4;
-            s += o.job().education / 40.0;
-            if (stage == LifeStage.ELDER && o.job().heavy) s -= 5;
             if (s > bestScore) {
                 bestScore = s;
                 best = o;
@@ -211,6 +208,87 @@ public final class Jobs {
         }
         if (best != null) assign(c, ct, best.job(), best.building());
         else if (ct.job.needsWorkplace() && ct.workplace == 0) assign(c, ct, Job.UNEMPLOYED, null);
+        ct.chosenJob = false;
+    }
+
+    /** How well a citizen suits a job: their skill at it above all, then whether they like it and their schooling. */
+    public double fit(Citizen ct, Job j, LifeStage stage) {
+        double s = 0;
+        if (j.skill != null) s += ct.level(j.skill) * 1.2;
+        if (ct.trait.likes(j)) s += 2;
+        s += j.education / 40.0;
+        if (stage == LifeStage.ELDER && j.heavy) s -= 5;
+        return s;
+    }
+
+    /** "Anna (Farming 4)": a citizen and their skill at a job, for messages. */
+    public static String skilled(Citizen ct, Job j) {
+        return ct.name + (j.skill != null ? " (" + j.skill.display + " " + ct.level(j.skill) + ")" : "");
+    }
+
+    /**
+     * Staffs open places (at one building, or everywhere) with the best-suited idle adults, if the colony places
+     * jobs automatically. Returns who was hired, as "Anna (Farming 4) as Farmer".
+     */
+    public List<String> fill(Colony c, Building only) {
+        List<String> hired = new ArrayList<>();
+        if (!c.policies.autoJobs) return hired;
+        refreshWorkplaces(c);
+        for (Opening o : openings(c)) {
+            if (only != null && o.building() != only || o.job().military() || o.job() == Job.STUDENT) continue;
+            for (int k = 0; k < o.free(); k++) {
+                Citizen best = null;
+                double bestFit = Double.NEGATIVE_INFINITY;
+                for (Citizen ct : c.citizens.values()) {
+                    if (!idle(ct) || canTake(c, ct, o.job(), o.building()) != null) continue;
+                    double f = fit(ct, o.job(), plugin.sim().citizens().stage(ct));
+                    if (f > bestFit) {
+                        bestFit = f;
+                        best = ct;
+                    }
+                }
+                if (best == null) break;
+                if (assign(c, best, o.job(), o.building()) != null) break;
+                best.chosenJob = false;
+                hired.add(skilled(best, o.job()) + " as " + o.job().display);
+            }
+        }
+        return hired;
+    }
+
+    /** A free adult with nothing to do (or a job that has no place for them). */
+    private boolean idle(Citizen ct) {
+        if (!ct.status.free() || plugin.sim().citizens().stage(ct) == LifeStage.CHILD || ct.job.military() || ct.job == Job.STUDENT) return false;
+        return ct.job == Job.UNEMPLOYED || !ct.chosenJob && ct.job.needsWorkplace() && ct.workplace == 0;
+    }
+
+    /**
+     * Moves a worker whose skill at an open job is well above their skill at their own job (at most a couple a
+     * day; never someone a player placed, never the army). Returns who moved.
+     */
+    private List<String> talents(Colony c) {
+        List<String> moved = new ArrayList<>();
+        boolean hungry = plugin.sim().finances().foodDays(c) < 3;
+        for (Opening o : openings(c)) {
+            Job j = o.job();
+            if (j.military() || j.skill == null || j == Job.STUDENT) continue;
+            Citizen best = null;
+            int bestGain = 2;
+            for (Citizen ct : c.citizens.values()) {
+                if (ct.chosenJob || !ct.status.free() || ct.job == j || ct.job.military() || ct.job == Job.STUDENT || ct.job == Job.UNEMPLOYED) continue;
+                if (hungry && isFood(ct.job) && !isFood(j)) continue;
+                int there = ct.level(j.skill), here = ct.job.skill == null ? 0 : ct.level(ct.job.skill);
+                if (there < 3 || there - here <= bestGain || canTake(c, ct, j, o.building()) != null) continue;
+                bestGain = there - here;
+                best = ct;
+            }
+            if (best == null) continue;
+            Job old = best.job;
+            if (assign(c, best, j, o.building()) != null) continue;
+            moved.add(skilled(best, j) + " moved from " + old.display + " to " + j.display);
+            if (moved.size() >= 2) break;
+        }
+        return moved;
     }
 
     /** How much the colony wants each job filled right now. */
@@ -267,7 +345,7 @@ public final class Jobs {
 
     void daily(Colony c, long day) {
         refreshWorkplaces(c);
-        boolean admin = administrated(c);
+        boolean admin = administrated(c) || c.policies.autoJobs;
         boolean school = hasTeacher(c);
         int placed = 0;
         for (Citizen ct : new ArrayList<>(c.citizens.values())) {
@@ -288,13 +366,19 @@ public final class Jobs {
             if (ct.education < ct.job.education) {
                 assign(c, ct, Job.UNEMPLOYED, null);
             }
-            if (admin && (ct.job == Job.UNEMPLOYED || ct.job.needsWorkplace() && ct.workplace == 0)) {
+            if (admin && (ct.job == Job.UNEMPLOYED || !ct.chosenJob && ct.job.needsWorkplace() && ct.workplace == 0)) {
                 Job before = ct.job;
                 autoAssign(c, ct);
                 if (ct.job != before) placed++;
             }
         }
-        if (placed > 0) c.log(ColonyEvent.Type.POPULATION, day, "The administrator found work for " + placed + " citizen" + (placed == 1 ? "" : "s") + ".");
+        if (placed > 0) c.log(ColonyEvent.Type.POPULATION, day, "Found work for " + placed + " citizen" + (placed == 1 ? "" : "s") + ".");
+        if (c.policies.autoJobs) {
+            List<String> moved = talents(c);
+            List<String> hired = fill(c, null);
+            for (String s : moved) c.log(ColonyEvent.Type.POPULATION, day, s + ": they're better at it.");
+            if (!hired.isEmpty()) c.log(ColonyEvent.Type.POPULATION, day, "Hired " + String.join(", ", hired) + ".");
+        }
     }
 
     /** Equipment kinds a job wants issued (tools for workers; arms are the military's business). */

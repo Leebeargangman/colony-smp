@@ -634,6 +634,7 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
         String err = plugin.sim().jobs().assign(c, ct, j, b);
         if (err != null) Text.send(p, "<red>" + err);
         else {
+            ct.chosenJob = j != Job.UNEMPLOYED;
             Building at = c.building(ct.workplace);
             Text.send(p, "<white>" + Text.esc(ct.name) + "</white> is now " + Text.a("<white>" + j.display) + "</white>" + (at != null ? " at " + Text.esc(at.label()) : "")
                     + (j.needsWorkplace() && at == null ? " <yellow>(no free place yet: they'll start when there is one)" : "") + ".");

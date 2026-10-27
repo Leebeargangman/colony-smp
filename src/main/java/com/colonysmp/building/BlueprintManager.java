@@ -182,6 +182,7 @@ public final class BlueprintManager implements Listener {
         Text.send(p, "<green>Registered <white>" + b.label() + "</white> " + summary(b) + ".");
         String jobs = jobs(c, b);
         if (!jobs.isEmpty()) Text.raw(p, "<dark_gray>  Workers: " + jobs);
+        hired(p, r.hired());
         plugin.quests().check(c);
     }
 
@@ -195,6 +196,11 @@ public final class BlueprintManager implements Listener {
             case MINE -> "heading <white>" + b.facing.name().toLowerCase() + "</white>";
             default -> "(level " + b.level + ", " + b.floor + " floor)";
         };
+    }
+
+    /** Tells a player who was put to work at a building they just registered. */
+    static void hired(Player p, List<String> hired) {
+        for (String h : hired) Text.raw(p, "<dark_gray>  <green>+</green> <white>" + Text.esc(h));
     }
 
     String jobs(Colony c, Building b) {

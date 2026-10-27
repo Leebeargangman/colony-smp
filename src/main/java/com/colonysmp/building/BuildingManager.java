@@ -39,13 +39,14 @@ import java.util.Set;
  */
 public final class BuildingManager {
 
-    public record Result(Building building, String error) {
-        static Result ok(Building b) {
-            return new Result(b, null);
+    /** A registration: the building (or why not), and who was hired to work there straight away. */
+    public record Result(Building building, String error, List<String> hired) {
+        static Result ok(Building b, List<String> hired) {
+            return new Result(b, null, hired);
         }
 
         static Result fail(String e) {
-            return new Result(null, e);
+            return new Result(null, e, List.of());
         }
     }
 
@@ -397,6 +398,7 @@ public final class BuildingManager {
         if (req != null) return Result.fail(req);
         String place = placement(c, type, s, b);
         if (place != null) return Result.fail(place);
+        boolean fresh = b == null;
         if (b == null) {
             if (!c.territory.contains(s.anchor)) return Result.fail("It must be inside your colony's land.");
             b = new Building(c.newBuildingId(), type);
@@ -410,7 +412,9 @@ public final class BuildingManager {
         b.checkedDay = plugin.sim().day(c);
         b.stock.setCapacity(b.type.stockSlots(b.level), 0);
         changed(c);
-        return Result.ok(b);
+        List<String> hired = fresh ? plugin.sim().jobs().fill(c, b) : List.of();
+        if (!hired.isEmpty()) c.log(ColonyEvent.Type.POPULATION, plugin.sim().day(c), "Hired for " + b.label() + ": " + String.join(", ", hired) + ".");
+        return Result.ok(b, hired);
     }
 
     // ───────────── detecting (the Building Marker) ─────────────

@@ -177,6 +177,7 @@ public final class BuildingMarker implements Listener {
             Text.send(p, "<green>Detected " + Text.a(type.display) + "! Registered <white>" + b.label() + "</white> " + plugin.blueprints().summary(b) + ".");
             String jobs = plugin.blueprints().jobs(c, b);
             if (!jobs.isEmpty()) Text.raw(p, "<dark_gray>  Workers: " + jobs);
+            BlueprintManager.hired(p, r.hired());
             Text.raw(p, "<dark_gray>  You can break the marker now: the building stays registered.");
         } else {
             Text.send(p, "<green><white>" + b.label() + "</white> passes its inspection " + plugin.blueprints().summary(b) + ".");

@@ -101,6 +101,7 @@ public final class CitizenMenu extends Menu {
                 button(i++, j.icon, (j == ct.job ? "<gold>" : "<white>") + j.display, lore, k -> {
                     String err = plugin.sim().jobs().assign(c, ct, j, null);
                     if (err != null) Text.send(viewer, "<red>" + err);
+                    else ct.chosenJob = j != Job.UNEMPLOYED;
                     new CitizenMenu(plugin, viewer, c, ct).open();
                 });
             }

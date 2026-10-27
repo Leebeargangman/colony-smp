@@ -128,6 +128,8 @@ public final class Policies {
     public boolean quarantine;
     public boolean rationing;
     public boolean births = true;
+    /** Fill new workplaces and openings with the best-suited idle citizens, and move hidden talents to their trade. */
+    public boolean autoJobs = true;
 
     public void save(ConfigurationSection s) {
         s.set("economy", economy.name());
@@ -147,6 +149,7 @@ public final class Policies {
         s.set("quarantine", quarantine);
         s.set("rationing", rationing);
         s.set("births", births);
+        s.set("auto-jobs", autoJobs);
     }
 
     public void load(ConfigurationSection s) {
@@ -168,6 +171,7 @@ public final class Policies {
         quarantine = s.getBoolean("quarantine");
         rationing = s.getBoolean("rationing");
         births = s.getBoolean("births", true);
+        autoJobs = s.getBoolean("auto-jobs", true);
     }
 
     public static <E extends Enum<E>> E parse(Class<E> type, String s, E fallback) {
