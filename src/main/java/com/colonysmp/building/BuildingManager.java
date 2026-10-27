@@ -440,8 +440,9 @@ public final class BuildingManager {
         } else if ((s = room(at)).error == null) {
             shape = BuildingType.Shape.ROOM;
         } else {
+            // every yard needs a gate: walls and a door around the marker are a room that isn't closed, not a pen
             Scan pen = pen(at);
-            if (pen.error == null) {
+            if (pen.error == null && !pen.doors.isEmpty()) {
                 s = pen;
                 shape = BuildingType.Shape.PEN;
             } else if (elevated(at)) {
@@ -515,10 +516,11 @@ public final class BuildingManager {
         return n;
     }
 
-    /** Is this spot high above the ground around it, like the top of a tower? */
+    /** Is this spot high above the ground around it and open to the sky, like the top of a tower (not an upper floor)? */
     private static boolean elevated(Block at) {
         Block top = at.getRelative(BlockFace.DOWN);
         if (top.getType().isAir() || top.isLiquid()) return false;
+        for (int dy = 1; dy <= 6; dy++) if (!at.getRelative(0, dy, 0).isPassable()) return false;
         int open = 0;
         for (int dx = -2; dx <= 2; dx += 2) {
             for (int dz = -2; dz <= 2; dz += 2) {
