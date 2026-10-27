@@ -40,9 +40,10 @@ public final class PenScanner {
 
     private PenScanner() {}
 
-    /** A fence, wall or anything solid and too high to step over. */
+    /** A fence, wall or anything solid and too high to step over (not a banner: a Building Marker stands inside). */
     private static boolean barrier(Block b) {
         Material m = b.getType();
+        if (Tag.BANNERS.isTagged(m)) return false;
         return Tag.FENCES.isTagged(m) || Tag.WALLS.isTagged(m) || Tag.FENCE_GATES.isTagged(m) || m == Material.IRON_BARS
                 || m.name().endsWith("GLASS_PANE") || (m.isSolid() && !Tag.SLABS.isTagged(m) && !Tag.WOOL_CARPETS.isTagged(m));
     }
@@ -52,7 +53,7 @@ public final class PenScanner {
         for (int dy = 1; dy >= -1; dy--) {
             Block feet = w.getBlockAt(x, y + dy, z);
             Block below = feet.getRelative(BlockFace.DOWN);
-            if (!barrier(feet) && feet.getType() != Material.WATER && (below.getType().isSolid() || below.getType() == Material.WATER)) {
+            if (!barrier(feet) && feet.getType() != Material.WATER && (below.getType().isSolid() && !Tag.BANNERS.isTagged(below.getType()) || below.getType() == Material.WATER)) {
                 if (barrier(below) && (Tag.FENCES.isTagged(below.getType()) || Tag.WALLS.isTagged(below.getType()))) continue;
                 return y + dy;
             }
@@ -62,7 +63,7 @@ public final class PenScanner {
 
     public static Pen scan(Block start) {
         World w = start.getWorld();
-        Block feet = start.getType().isSolid() ? start.getRelative(BlockFace.UP) : start;
+        Block feet = start.getType().isSolid() && !Tag.BANNERS.isTagged(start.getType()) ? start.getRelative(BlockFace.UP) : start;
         Integer y0 = ground(w, feet.getX(), feet.getY(), feet.getZ());
         if (y0 == null) return fail("Click the ground inside the fenced area.");
         Set<Long> seen = new HashSet<>();

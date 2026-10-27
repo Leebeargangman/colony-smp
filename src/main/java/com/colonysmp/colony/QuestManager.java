@@ -56,8 +56,8 @@ public final class QuestManager implements Listener {
     public String task(int stage) {
         return switch (stage) {
             case 1 -> "Place the Town Hall Core where your colony should stand.";
-            case 2 -> "Build an enclosed room with a door and 2 beds, then Shift + Right-Click inside it with the Blueprint Book (set to House).";
-            case 3 -> "Register a Farm (farmland, Blueprint Book set to Farm) and have a Farmer working it.";
+            case 2 -> "Build an enclosed room with a door and 2 beds, then place the Building Marker inside it (/colony marker) to register it as a House.";
+            case 3 -> "Register a Farm (place the Building Marker on its farmland) and have a Farmer working it.";
             case 4 -> "Have " + FOOD_GOAL + " food in colony storage (bread, carrots, potatoes, cooked meat...).";
             default -> "All first steps are done.";
         };

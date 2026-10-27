@@ -90,9 +90,19 @@ minimum first, and merchants sell above the maximum.
 
 ## Buildings
 
-Build a building by hand, then hold the **Blueprint Book**, choose the type (right-click to turn pages,
-or `/colony book <type>`) and **Shift + Right-Click** inside it to register it (or
-`/colony building register <type>`). It's inspected straight away and every day after that. A building
+Build a building by hand, then place the **Building Marker** (a light blue banner, `/colony marker`)
+inside it. The marker works out what the building is from what's inside - a bed makes a House, a lectern a
+School, an anvil and a furnace a Blacksmith - and registers it. Place it on farmland for a Farm, inside the
+fence for a pen or yard, or on top of a tower for a Watchtower. If the building could be more than one type
+(a furnace suits a Kitchen and a Bakery), a menu asks which; if it's nothing yet, it says what the closest
+type is missing. Right-click the marker to inspect again, **Shift + Right-Click** it to choose another type,
+and break it once the building is registered: the building stays and the marker drops for the next one.
+Craft more from any banner, paper and a gold nugget (makes 2).
+
+You can also register by hand: hold the **Blueprint Book**, choose the type (right-click to turn pages,
+or `/colony book <type>`) and **Shift + Right-Click** inside it (or `/colony building register <type>`).
+
+A building is inspected straight away and every day after that. A building
 that fails inspection stops working and tells you why (`/colony validate`). If it keeps failing for 2 days
 it is unregistered.
 
@@ -301,6 +311,7 @@ is down, because the world doesn't move either. Long gaps are caught up to `max-
 |---|---|
 | Town Hall Core | `/colony create`, or `/colony core` if lost |
 | Blueprint Book | book + gold nugget + paper (shapeless), or `/colony book` |
+| Building Marker (2) | any banner + paper + gold nugget (shapeless), or `/colony marker` |
 | Copy Wand | stick + gold nugget side by side, or `/colony wand` |
 | Rope (×2) | 3 string in a column |
 | Command Baton | stick + gold ingot + red dye (shapeless), or `/colony baton` |
@@ -312,7 +323,7 @@ is down, because the world doesn't move either. Long gaps are caught up to `max-
 
 | Topic | Commands |
 |---|---|
-| Colony | `create <name>` · `info [colony]` · `list` · `map` · `claim` · `unclaim` · `menu` · `core` · `book [type]` · `wand` · `baton` · `banner` · `disband` · `quests` · `events [type] [page]` · `stats` |
+| Colony | `create <name>` · `info [colony]` · `list` · `map` · `claim` · `unclaim` · `menu` · `core` · `book [type]` · `marker` · `wand` · `baton` · `banner` · `disband` · `quests` · `events [type] [page]` · `stats` |
 | Members | `invite <player>` · `join <colony>` · `leave` · `kick <player>` · `members` · `promote\|demote <player> [role]` · `rename <name>` · `settings` |
 | Citizens | `citizens` · `citizen <name>` · `jobs` · `assign <citizen> <job> [building]` · `home <citizen> [house]` · `needs [citizen]` · `settler` · `traveller recruit\|dismiss` · `exile <citizen>` · `release <citizen>` |
 | Buildings | `buildings` · `building <id>` · `building register <type>` · `building crop\|herd\|recipe\|name\|remove ...` · `validate [id\|all]` · `upgrade <id>` · `construction [order <type> \| pause\|resume\|cancel\|first <id>]` |

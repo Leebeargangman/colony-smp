@@ -413,6 +413,125 @@ public final class BuildingManager {
         return Result.ok(b);
     }
 
+    // ───────────── detecting (the Building Marker) ─────────────
+
+    /**
+     * What stands around a Building Marker: the building it's already part of, or the types it could be
+     * registered as (best match first), or why it's none of them.
+     */
+    public record Detection(Building existing, List<BuildingType> matches, boolean sure, String error) {
+        static Detection fail(String e) {
+            return new Detection(null, List.of(), false, e);
+        }
+    }
+
+    /**
+     * Works out what kind of building a block stands in: a room, a farm, a fenced yard or the top of a tower.
+     * With {@code retype}, a building already registered there is listed as {@code existing} along with every
+     * other type it could be instead; without, it is the only match.
+     */
+    public Detection detect(Colony c, Block at, boolean retype) {
+        World w = at.getWorld();
+        BuildingType.Shape shape;
+        Scan s;
+        if (soil(at.getRelative(BlockFace.DOWN).getType())) {
+            s = field(at, c);
+            shape = BuildingType.Shape.FIELD;
+        } else if ((s = room(at)).error == null) {
+            shape = BuildingType.Shape.ROOM;
+        } else {
+            // every yard needs a gate: walls and a door around the marker are a room that isn't closed, not a pen
+            Scan pen = pen(at);
+            if (pen.error == null && !pen.doors.isEmpty()) {
+                s = pen;
+                shape = BuildingType.Shape.PEN;
+            } else if (elevated(at)) {
+                s = tower(at.getRelative(BlockFace.DOWN));
+                shape = BuildingType.Shape.TOWER;
+            } else {
+                return Detection.fail("No building found here. " + s.error
+                        + " (A marker also works on a farm's farmland, inside a fenced yard with a gate, or on top of a tower.)");
+            }
+        }
+        if (s.error != null) return Detection.fail(s.error);
+
+        List<BuildingType> pool = new ArrayList<>();
+        for (BuildingType t : BuildingType.values()) if (t.shape == shape && t != BuildingType.TOWN_HALL) pool.add(t);
+        Building b = existing(c, pool.get(0), s);
+        if (b != null && !retype) return new Detection(b, List.of(b.type), true, null);
+        if (b == null && !c.territory.contains(s.anchor)) return Detection.fail("It must be inside your colony's land.");
+
+        List<BuildingType> matches = new ArrayList<>();
+        String placeErr = null;
+        BuildingType closest = null;
+        int closestMissing = Integer.MAX_VALUE;
+        for (BuildingType t : pool) {
+            if (requirements(t, 1, s, w) == null) {
+                String place = placement(c, t, s, b);
+                if (place == null) matches.add(t);
+                else if (placeErr == null) placeErr = place;
+                continue;
+            }
+            int m = missing(t, s);
+            if (m < closestMissing) {
+                closestMissing = m;
+                closest = t;
+            }
+        }
+        if (matches.isEmpty()) {
+            if (placeErr != null) return Detection.fail(placeErr);
+            return Detection.fail(closest == null ? "This doesn't meet any building's requirements."
+                    : "Not a working building yet. Closest: " + closest.display + " - " + requirements(closest, 1, s, w));
+        }
+        final Scan scan = s;
+        matches.sort((x, y) -> score(y, scan) - score(x, scan));
+        boolean sure = matches.size() == 1 || score(matches.get(0), s) > score(matches.get(1), s);
+        return new Detection(b, matches, sure, null);
+    }
+
+    /** How well a building type explains what's in a scan: the specific blocks it found that the type uses. */
+    private static int score(BuildingType t, Scan s) {
+        Set<Feature> uses = new HashSet<>();
+        for (int lv = 1; lv <= t.maxLevel; lv++) uses.addAll(t.level(lv).features().keySet());
+        int score = 0;
+        for (Feature f : uses) {
+            if (s.features.getOrDefault(f, 0) <= 0) continue;
+            score += switch (f) {
+                case DOOR -> 0;
+                case CONTAINER, ARMOR_HOLDER -> 1;
+                case BARREL, COOKER, SEAT, HAY -> 2;
+                case BED -> 3;
+                default -> 4;
+            };
+        }
+        return score;
+    }
+
+    /** Roughly how much a scan lacks for a type's first level. */
+    private static int missing(BuildingType t, Scan s) {
+        BuildingType.Level req = t.level(1);
+        int n = 0;
+        for (Map.Entry<Feature, Integer> e : req.features().entrySet()) n += Math.max(0, e.getValue() - s.features.getOrDefault(e.getKey(), 0));
+        if (s.floor < req.floor()) n++;
+        return n;
+    }
+
+    /** Is this spot high above the ground around it and open to the sky, like the top of a tower (not an upper floor)? */
+    private static boolean elevated(Block at) {
+        Block top = at.getRelative(BlockFace.DOWN);
+        if (top.getType().isAir() || top.isLiquid()) return false;
+        for (int dy = 1; dy <= 6; dy++) if (!at.getRelative(0, dy, 0).isPassable()) return false;
+        int open = 0;
+        for (int dx = -2; dx <= 2; dx += 2) {
+            for (int dz = -2; dz <= 2; dz += 2) {
+                if (dx == 0 && dz == 0) continue;
+                Block side = top.getRelative(dx, -2, dz);
+                if (side.isPassable() && !side.isLiquid()) open++;
+            }
+        }
+        return open >= 6;
+    }
+
     private Building existingMine(Colony c, Block at) {
         BlockPos p = BlockPos.of(at);
         for (Building b : c.buildings(BuildingType.MINE)) if (b.anchor != null && b.anchor.distSq(p) < 9) return b;

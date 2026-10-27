@@ -47,10 +47,10 @@ public final class RoomScanner {
 
     private RoomScanner() {}
 
-    /** Can air flow through this block? Doors, panes, fences and beds count as walls. */
+    /** Can air flow through this block? Doors, panes, fences and beds count as walls; banners don't (a Building Marker stands inside). */
     public static boolean open(Block b) {
         Material m = b.getType();
-        if (m.isAir()) return true;
+        if (m.isAir() || Tag.BANNERS.isTagged(m)) return true;
         if (Tag.DOORS.isTagged(m) || Tag.TRAPDOORS.isTagged(m) || Tag.FENCE_GATES.isTagged(m) || Tag.FENCES.isTagged(m)
                 || Tag.WALLS.isTagged(m) || Tag.BEDS.isTagged(m) || m == Material.IRON_BARS || m.name().endsWith("GLASS_PANE")) {
             return false;
@@ -129,7 +129,7 @@ public final class RoomScanner {
         for (BlockPos p : seen) {
             if (p.y() != minY && seen.contains(p.add(0, -1, 0))) continue;
             Block below = p.add(0, -1, 0).block(w);
-            if (!open(below) || below.getType().isSolid()) floor++;
+            if (!open(below)) floor++;
         }
         return new Room(null, seen, new BlockPos(minX, minY, minZ), new BlockPos(maxX, maxY, maxZ), floor, beds, doors, iron, features, found);
     }
