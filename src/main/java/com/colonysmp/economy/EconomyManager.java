@@ -200,8 +200,9 @@ public final class EconomyManager {
         if (by != null && !plugin.access().can(by, c, Perm.TRADE)) return "You may not trade for " + Text.esc(c.name) + ".";
         if (tradingPost(c) == null) return "You need a Trading Post with a merchant at work to trade on the market.";
         if (!Goods.known(good)) return "Unknown good.";
-        qty = Math.min(qty, c.storage.available(good));
-        if (qty <= 0) return "Storage has no " + Goods.get(good).name() + " to sell.";
+        if (c.storage.available(good) <= 0) return "Storage has no " + Goods.get(good).name() + " to sell.";
+        qty = Math.min(qty, plugin.sim().finances().spare(c, good));
+        if (qty <= 0) return "That food is the colony's reserve (" + c.policies.foodReserveDays + " days, see the policies).";
         int skill = merchantSkill(c);
         long price = market.quoteSale(good, qty, skill);
         if (price <= 0) return "Nobody will pay for that.";
@@ -248,13 +249,11 @@ public final class EconomyManager {
         long earned = 0, spent = 0;
         List<String> sold = new ArrayList<>(), bought = new ArrayList<>();
         if (c.policies.autoSell) {
-            double foodDays = plugin.sim().finances().foodDays(c);
             for (Map.Entry<String, Long> e : new ArrayList<>(c.storage.contents().entrySet())) {
                 if (budget <= 0) break;
                 String k = e.getKey();
                 if (Goods.get(k).custom() && !k.equals(Goods.FLOUR)) continue;
-                if (plugin.sim().citizens().edible(k) && foodDays <= c.policies.foodReserveDays + 1) continue;
-                long surplus = c.storage.available(k) - prod.max(c, k);
+                long surplus = Math.min(plugin.sim().finances().spare(c, k), c.storage.available(k) - prod.max(c, k));
                 if (surplus <= 0) continue;
                 long n = Math.min(surplus, budget);
                 long before = c.treasury.balance();
@@ -305,7 +304,7 @@ public final class EconomyManager {
 
     /** Goods a colony's market will sell to players: what it has beyond its own needs. */
     public long forSale(Colony c, String good) {
-        return Math.max(0, c.storage.available(good) - plugin.sim().production().max(c, good) / 2);
+        return Math.max(0, Math.min(plugin.sim().finances().spare(c, good), c.storage.available(good) - plugin.sim().production().max(c, good) / 2));
     }
 
     public String shopBuy(Player p, Colony c, String good, int qty) {

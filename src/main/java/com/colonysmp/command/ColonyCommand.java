@@ -1,6 +1,7 @@
 package com.colonysmp.command;
 
 import com.colonysmp.ColonySMP;
+import com.colonysmp.building.Blueprint;
 import com.colonysmp.colony.QuestManager;
 import com.colonysmp.core.Category;
 import com.colonysmp.core.Goods;
@@ -514,7 +515,7 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
             if (a[3].equalsIgnoreCase("on") || a[3].equalsIgnoreCase("true")) set.add(perm);
             else set.remove(perm);
             c.perms.put(r, set);
-            Text.send(p, r.display + "s " + (set.contains(perm) ? "<green>may" : "<red>may not") + "</green> " + perm.description.toLowerCase() + ".");
+            Text.send(p, r.display + "s " + (set.contains(perm) ? "<green>may</green>" : "<red>may not</red>") + " " + perm.description.toLowerCase() + ".");
             plugin.requestSave();
             return;
         }
@@ -532,7 +533,7 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
             case "wand" -> give(p, plugin.items().wand());
             case "rope" -> {
                 if (!plugin.isBypassing(p)) {
-                    Text.send(p, "Rope is crafted: string, lead, string (see /colony help prisoners).");
+                    Text.send(p, "Rope is crafted from 3 string in a column (makes 2; see /colony help prisoners).");
                     return;
                 }
                 give(p, plugin.items().rope());
@@ -872,6 +873,17 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
 
     private void construction(Player p, Colony c, String[] a) {
         if (need(p, c)) return;
+        if (a.length >= 1 && a[0].equalsIgnoreCase("order")) {
+            // the Blueprint Book's Shift + Left-Click as a command: build at the ground you look at
+            BuildingType t = a.length > 1 ? BuildingType.parse(String.join("_", Arrays.copyOfRange(a, 1, a.length))) : plugin.blueprints().type(p);
+            if (t == null) {
+                Text.send(p, "<red>Usage: /colony construction order <type> (look at the ground where it should stand).");
+                return;
+            }
+            plugin.blueprints().select(p, t);
+            plugin.blueprints().order(p);
+            return;
+        }
         if (a.length >= 2) {
             if (!plugin.access().check(p, c, Perm.MANAGE_BUILDINGS)) return;
             BuildOrder o = null;
@@ -897,9 +909,10 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
             plugin.requestSave();
             return;
         }
-        Text.raw(p, "<aqua><bold>Construction in " + Text.esc(c.name) + "</bold> <gray>(/colony construction pause|resume|cancel|first <id>)");
+        Text.raw(p, "<aqua><bold>Construction in " + Text.esc(c.name) + "</bold> <gray>(/colony construction order <type> · pause|resume|cancel|first <id>)");
         for (String l : info.construction(c)) Text.raw(p, " " + l);
-        if (c.buildQueue.isEmpty()) Text.raw(p, " <gray>No orders. Order a building with the Blueprint Book (choose a plan, then Shift + Right-Click the ground).");
+        if (c.buildQueue.isEmpty()) Text.raw(p, " <gray>No orders. Order a building with the Blueprint Book (choose a plan, look at the ground, Shift + Left-Click),"
+                + " or with /colony construction order <type>.");
     }
 
     // ───────────── storage and economy ─────────────
@@ -940,10 +953,15 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
                 return;
             }
             long qty = a.length > 2 ? Math.max(1, number(a[2], 1)) : Goods.stack(g);
-            long before = c.treasury.balance();
-            String err = a[0].equalsIgnoreCase("sell") ? plugin.economy().sell(p, c, g, qty, false) : plugin.economy().buy(p, c, g, qty, false);
+            long before = c.treasury.balance(), had = c.storage.get(g);
+            boolean sell = a[0].equalsIgnoreCase("sell");
+            String err = sell ? plugin.economy().sell(p, c, g, qty, false) : plugin.economy().buy(p, c, g, qty, false);
             if (err != null) Text.send(p, "<red>" + err);
-            else Text.send(p, (a[0].equalsIgnoreCase("sell") ? "Sold" : "Bought") + " " + Goods.get(g).name() + ": treasury " + Text.signed(c.treasury.balance() - before) + " <gray>" + plugin.settings().currency + ".");
+            else {
+                long moved = Math.abs(c.storage.get(g) - had);
+                Text.send(p, (sell ? "Sold " : "Bought ") + moved + " " + Goods.get(g).name() + ": treasury " + Text.signed(c.treasury.balance() - before) + " <gray>" + plugin.settings().currency + "."
+                        + (moved < qty ? " <yellow>(" + (sell ? "the rest is kept back" : "storage had room for no more") + ")" : ""));
+            }
             return;
         }
         if (a.length == 0) {
@@ -1431,7 +1449,8 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
                     "Right-click a citizen for their menu. Children study; adults work; an Administrator fills empty jobs.");
             case "buildings" -> List.of("buildings · building <id> · building register <type> · building crop|herd|recipe|name|remove ... · validate [id|all] · upgrade <id> · construction",
                     "Build rooms and fields by hand, then Shift + Right-Click inside with the Blueprint Book to register them,",
-                    "or pick a plan in the book and Shift + Right-Click the ground to order your builders to build it.",
+                    "or pick a plan in the book, look at the ground and Shift + Left-Click to order your builders to build it",
+                    "(or /colony construction order <type>, facing the way you look).",
                     "Right-click with the book to turn its pages, or jump to a plan with /colony book <type>.");
             case "economy" -> List.of("resources [category] · storage [target <good> <min> [max]] · economy · production · policies",
                     "trade [sell|buy <good> <qty>] (needs a staffed Trading Post) · deposit|withdraw <amount> · shop [colony]");
@@ -1439,7 +1458,7 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
                     "mobilize · baton (Command Baton: right-click a block to rally, shift-right-click for the next order, left-click an enemy to focus)");
             case "diplomacy" -> List.of("diplomacy [list|offers|accept|decline|ally|treaty|cancel|gift|trade|contract|calltoarms]",
                     "declarewar <colony> [raid|siege] · peace <colony> [truce days] · surrender");
-            case "prisoners" -> List.of("Downed enemies can be bound with Rope (string, lead, string) and led into a Prison.",
+            case "prisoners" -> List.of("Downed enemies can be bound with Rope (3 string in a column) and led into a Prison.",
                     "prison · prison release <name> · prison ransom <name> [price] · prison exchange <ours> <theirs>");
             case "admin" -> List.of("admin reload|save|bypass|give|delete|tp|inspect|citizen|building|reservations|production|sim|perf|db|stuck|events",
                     "admin simulate <colony> <hours> · setstock <colony> <good> <qty> · treasury <colony> set|add <n> · addcitizen <colony> [job] · endwar · shield · traveller · repair");
@@ -1508,7 +1527,8 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
                 if (c != null && args.length == 2) for (Building b : c.buildings.values()) options.add(String.valueOf(b.id));
             }
             case "construction" -> {
-                if (args.length == 2) options = List.of("pause", "resume", "cancel", "first");
+                if (args.length == 2) options = List.of("order", "pause", "resume", "cancel", "first");
+                if (args.length == 3 && args[1].equalsIgnoreCase("order")) for (BuildingType t : BuildingType.values()) if (Blueprint.of(t) != null) options.add(t.name().toLowerCase(Locale.ROOT));
             }
             case "diplomacy" -> {
                 if (args.length == 2) options = List.of("list", "offers", "accept", "decline", "ally", "treaty", "cancel", "gift", "trade", "contract", "calltoarms");

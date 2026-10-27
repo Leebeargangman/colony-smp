@@ -155,8 +155,8 @@ public final class Finances {
         }
     }
 
-    /** Days of food in storage for the current population. */
-    public double foodDays(Colony c) {
+    /** Food points the whole colony eats in a day. */
+    public double foodPerDay(Colony c) {
         double perDay = 0;
         Settings s = plugin.settings();
         for (Citizen ct : c.citizens.values()) {
@@ -164,10 +164,33 @@ public final class Finances {
             if (plugin.sim().citizens().stage(ct) == LifeStage.CHILD) need *= 0.6;
             perDay += need;
         }
-        if (perDay <= 0) return 0;
+        return perDay;
+    }
+
+    private double foodPoints(Colony c) {
         double pts = plugin.sim().citizens().foodPoints(c.storage);
         for (Building b : c.buildings.values()) if (b.type == BuildingType.RESTAURANT) pts += plugin.sim().citizens().foodPoints(b.stock);
-        return pts / perDay;
+        return pts;
+    }
+
+    /** Days of food in storage for the current population. */
+    public double foodDays(Colony c) {
+        double perDay = foodPerDay(c);
+        return perDay <= 0 ? 0 : foodPoints(c) / perDay;
+    }
+
+    /**
+     * How much of a good may leave the colony (sold, traded, given): food is held back so what's left covers the
+     * food reserve policy.
+     */
+    public long spare(Colony c, String good) {
+        long have = c.storage.available(good);
+        if (!plugin.sim().citizens().edible(good)) return have;
+        double per = Goods.get(good).nutrition();
+        double reserve = foodPerDay(c) * c.policies.foodReserveDays;
+        double others = foodPoints(c) - per * c.storage.get(good);
+        long keep = (long) Math.ceil(Math.max(0, reserve - others) / per);
+        return Math.max(0, have - keep);
     }
 
     /** Value of everything in storage at base prices (for the economy view). */

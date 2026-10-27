@@ -185,7 +185,7 @@ public final class DiplomacyManager {
         // what's offered is held back now, so it's there if they accept
         if (!p.give.isEmpty()) {
             for (Map.Entry<String, Long> e : p.give.entrySet()) {
-                if (from.storage.available(e.getKey()) < e.getValue()) return "Your storage doesn't have " + e.getValue() + " " + Goods.get(e.getKey()).name() + " to offer.";
+                if (plugin.sim().finances().spare(from, e.getKey()) < e.getValue()) return cantSpare(from, e.getKey(), e.getValue(), "to offer");
             }
             Reservation res = from.storage.reserve("trade:" + p.id, p.give, System.currentTimeMillis());
             if (res == null) return "Those goods couldn't be set aside.";
@@ -259,7 +259,7 @@ public final class DiplomacyManager {
         Relation r = relation(from, to);
         // what's asked of the accepting side
         for (Map.Entry<String, Long> e : p.want.entrySet()) {
-            if (to.storage.available(e.getKey()) < e.getValue()) return "Your storage doesn't have " + e.getValue() + " " + Goods.get(e.getKey()).name() + ".";
+            if (plugin.sim().finances().spare(to, e.getKey()) < e.getValue()) return cantSpare(to, e.getKey(), e.getValue(), "to give");
         }
         if (p.type != Proposal.Type.CONTRACT && p.money < 0 && !to.treasury.canAfford(-p.money)) return "Your treasury can't cover " + Text.money(-p.money, plugin.settings().currency) + ".";
         if (p.type != Proposal.Type.CONTRACT && p.money > 0 && !from.treasury.canAfford(p.money)) return Text.esc(from.name) + " can no longer pay.";
@@ -367,12 +367,20 @@ public final class DiplomacyManager {
     }
 
     /** A gift of goods or money improves relations. */
+    /** Why a colony can't part with some goods: it hasn't got them, or they're its food reserve. */
+    private String cantSpare(Colony c, String good, long qty, String what) {
+        String name = Goods.get(good).name();
+        if (c.storage.available(good) < qty) return "Your storage doesn't have " + qty + " " + name + " " + what + ".";
+        return "Only " + plugin.sim().finances().spare(c, good) + " " + name + " can go: the rest is the colony's food reserve ("
+                + c.policies.foodReserveDays + " days, see the policies).";
+    }
+
     public String gift(Player by, Colony from, Colony to, String good, long qty, long money) {
         if (by != null && !plugin.access().can(by, from, Perm.TRADE)) return "You may not do that for " + Text.esc(from.name) + ".";
         long now = System.currentTimeMillis();
         double value = 0;
         if (good != null && qty > 0) {
-            if (from.storage.available(good) < qty) return "Your storage doesn't have that many.";
+            if (plugin.sim().finances().spare(from, good) < qty) return cantSpare(from, good, qty, "to give");
             from.storage.take(good, qty);
             ship(from, to, Map.of(good, qty), "Gift from " + from.name);
             value += Goods.get(good).value() * qty;

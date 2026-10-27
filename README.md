@@ -1,260 +1,354 @@
 # ColonySMP
 
-Communist colonies for Paper servers. Players claim land, raise a Town Hall and run a commune of villager
-citizens who farm, log, mine, fish, herd, cook, smith, heal, teach, build and guard, all for one shared
-**Central State Chest**. Feed them at sunset or they strike; keep them rested, housed and happy or they
-leave. Send their children to school. Copy any building with the wand and have the Builders build it
-again. Take prisoners and re-educate them, or put them to forced labour (and keep them guarded). Declare
-war with a War Banner and besiege your neighbours.
+Colony simulation for Paper servers. Players found a settlement, claim land around its Town Hall, and run
+a population of villager citizens who live, work, eat, sleep, learn, fall ill, get married, grow old,
+trade, and go to war. Buildings are built by hand (or by your builders from a plan) and only count once
+they pass inspection. Every good in the colony is real: harvested, made, carried and stored by its people.
+Nothing appears from nothing.
+
+Colonies keep going when nobody is around. Citizens near players walk around as villagers. The rest of
+the colony runs as a background simulation at the same pace, so a colony on the far side of the map
+still farms, cooks, pays wages and grows.
 
 No client mods or resource pack needed.
 
+New to it? Read [TUTORIAL.txt](TUTORIAL.txt) for a walk-through of a player's first hour.
+
 ## Requirements
 
-- **Paper 1.21.4 or newer** (built against the 1.21.4 API, the same target as TrenchWar). The plugin uses
-  APIs that changed in 1.20.5 and 1.21.3 (item components, attribute and registry changes), so a single
-  jar can't also cover 1.20.x.
-- Java 21.
-- Nothing else. The database is SQLite, which Paper already ships.
+- **Paper 1.21.4 or newer** and Java 21.
+- Optional: **Vault** with an economy plugin. With Vault, players pay into treasuries and shop at colony
+  markets with server money. Without it they use emeralds (`economy.deposit-item`).
+- The database is SQLite, which Paper already ships.
 
 ## Install
 
-1. Put `ColonySMP-1.1.0.jar` in `plugins/`.
+1. Put `ColonySMP-2.0.0.jar` in `plugins/`.
 2. Start the server. `plugins/ColonySMP/config.yml` and `plugins/ColonySMP/colonies.db` are created.
-3. Optional: tweak the config, then `/colony admin reload`.
+3. Optional: change the config, then run `/colony admin reload`.
 
-Build it yourself with `./gradlew build` (or `gradle build`); the jar lands in `build/libs/`.
+Build it yourself with `./gradlew build`. The jar lands in `build/libs/`.
 
-## Quick start (for players)
+### Upgrading from 1.x
 
-1. **Craft the Colony Selection Wand**: a stick and a gold nugget side by side (stick left, nugget right).
-2. **Mark your land**: Left-click a block for Position 1 (green particles), Right-click a block for
-   Position 2 (white particles). Claims are 16x16 up to 128x128 and can't overlap another colony.
-   Holding the wand shows your selection (green = valid, red = not) and nearby claims (orange).
-3. **Shift + Right-click** to open **Establish Colony**, confirm, and type a name in chat.
-   You get a **Town Hall Core** and a **Colony Blueprint Book**, plus a **72-hour Peace Shield**.
-4. **Place the Town Hall Core** inside your claim. A **Central State Chest** is built beside it and your
-   first two comrades arrive: a Farmer and a Builder. The starter quests appear on a boss bar:
-   1. *Found the State*: place the core.
-   2. *Worker Shelter*: build an enclosed 5x5 room (walls included) with a door and 2 beds, then
-      Shift + Right-click inside it with the Blueprint Book.
-   3. *Feed the Commune*: put 32 food items in the State Chest.
+The 2.0 database is imported automatically on first start. A backup of the old file goes to
+`plugins/ColonySMP/backups/` first. Communes become colonies (founder → owner, commissars →
+co-owners, comrades → residents), rectangular claims become the chunks they covered, and the State Chest
+becomes colony storage. Citizens keep their names, traits, jobs, schooling and gear. Wars in progress are
+not carried over. The old tables stay in the database (`v1_*`) as a record. The 1.x config isn't read:
+2.0 writes a new `config.yml`.
 
-   Finishing all three sends starter tools and seeds to the State Chest.
-5. Register a **farm** (Blueprint Book, Farm blueprint, Shift + Right-click the farmland) and keep seeds,
-   tools and food in the State Chest. The commune does the rest.
+## The colony
 
-## How it works
+### Founding and land
+`/colony create <name>` gives you a **Town Hall Core** (a lodestone). Place it to found the colony:
 
-### The Central State Chest
-The chest beside the core opens the colony's shared storage (3 pages of 45 slots by default). Everything
-workers harvest, chop, mine, fish and shear goes straight in. Nothing comes out by magic: whatever a
-citizen uses (tools, seeds, building materials, torches, fuel, raw food to cook, ore to smelt, books,
-feed for the animals, weapons, a prisoner's meal, their own supper) they **walk to the chest and carry
-in their satchel** (4 stacks) to where it's used, and they bring leftovers back. The storage works even
-when the chunk isn't loaded, hoppers can feed it, and only members can open it (`/colony storage` works
-anywhere inside your claim).
+- The chunks around it (3×3 by default) become yours, and a storage chest appears beside it.
+- Your first settlers arrive, with provisions to last until the first harvest.
+- You get a 72-hour peace shield.
 
-### The Blueprint Book
-- **Hold it** to see a glowing outline of the selected blueprint where you're looking. Green means it
-  fits, red means it doesn't. Your registered buildings show in blue and build orders in orange.
-- **Right-click**: next blueprint (Starter House, Farm, Guard Tower, Prison Cell, School, Mine Entrance,
-  then your colony's copied buildings).
-- **Shift + Right-click a block**: register an existing building there:
-  - *House*: an enclosed room with a wooden door and at least one bed (3x3 floor or bigger). Every bed
-    is a home for one citizen.
-  - *Prison Cell*: an enclosed room with an iron door and a bed (one prisoner per bed).
-  - *School*: an enclosed room with a wooden door and a lectern (bookshelves inside make lessons better).
-  - *Farm*: at least 9 connected farmland (or soul sand) tiles.
-  - *Guard Tower*: the top of a tower at least 5 blocks tall. Guards keep watch there.
-  - *Mine Entrance*: natural ground. The mine runs the way you're facing.
-- **Shift + Left-click**: order the Builders to construct the blueprint there. They carry materials
-  from the State Chest in batches and tell you what's missing. Finished buildings register themselves.
+Claim more chunks next to your land with `/colony claim`. Each claim costs more than the last, and the
+settlement level sets the limit. Colonies must keep a gap of free chunks between them. `/colony map` shows
+the land around you.
 
-Buildings are re-checked every night; broken ones are unregistered with a message. Farmland inside a
-claim is never trampled back to dirt, and fields that do end up as dirt or grass are re-tilled by the
-Farmers.
+Inside the territory, outsiders can't build, open containers or use doors unless your roles allow it.
+Explosions, fire spread and farmland trampling are blocked, and players can't fight each other unless
+their colonies are at war.
 
-### Copying buildings with the wand
-Members of a colony use the **Colony Wand** to copy structures:
-1. **Left-click** one corner and **Right-click** the opposite corner of what you want, top and bottom
-   (a 3D box, up to 48 blocks on each side). The box is outlined in green while you hold the wand.
-2. Stand on the side you want to be the **front**, **Shift + Right-click** and choose **Copy as
-   Blueprint**, then type a name.
-3. The copy is selected in your **Blueprint Book**: look where it should go (face another way to turn
-   it) and **Shift + Left-click** to order it. The order lists every material needed.
-
-The Builders clear the space, lay the full blocks, then everything that sits on them (doors, beds,
-torches, stairs, glass, carpets...), then water and lava (buckets). Dirt stands in for grass, cobblestone
-for stone; plants and leaves are skipped if the chest has none. Beds, lecterns and farmland in a finished
-copy are registered as houses, schools and farms automatically. `/colony blueprints` lists, selects and
-deletes copies (10 per colony by default).
-
-### Citizens
-Citizens are villagers whose looks follow their job. Right-click one to see their stats (trait, health,
-how well they ate, efficiency, tool, bed) and to change their job:
-
-| Job | What they do |
+### Roles
+| Role | May, by default |
 |---|---|
-| Farmer | Harvests ripe crops on registered farms and replants from the chest's seeds (wheat, carrots, potatoes, beetroot, nether wart, melons, pumpkins). Needs a hoe for full speed. |
-| Builder | Builds ordered blueprints block by block; cuts wood when there are no orders. |
-| Lumberjack | Fells natural trees in and around the claim, replants saplings and collects what the leaves drop. Needs an axe. |
-| Miner | Digs a staircase from a Mine Entrance down to `mines.target-y`, then a branch mine; digs out ore veins, seals lava and water, places torches from the chest. Needs a pickaxe. |
-| Guard | Patrols guard towers, fights monsters, invaders and rebels, escorts captives to cells and watches forced labourers. Draws the best weapons, armour, bows and arrows from the chest when danger comes. |
-| Warden | Visits each prisoner daily (see Prisoners), carrying a meal from the chest. With no prisoners, gives speeches that raise stability. |
-| Fisher | Fishes from the shore of any water in the claim (cod, salmon, now and then junk or treasure). Needs a fishing rod. |
-| Herder | Shears sheep, gathers eggs, breeds each kind of animal up to the herd size with feed from the chest, and slaughters the surplus for meat, leather and wool. Needs shears for sheep. |
-| Cook | Carries raw meat, fish and potatoes (and fuel) to a smoker, furnace or campfire in the colony, cooks them and brings the meals back. Bakes bread from wheat when there's nothing raw. |
-| Smith (education 25) | Smelts raw ore at a furnace or blast furnace, repairs worn tools and armour at an anvil, and makes spare tools for the workers and iron armour for the guards. |
-| Doctor (education 40) | Runs to downed citizens and gets them back up, and treats the injured. |
-| Teacher (education 30) | Teaches at a School (see Education). |
-| Student | Studies at a School all day to raise their education. |
+| Owner | Everything, including disbanding and handing the colony over (`/colony promote <player> owner`). |
+| Co-owner | Everything except editing role permissions and disbanding. |
+| Manager | Build, use doors and containers, use storage, manage buildings, jobs and citizens, trade, command the military. |
+| Resident | Build, use doors and containers, put goods into storage. |
+| Ally | Use doors and gates (members of allied colonies). |
+| Visitor | Nothing but walking around. |
+| Enemy | A member of a colony at war with yours. |
 
-**Daily routine.** Citizens work by day. In the evening they walk to the State Chest for supper, then
-gather at the Town Hall, and they sleep in their own bed at night. Non-combatants flee from monsters.
+`/colony settings` lists who may do what, and `/colony settings perm <role> <permission> on|off` changes
+the Manager, Resident, Ally and Visitor roles. The permissions are build, interact, containers,
+storage_deposit, storage_withdraw, manage_buildings, manage_jobs, manage_citizens, policies, treasury,
+trade, military, diplomacy, members, roles, territory and settings.
 
-**Walking.** Citizens walk everywhere: through doors and gates, up ladders to the tops of guard towers,
-in and out of prison cells (the warden opens the iron door). Only a citizen who has been stuck with no
-way through for a long while is moved, and only when nobody is watching.
+### The Town Hall
+Right-click the core (or `/colony menu`) for the **Town Hall menu**: citizens, jobs, buildings,
+storage, economy, policies, military, diplomacy, construction, history, statistics, members,
+recruitment, and the Town Hall upgrade. The Town Hall level is the **settlement level** (1 to 5). No
+building can be a higher level than the Town Hall.
 
-**Tools.** When a tool breaks, the worker walks to the State Chest, takes the best replacement and goes
-back to work. With no tool left they work bare-handed and slowly (miners can't dig without a pickaxe).
+### Storage
+Colony storage is counted in slots, like chests: each slot holds one stack of one good. The Town Hall
+gives 27 slots per level, every chest or barrel in a **Warehouse** adds 27 more, and a **Granary** holds
+food and crops at 1.5× the slots. The armoury holds tools, weapons and armour as items.
 
-**Traits.** Each citizen has a trait such as Hardworking, Green Thumb, Frugal, Glutton or Brave.
+The chest beside the Town Hall opens storage: click goods in your own inventory to put them in, click
+storage to take them out. Goods are reserved while they're in use: a builder fetching 20 planks or a
+trade offer holding 64 bread takes them out of what is available, so two jobs never count on the same
+stack. `/colony storage target <good> <min> [max]` sets stock targets. Workshops make goods below the
+minimum first, and merchants sell above the maximum.
 
-### Needs and happiness
-Right-click a citizen to see their bars:
-- **Rest** drops while they're awake and refills in bed. Below 30 they're tired and slow; exhausted
-  citizens stop for a nap. The homeless only doze, so they never get fully rested.
-- **Health** mends slowly when they're fed, faster in bed, and fast with a Doctor around.
-- **Happiness** follows everything else: food, rest, a home, health, the colony's stability, a job that
-  suits their trait (and their schooling), a school for the children, strikes and mobilization. Happy
-  citizens work faster (up to +20%) and lift stability each night; miserable ones slow down, and a
-  citizen who stays miserable for 3 nights may **leave the colony**.
+## Buildings
 
-### Education and schools
-Build a **School** (or order the School blueprint), register it, and make someone a **Teacher**. Every
-30 seconds the teacher gives a lesson to the **children** and **Students** in the room (10 per school).
-Children learn twice as fast. A **book** in the State Chest (the teacher carries one over each day) and
-**bookshelves** in the room make lessons better. Education (0-100) makes citizens work up to 30% faster,
-and skilled jobs need it: Smith 25, Teacher 30, Doctor 40. New colonists arrive with some schooling;
-children start with none. `/colony school` shows the schools and the colony's average education.
+Build a building by hand, then hold the **Blueprint Book**, choose the type (right-click to turn pages,
+or `/colony book <type>`) and **Shift + Right-Click** inside it to register it (or
+`/colony building register <type>`). It's inspected straight away and every day after that. A building
+that fails inspection stops working and tells you why (`/colony validate`). If it keeps failing for 2 days
+it is unregistered.
 
-### Rations, stability and strikes
-- **At sunset** every citizen gets an equal meal from the State Chest (6 hunger points by default).
-  Children eat half and forced labourers eat half. Three wheat count as a loaf.
-- **Full rations** raise stability; short rations lower it, and hunger lowers it a lot. Homeless
-  citizens and forced labour cost a little; idle Wardens' speeches add a little.
-- **Efficiency** (work speed) depends on stability and on how well the citizen ate.
-- **Strikes.** Stability below 35% for **3 days in a row** starts a **general strike**: workers protest
-  at the Town Hall until stability is back to 50%.
-- **Children.** With free beds and at least **3 days of food** in the chest, a **child** is born (one a
-  day). Children grow into adult workers after **3 days** and pick a useful job.
+Six types have **standard plans** your builders can build for you: House, Farm, Warehouse, School, Prison
+and Watchtower. Choose one in the book, look at the ground and **Shift + Left-Click**, or use
+`/colony construction order <type>`. The builders carry every block from storage. The **Copy Wand** copies
+any building you've made into a plan of your own, which the builders can then build again.
 
-The colony lives while its Town Hall is loaded. Nobody has to be online, but someone must be nearby.
+Upgrade with `/colony upgrade <id>` once the building has what the next level needs (and the Town Hall is
+high enough). Upgrades cost money and goods.
 
-### Prisoners and forced labour
-- **Going down.** People (citizens, villagers, wandering traders, illagers and witches) who would die in
-  combat have a **20% chance** to go **down** for 60 seconds instead. Travelers always surrender.
-- **Binding.** Right-click a downed person with **Rope** (3 string in a column) to bind them; they follow
-  you on a lead. Walk them into a **Prison Cell**, or **Shift + Right-click** them to hand them to your
-  Guards, who escort them to a free cell. Their weapons and armour go to your State Chest. You can help
-  your own downed comrades up by right-clicking them.
-- **Indoctrination** (default): a Warden visits every day, brings a meal from the chest and wears down
-  the prisoner's **Resistance** (0-100). At 0 they join as an **Equal Citizen**. Unvisited prisoners
-  harden; prisoners left without food for 5 days starve.
-- **Forced Labour**: sentence a prisoner from their menu with **Iron Shackles** (iron ingot, chain,
-  iron ingot) in your inventory or the chest. They mine or log by day (half rations) and are locked up
-  at night. **A Guard must stay within 20 blocks of every working labourer.** If one is left unguarded
-  (30 s grace), or stability drops below 40%, the labourers rise up: they **break their shackles, steal
-  weapons from the State Chest and fight back**. Down them and rebind them, or they escape after 5 minutes.
-- Set the policy per prisoner, set a default for new prisoners in the Town Hall menu, or use
-  `/colony policy`.
+| Building | Shape | Needs (level 1) | Workers |
+|---|---|---|---|
+| Town Hall | core block | | Administrator, Treasurer, the first Builder |
+| House | room | 9 floor, bed, door | |
+| Inn | room | 16 floor, 2 beds, door, barrel | Innkeeper |
+| Warehouse | room | 9 floor, door, 2 chests/barrels | Warehouse Worker |
+| Granary | room | 9 floor, door, 2 chests/barrels | Food Distributor |
+| Farm | farmland | 9 farmland (small/medium/large: 1/2/4 farmers) | Farmer |
+| Animal Pen | fenced area with a gate | 9 floor | Animal Keeper |
+| Stables | fenced area with a gate | 16 floor, hay bale | Animal Keeper (level 2) |
+| Fishery | room by 20+ water | 4 floor, door, barrel | Fisher |
+| Forestry Hut | room | 4 floor, door, chest/barrel | Forester |
+| Mine | entrance in natural ground | | Miner |
+| Mill | room | 9 floor, door, grindstone | Miller |
+| Bakery | room | 9 floor, door, furnace/smoker/campfire | Baker |
+| Butcher Shop | room | 9 floor, door, smoker | Butcher |
+| Kitchen | room | 9 floor, door, furnace/smoker/campfire | Cook |
+| Restaurant | room | 12 floor, door, 2 stairs (seats), barrel | Restaurant Worker |
+| Blacksmith | room | 9 floor, door, anvil, furnace | Blacksmith |
+| Carpentry | room | 9 floor, door, crafting table | Carpenter |
+| Masonry | room | 9 floor, door, stonecutter, furnace | Mason |
+| Workshop | room | 9 floor, door, fletching table | Craftsworker |
+| Market | room | 12 floor, door, 2 barrels | Shopkeeper |
+| Trading Post | room | 9 floor, door, cartography table, chest/barrel | Merchant |
+| School | room | 9 floor, door, lectern (bookshelves at level 2) | Teacher |
+| Clinic | room | 9 floor, door, bed, brewing stand | Doctor |
+| Builder's Hut | room | 9 floor, door, crafting table | Builder |
+| Barracks | room | 12 floor, door, 2 beds | (soldiers sleep here) |
+| Training Ground | fenced area | 25 floor, 2 hay bales | |
+| Archery Range | fenced area | 25 floor, 3 target blocks | |
+| Armoury | room | 9 floor, door, 2 chests/barrels/smithing tables | |
+| Watchtower | tower 5+ blocks tall | | Guard |
+| Prison | room | 4 floor, iron door, bed | Warden |
+| Engineering Workshop | room | 9 floor, door, smithing table, crafting table | Engineer |
 
-### Wandering travelers
-A traveler sometimes walks up to your Town Hall (more often with a good reputation). Members get a
-clickable **[Recruit] / [Turn Away]**, or can right-click them. Recruiting needs a free bed and a day of
-food. You can also knock them down and capture them, but that costs your colony **reputation** with
-travelers (−5 for attacking, −15 for capturing or killing). Below 15 reputation they stop coming.
+Higher levels need more floor and more of the same things. The book's hover text and
+`/colony building <id>` show exactly what the next level needs.
 
-### War
-1. **Declare**: with a **War Banner** (red banner + iron sword + gold ingot) in your inventory, right-click
-   the banner in the air (or `/colony declare <colony>`). Colonies with a Peace Shield can't be targeted,
-   and declaring ends your own shield. Both colonies get a boss bar and a **20-minute warm-up**.
-2. **War Camp**: during the warm-up, place the War Banner **outside every claim, 8-64 blocks from the
-   enemy's border**. No camp by the time the siege begins means the war is forfeit. Attackers respawn at
-   the camp during the siege.
-3. **Siege** (up to 45 minutes): attackers can break and place blocks in the enemy claim (but never open
-   their chests). Defending **Guards draw the best gear from the State Chest** and fight; use the **State
-   Mobilization Order** (`/colony mobilize` or the Town Hall) to arm every worker as militia for 10 minutes.
-   - **Attackers win** by destroying the **Town Hall Core**, or by **cutting citizens off from the State
-     Chest** (block every path to it, or block its lid) until stability hits **0%**: every 30 seconds
-     with no access costs 5 stability.
-   - **Defenders win** by holding out, or by **breaking the War Camp** banner.
-4. **Spoils**: the winner takes **50% of the loser's raw resources** (ores, ingots, logs, crops, food:
-   plain stackable goods, never tools, armour or named items). The loser gets a 24-hour Peace Shield.
-   Blocks changed during the siege are put back two minutes after it ends.
+## Citizens
+
+Every citizen has a name, age, life stage (child, adult, elder), trait, skills, education, needs, mood,
+job, workplace, home and bed, family, money, and a history. Right-click one (or use `/colony citizen`) to
+see it all.
+
+**Needs:** hunger, energy, health, social, housing, safety and employment. Hungry citizens fetch a meal
+from storage or a restaurant. Tired ones go to bed, the exhausted nap wherever they are, and the starving
+lose health. Mood follows the needs, plus food variety, wages and taxes, the work they do, illness,
+crowding, grief and the colony's policies. Unhappy citizens work slower, and very unhappy ones riot or
+leave.
+
+**A day:** work hours (set by policy), leisure, and sleep from dusk. When there's danger, civilians
+shelter, flee, or fight (the emergency policy decides which). A citizen's brain checks its priorities in
+order: danger, starving, injured, exhausted, then the time of day.
+
+**Families:** adults who get on become partners and, with a home, enough food and a good mood, have
+children. Children grow up in 5 days (by default), go to school if there is one, and get a job when they
+come of age. Elders retire from heavy work, and everyone dies of old age in the end.
+
+**Skills and education:** citizens get better at what they do (and at what they've done before).
+Education comes from schools and books. Some jobs need some education: an Administrator needs 35, a
+Doctor 40.
+
+**Health:** injuries heal faster in a bed or a staffed clinic. Illnesses come from hunger, crowding and
+bad food, spread through shared homes and workplaces, and are cured by doctors with medicine. Quarantine
+slows an outbreak but keeps the ill off work.
+
+**Jobs** (30 of them): Farmer, Animal Keeper, Miller, Forester, Fisher, Butcher, Cook, Baker, Restaurant
+Worker, Food Distributor, Miner, Blacksmith, Carpenter, Mason, Craftsworker, Engineer, Builder, Merchant,
+Shopkeeper, Warehouse Worker, Administrator, Treasurer, Teacher, Doctor, Innkeeper, Warden, Guard,
+Soldier, Student, Unemployed. Assign them with `/colony assign <citizen> <job> [building]`, the citizen
+menu, or let an **Administrator** fill empty places with the unemployed every day.
+
+**New citizens:** recruit settlers from the Town Hall (`/colony settler`), take in **travellers** who stop
+by (`/colony traveller recruit`), have children, or win prisoners over. Every newcomer needs a free bed
+and a day's food.
+
+## Production and food
+
+Farms grow wheat, carrots, potatoes or beetroots (`/colony building crop <id> <crop|auto>`). Animal pens
+raise the animals inside them for eggs, wool, milk and meat. Fisheries fish, foresters fell and replant,
+miners dig a staircase down and branch out for ore. Workshops turn inputs into outputs by **recipe**:
+flour, bread, cooked meat, meals, planks, tools, weapons, armour, glass, bricks, arrows, books, medicine,
+siege charges. `/colony building recipe <id> <recipe> on|off` turns a recipe off.
+
+Workers carry what they need from storage and bring what they make back. Warehouse workers and food
+distributors do the hauling for everyone else once the colony has them. Crops only grow in the world
+where vanilla grows them (near a player). A colony far from players runs its farms, pens, fisheries and
+workshops in the background from the same inputs. Jobs that need the world (forestry, mining,
+construction) wait until someone is near.
+
+`/colony production` shows what was made and what's waiting, and `/colony resources` shows the stores.
+
+## Economy
+
+Each colony has a **treasury** with a full ledger (`/colony economy`). Under the default **wages**
+economy, workers are paid daily (tax is withheld) and spend their money at the market and on meals, so it
+flows back. A **communal** economy pays no wages and everyone eats from the stores. Buildings and soldiers
+cost **upkeep**. If wages or upkeep go unpaid, workers lose heart and then strike, and buildings fall into
+disrepair.
+
+- **Trading Post** (with a merchant at work): sell surplus and buy shortages on the server market
+  (`/colony trade`). Prices move with supply and demand and recover over time. Auto-sell and auto-buy
+  follow your stock targets. Food is never sold or traded below the **food reserve** policy.
+- **Market** (with a shopkeeper): citizens spend wages here, and any player can buy from or sell to the
+  colony (`/colony shop [colony]`).
+- **Players** deposit and withdraw money with `/colony deposit|withdraw <amount>` (withdrawing needs the
+  treasury permission).
+- **Other colonies**: trade offers, gifts and recurring supply contracts carried by caravans (see
+  Diplomacy).
+
+## Policies
+
+`/colony policies` (or the Town Hall): economy model, wage level, tax rate, working hours, recruitment,
+population limit, births, military service, defence posture, emergency response, production priority,
+food reserve, rationing, quarantine, auto-sell, auto-buy, and who may trade with you. Every policy says
+what it costs and what it does to mood.
+
+## Order
+
+Stability is the colony's mood over time. It falls with hunger, homelessness, unemployment, unpaid wages,
+illness, crime, high taxes, war, defeat and harsh policies, and rises with full bellies, good homes,
+guards and a working economy. Low stability brings theft (fewer thefts where guards watch), disputes,
+protests, strikes and riots, and very unhappy citizens leave. Criminals go to prison if there is a staffed
+one, or are fined.
+
+## Military
+
+**Guards** watch towers and walls and keep order. **Soldiers** are recruited by class
+(`/colony recruit <citizen> <class>`). There are 28 classes: militia, swordsmen, shieldmen, spearmen,
+pikemen, axemen, berserkers, macemen, duelists, bodyguards, archers, longbowmen, crossbowmen, javelinmen,
+slingers, light and heavy cavalry, lancers, horse archers, cavalry raiders, mounted swordsmen, medics,
+standard bearers, commanders, scouts, sappers and siege engineers. Most need a training building and gear
+from the armoury, and cavalry need a war horse broken in at the stables. Soldiers train every day, get
+paid, and need barracks beds (4 can serve without barracks).
+
+Combat follows class strengths and counters. Spears and pikes break charges, shields stop arrows from the
+front, axes split shields, maces go through armour, cavalry crush the flanks, and crossbows pierce.
+Training, morale and formation matter as much as gear. A squad whose morale breaks routs.
+
+**Squads** take orders: defend, hold, follow, patrol, charge, shield wall, spear wall, volley, focus,
+flank, retreat, protect, hold fire. Formations: line, column, wedge, square, loose. Give orders from the
+Military menu, with `/colony orders <squad> <order> [here]`, or with the **Command Baton**: right-click a
+block to rally, Shift + Right-Click for the next order, left-click an enemy to focus it, Shift +
+Left-Click for the next squad. `/colony mobilize` stands everyone to arms for a while, at a cost in
+stability.
+
+## Diplomacy
+
+Colonies are neutral, friendly, allied, hostile, at war, or in a truce. Their relation score moves with
+gifts, trade, treaties, broken promises and wars. From the Diplomacy menu or `/colony diplomacy`:
+
+- **Alliance**: allies defend each other and use each other's doors.
+- **Treaties**: non-aggression pact, trade agreement, defensive pact, open borders.
+- **Trade offers**: goods and money each way. What you offer is set aside until they answer.
+- **Supply contracts**: a delivery every day for an agreed price.
+- **Gifts**, a **call to arms** for allies, and **peace** with a truce.
+
+Offers wait 30 minutes. Accept with the [Accept] link or `/colony diplomacy accept <colony>`.
+
+## War
+
+`/colony declarewar <colony> raid|siege` (costs money, needs a defender online by default, and ends your own
+peace shield). After a warm-up:
+
+- **Raid**: a short attack. Raiders standing at the defenders' storage loot it, and both sides score
+  for kills and loot. Whoever has the higher score when time runs out wins.
+- **Siege**: the attackers raise a **War Camp** (place the War Banner near the defenders' land). They
+  win by destroying the defending Town Hall or by cutting the defenders off from their stores until order
+  collapses. The defenders win by holding out or by tearing down the camp.
+
+A lost siege costs the losers a share of their goods and money as spoils. The loser of any war gets a
+peace shield, and blocks broken during the war are put back afterwards.
+Downed fighters can be taken prisoner. `/colony peace <colony>` offers a truce, and `/colony surrender`
+gives up.
+
+## Prisoners
+
+In a fight, citizens and travellers may go **down** instead of dying. A downed enemy can be bound with
+**Rope** and led to one of your **Prisons**, or left for your wardens. Wardens feed prisoners and talk to
+them every day. Each prisoner has a resistance that wears down until they agree to join the colony.
+Prisoners from another colony can be ransomed or exchanged (`/colony prison ransom|exchange`), or
+released.
+
+## Background simulation
+
+Every colony advances on its world's clock. A colony with players around has bodies for its citizens
+(up to `max-bodies-per-colony`, nearest the players first). Everyone else, and every colony out of
+sight, is simulated in steps: needs, meals and sleep, work and production, hauling, wages, illness,
+births and deaths, crime. It's all within a small time budget per tick. Nothing happens while the server
+is down, because the world doesn't move either. Long gaps are caught up to `max-catch-up-hours`.
 
 ## Items and recipes
 
-| Item | Recipe |
+| Item | How to get it |
 |---|---|
-| Colony Selection Wand | stick + gold nugget, side by side |
-| Rope (x2) | 3 string in a column |
-| Iron Shackles | iron ingot, chain, iron ingot (in a row) |
-| War Banner | red banner + iron sword + gold ingot (shapeless) |
-| Colony Blueprint Book | book + gold nugget + paper (shapeless), or `/colony book` |
-| Town Hall Core | given when a colony is founded (`/colony core` if lost) |
+| Town Hall Core | `/colony create`, or `/colony core` if lost |
+| Blueprint Book | book + gold nugget + paper (shapeless), or `/colony book` |
+| Copy Wand | stick + gold nugget side by side, or `/colony wand` |
+| Rope (×2) | 3 string in a column |
+| Command Baton | stick + gold ingot + red dye (shapeless), or `/colony baton` |
+| War Banner | red banner + iron sword + gold ingot (shapeless), or `/colony banner` |
 
 ## Commands
 
-| Command | |
-|---|---|
-| `/colony info [colony]` | Colony overview |
-| `/colony quests [hide\|show]` | Starter quests |
-| `/colony mobilize [stop]` | State Mobilization Order |
-| `/colony declare <colony>` | Declare war (War Banner needed) |
-| `/colony war`, `/colony surrender` | War status / give up |
-| `/colony citizens`, `prison`, `buildings` | Management menus |
-| `/colony blueprints [list\|info\|select\|delete <name>]` | Buildings copied with the wand |
-| `/colony school` | Schools and education |
-| `/colony storage [page]` | Open the State Chest (inside your claim) |
-| `/colony invite <player>`, `join <colony>`, `leave`, `kick`, `promote`, `demote` | Members (Chairman, Commissars, Comrades) |
-| `/colony rename <name>`, `policy <indoctrinate\|enslave>` | Settings |
-| `/colony traveler <recruit\|dismiss>` | Answer a visiting traveler |
-| `/colony book`, `core`, `spoils`, `relocate`, `abandon` | Items and the Town Hall |
-| `/colony list` | Every colony |
-| `/colony admin reload\|save\|bypass\|give <item> [player] [n]` | Admin |
-| `/colony admin delete\|stability\|shield\|traveler\|endwar\|tp\|ration\|food <colony> [value]` | Admin |
-| `/colony admin stock <colony> <item> [n]`, `who <colony>`, `addcitizen <colony> [job\|CHILD]`, `job <colony> <name> <job>` | Admin (testing and support) |
+`/colony` (aliases `/col`, `/colonies`). `/colony help <topic>` lists them in game.
 
-Aliases: `/col`, `/commune`. Right-clicking the Town Hall Core opens the **Town Hall** menu with
-everything in one place.
+| Topic | Commands |
+|---|---|
+| Colony | `create <name>` · `info [colony]` · `list` · `map` · `claim` · `unclaim` · `menu` · `core` · `book [type]` · `wand` · `baton` · `banner` · `disband` · `quests` · `events [type] [page]` · `stats` |
+| Members | `invite <player>` · `join <colony>` · `leave` · `kick <player>` · `members` · `promote\|demote <player> [role]` · `rename <name>` · `settings` |
+| Citizens | `citizens` · `citizen <name>` · `jobs` · `assign <citizen> <job> [building]` · `home <citizen> [house]` · `needs [citizen]` · `settler` · `traveller recruit\|dismiss` · `exile <citizen>` · `release <citizen>` |
+| Buildings | `buildings` · `building <id>` · `building register <type>` · `building crop\|herd\|recipe\|name\|remove ...` · `validate [id\|all]` · `upgrade <id>` · `construction [order <type> \| pause\|resume\|cancel\|first <id>]` |
+| Economy | `resources` · `storage [target <good> <min> [max] \| clear <good>]` · `economy` · `trade [sell\|buy <good> <qty>]` · `production` · `deposit\|withdraw <amount>` · `shop [colony]` · `policies [set <policy> <value>]` |
+| Military | `military` · `recruit <citizen> <class>` · `army` · `orders <squad> <order> [here]` · `squad create\|delete\|rename\|add\|remove\|formation\|patrol\|select ...` · `mobilize` |
+| Diplomacy | `diplomacy [list\|offers\|accept\|decline\|ally\|treaty\|cancel\|gift\|trade\|contract\|calltoarms]` · `declarewar <colony> raid\|siege` · `peace <colony>` · `surrender` |
+| Prisoners | `prison` · `prison release <name>` · `prison ransom <name> [price]` · `prison exchange <ours> <theirs>` |
+
+Citizen names can have spaces: `/colony assign Rhea Pike farmer` works.
+
+**Admin** (`colonysmp.admin`): `/colony admin reload | save | bypass | give <item> [player] | delete <colony>
+| tp <colony> | inspect <colony> | citizen <colony> <name> | building <colony> <id> | reservations <colony>
+| production <colony> | sim | perf | db | stuck <colony> | events <colony> | simulate <colony> <hours> |
+setstock <colony> <good> <qty> | treasury <colony> set|add <n> | addcitizen <colony> [job] | endwar <colony>
+| stability <colony> <n> | shield <colony> <hours> | traveller <colony> | repair <colony> | bodies |
+demo <name> [x z]`. `inspect` lists every citizen with their position, activity and needs. `simulate`
+fast-forwards a colony's background simulation, and `demo` founds a stocked test colony from the console.
 
 **Permissions:** `colonysmp.play` (default: everyone), `colonysmp.admin` (default: op).
 
 ## Configuration
 
-Every number lives in `config.yml`: claim sizes and gap, farmland protection, shield hours, citizen
-speeds and work intervals (including fishing, cooking and smithing), herd size, when a stuck citizen may
-be moved, the daily routine times, rations and stability, needs (rest loss, tiredness, emigration),
-education (lesson strength, school size, starting education), copy limits, strike rules, reproduction,
-downed chance and prisoner rules, traveler odds and reputation, war timings and camp distances, spoils
-share, block restoration, mobilization, State Chest pages, quest rewards, mine depth and size.
-`/colony admin reload` applies changes.
+Every number lives in `config.yml`, with a comment on each: claims and land, protection and shields,
+citizens and bodies (speeds, work intervals, body limits), life stages and births, needs, education, the
+economy and prices, storage, the background simulation budget, health, order, the military, prisoners,
+travellers, war, diplomacy, plans, mines and the starter quest reward. `/colony admin reload` applies
+changes.
 
 ## Persistence
 
-Everything is saved to `plugins/ColonySMP/colonies.db` (SQLite): colonies, claims, Town Hall and chest
-locations, every State Chest item, citizens (jobs, traits, stats, needs, education, satchels, equipment, beds), prisoners (cells,
-resistance, policy), buildings and build orders, copied blueprints, mines' progress, shields, cooldowns and wars in progress
-(their timers pause while the server is down). Saves happen within 30 seconds of a change, every few
-minutes, and on shutdown, as one transaction on a background thread.
+Everything is saved to `plugins/ColonySMP/colonies.db` (SQLite): colonies, members and roles, claims,
+storage and reservations, the armoury, citizens, buildings, build orders, plans, squads, relations,
+offers, contracts, shipments, wars, the market, and every transaction and event. Changes are saved within
+30 seconds, every few minutes, and on shutdown, as one transaction on a background thread. If a save
+fails it is retried. The database is backed up at every start (`general.backups-to-keep`), and its schema
+is versioned so later releases can migrate it.
 
-Citizen bodies aren't saved with the world: the plugin spawns them when a colony's Town Hall loads and
-removes them when it unloads, so they never duplicate.
-
-## Credits
-
-The NPC approach (mob bodies driven by Paper's pathfinder, with their own brains switched off) follows
-TrenchWar's AI soldiers.
+Citizen bodies aren't saved with the world. The plugin spawns them near players and removes them when
+they're no longer needed, so they never duplicate.

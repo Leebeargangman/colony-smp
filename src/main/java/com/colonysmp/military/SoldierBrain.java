@@ -65,6 +65,8 @@ public final class SoldierBrain {
             rout(n, col, q);
             return true;
         }
+        // worn out with no alarm raised: they fall out and rest (the ordinary routine naps or sleeps)
+        if (!alert && n.enemy == null && order != Squad.Order.RETREAT && (n.resting || c.needs.exhausted(plugin.settings().needs))) return false;
         if (c.horse && n.mount == null && k != null && k.mounted()) mm.mount(n, col);
         if (n.enemy == null && mm.wantsGear(col, c, alert) && !n.gearChecked) {
             if (!npcs().brain().guarding.gear(n, col, alert)) return true;
