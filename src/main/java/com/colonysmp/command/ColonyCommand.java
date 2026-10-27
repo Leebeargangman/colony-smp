@@ -56,7 +56,7 @@ import java.util.UUID;
 public final class ColonyCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> SUBS = List.of("help", "create", "info", "list", "map", "claim", "unclaim", "invite", "join", "leave", "kick", "members",
-            "promote", "demote", "rename", "settings", "menu", "core", "book", "wand", "rope", "baton", "banner", "disband", "quests",
+            "promote", "demote", "rename", "settings", "menu", "core", "book", "marker", "wand", "rope", "baton", "banner", "disband", "quests",
             "citizens", "citizen", "jobs", "assign", "home", "needs", "settler", "traveller", "exile", "release",
             "buildings", "building", "validate", "upgrade", "construction",
             "resources", "storage", "economy", "trade", "production", "deposit", "withdraw", "shop", "policies",
@@ -176,7 +176,7 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
                     Text.send(p, "<yellow>Plan:</yellow> <white>" + t.display + "</white>. Shift + right-click inside it to register it.");
                 } else items(p, c, sub);
             }
-            case "wand", "rope", "baton", "banner" -> items(p, c, sub);
+            case "marker", "wand", "rope", "baton", "banner" -> items(p, c, sub);
             case "disband" -> disband(p, c);
             case "quests" -> quests(p, c, a);
             case "citizens" -> {
@@ -352,8 +352,10 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
         Colony c = plugin.colonies().create(p, name);
         give(p, plugin.items().core(c.id, c.name));
         give(p, plugin.items().book());
+        give(p, plugin.items().marker());
         Text.send(p, "<green>The colony of <white>" + Text.esc(c.name) + "</white> is created.</green> Place the <aqua>Town Hall Core</aqua> (in your inventory) where it should stand: "
-                + "the land around it becomes yours and your first settlers arrive. The <white>Blueprint Book</white> registers buildings.");
+                + "the land around it becomes yours and your first settlers arrive. Place the <aqua>Building Marker</aqua> inside a building you've built to register it "
+                + "(it works out what the building is); the <white>Blueprint Book</white> orders new ones.");
         plugin.quests().refresh(c);
     }
 
@@ -530,6 +532,7 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
     private void items(Player p, Colony c, String which) {
         switch (which) {
             case "book" -> give(p, plugin.items().book());
+            case "marker" -> give(p, plugin.items().marker());
             case "wand" -> give(p, plugin.items().wand());
             case "rope" -> {
                 if (!plugin.isBypassing(p)) {
@@ -1448,7 +1451,8 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
                     "settler (recruit from the region) · traveller recruit|dismiss · exile <citizen>",
                     "Right-click a citizen for their menu. Children study; adults work; an Administrator fills empty jobs.");
             case "buildings" -> List.of("buildings · building <id> · building register <type> · building crop|herd|recipe|name|remove ... · validate [id|all] · upgrade <id> · construction",
-                    "Build rooms and fields by hand, then Shift + Right-Click inside with the Blueprint Book to register them,",
+                    "Build rooms and fields by hand, then place a Building Marker inside (/colony marker): it works out what the building is",
+                    "and registers it, and you can break it again afterwards. Or Shift + Right-Click inside with the Blueprint Book,",
                     "or pick a plan in the book, look at the ground and Shift + Left-Click to order your builders to build it",
                     "(or /colony construction order <type>, facing the way you look).",
                     "Right-click with the book to turn its pages, or jump to a plan with /colony book <type>.");

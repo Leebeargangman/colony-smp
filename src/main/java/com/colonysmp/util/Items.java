@@ -2,7 +2,9 @@ package com.colonysmp.util;
 
 import org.bukkit.Bukkit;
 import org.bukkit.DyeColor;
+import org.bukkit.Keyed;
 import org.bukkit.Material;
+import org.bukkit.Tag;
 import org.bukkit.block.banner.Pattern;
 import org.bukkit.block.banner.PatternType;
 import org.bukkit.entity.Player;
@@ -13,6 +15,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.Recipe;
+import org.bukkit.inventory.RecipeChoice;
 import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.inventory.ShapelessRecipe;
 import org.bukkit.inventory.meta.BannerMeta;
@@ -26,7 +29,8 @@ import java.util.UUID;
 /** The plugin's own items, their recipes, and a guard that keeps them (and colony goods) out of vanilla recipes. */
 public final class Items implements Listener {
 
-    public static final String WAND = "wand", CORE = "core", BOOK = "book", ROPE = "rope", BATON = "baton", WAR_BANNER = "war_banner";
+    public static final String WAND = "wand", CORE = "core", BOOK = "book", ROPE = "rope", BATON = "baton", WAR_BANNER = "war_banner",
+            MARKER = "marker";
 
     private final Plugin plugin;
 
@@ -99,6 +103,25 @@ public final class Items implements Listener {
                 "<gold>Shift + Left-Click</gold><gray>: <white>order construction");
     }
 
+    public ItemStack marker() {
+        ItemStack it = make(Material.LIGHT_BLUE_BANNER, MARKER, "<aqua><bold>Building Marker", true, 16,
+                "<gray>Place it inside a building you've built:",
+                "<gray>it works out what the building is (a house,",
+                "<gray>a bakery, a farm...) and registers it.",
+                "",
+                "<white>Place</white> <gray>inside a room, on farmland, in a fenced",
+                "<gray>  yard or on top of a tower",
+                "<white>Right-Click</white> <gray>it: <white>inspect again",
+                "<yellow>Shift + Right-Click</yellow> <gray>it: <white>choose another type",
+                "<white>Break</white> <gray>it once registered: the building stays");
+        if (it.getItemMeta() instanceof BannerMeta bm) {
+            bm.setPatterns(List.of(new Pattern(DyeColor.WHITE, PatternType.HALF_HORIZONTAL_BOTTOM), new Pattern(DyeColor.BLUE, PatternType.TRIANGLE_TOP),
+                    new Pattern(DyeColor.BLUE, PatternType.BORDER)));
+            it.setItemMeta(bm);
+        }
+        return it;
+    }
+
     public ItemStack rope() {
         return make(Material.LEAD, ROPE, "<#c9a26b>Rope", false, 16,
                 "<gray>Right-click a <red>downed</red> enemy to bind them.",
@@ -135,6 +158,7 @@ public final class Items implements Listener {
         return switch (id) {
             case WAND -> wand();
             case BOOK -> book();
+            case MARKER -> marker();
             case ROPE -> rope();
             case BATON -> baton();
             case WAR_BANNER -> warBanner();
@@ -193,6 +217,14 @@ public final class Items implements Listener {
         book.addIngredient(Material.PAPER);
         add(book);
 
+        ItemStack markers = marker();
+        markers.setAmount(2);
+        ShapelessRecipe marker = new ShapelessRecipe(Keys.RECIPE_MARKER, markers);
+        marker.addIngredient(new RecipeChoice.MaterialChoice(Tag.ITEMS_BANNERS));
+        marker.addIngredient(Material.PAPER);
+        marker.addIngredient(Material.GOLD_NUGGET);
+        add(marker);
+
         ShapelessRecipe baton = new ShapelessRecipe(Keys.RECIPE_BATON, baton());
         baton.addIngredient(Material.STICK);
         baton.addIngredient(Material.GOLD_INGOT);
@@ -211,11 +243,11 @@ public final class Items implements Listener {
     }
 
     public void unregisterRecipes() {
-        for (var k : List.of(Keys.RECIPE_WAND, Keys.RECIPE_ROPE, Keys.RECIPE_BANNER, Keys.RECIPE_BOOK, Keys.RECIPE_BATON)) Bukkit.removeRecipe(k);
+        for (var k : List.of(Keys.RECIPE_WAND, Keys.RECIPE_ROPE, Keys.RECIPE_BANNER, Keys.RECIPE_BOOK, Keys.RECIPE_BATON, Keys.RECIPE_MARKER)) Bukkit.removeRecipe(k);
     }
 
     public void discover(Player p) {
-        p.discoverRecipes(List.of(Keys.RECIPE_WAND, Keys.RECIPE_ROPE, Keys.RECIPE_BANNER, Keys.RECIPE_BOOK, Keys.RECIPE_BATON));
+        p.discoverRecipes(List.of(Keys.RECIPE_WAND, Keys.RECIPE_ROPE, Keys.RECIPE_BANNER, Keys.RECIPE_BOOK, Keys.RECIPE_BATON, Keys.RECIPE_MARKER));
     }
 
     @EventHandler
@@ -227,12 +259,12 @@ public final class Items implements Listener {
     @EventHandler
     public void onPrepare(PrepareItemCraftEvent e) {
         Recipe r = e.getRecipe();
-        if (r instanceof ShapedRecipe s && s.getKey().getNamespace().equals(Keys.RECIPE_WAND.getNamespace())) return;
-        if (r instanceof ShapelessRecipe s && s.getKey().getNamespace().equals(Keys.RECIPE_WAND.getNamespace())) return;
+        boolean ours = r instanceof Keyed k && k.getKey().getNamespace().equals(Keys.RECIPE_WAND.getNamespace());
         for (ItemStack it : e.getInventory().getMatrix()) {
             if (it == null || !it.hasItemMeta()) continue;
             var pdc = it.getItemMeta().getPersistentDataContainer();
-            if (pdc.has(Keys.ITEM, PersistentDataType.STRING) || pdc.has(Keys.GOOD, PersistentDataType.STRING)) {
+            // our own recipes take colony goods, but never another plugin item (a War Banner is not "any banner")
+            if (pdc.has(Keys.ITEM, PersistentDataType.STRING) || !ours && pdc.has(Keys.GOOD, PersistentDataType.STRING)) {
                 e.getInventory().setResult(null);
                 return;
             }

@@ -1,6 +1,7 @@
 package com.colonysmp;
 
 import com.colonysmp.building.BlueprintManager;
+import com.colonysmp.building.BuildingMarker;
 import com.colonysmp.building.BuildingManager;
 import com.colonysmp.building.SelectionManager;
 import com.colonysmp.colony.Access;
@@ -58,6 +59,7 @@ public final class ColonySMP extends JavaPlugin {
     private BuildingManager buildings;
     private SelectionManager selection;
     private BlueprintManager blueprints;
+    private BuildingMarker markers;
     private QuestManager quests;
     private NpcManager npcs;
     private SimulationEngine sim;
@@ -98,6 +100,7 @@ public final class ColonySMP extends JavaPlugin {
         travelers = new TravelerManager(this);
         quests = new QuestManager(this);
         blueprints = new BlueprintManager(this);
+        markers = new BuildingMarker(this);
         selection = new SelectionManager(this);
         townHall = new TownHallListener(this);
         prompt = new ChatPrompt(this);
@@ -132,7 +135,7 @@ public final class ColonySMP extends JavaPlugin {
             sim.jobs().refreshWorkplaces(c);
         }
 
-        for (Listener l : new Listener[]{items, selection, blueprints, quests, npcs, prison, travelers, wars, townHall, military,
+        for (Listener l : new Listener[]{items, selection, blueprints, markers, quests, npcs, prison, travelers, wars, townHall, military,
                 new CombatListener(this), new ClaimListener(this), new MenuListener(), prompt}) {
             Bukkit.getPluginManager().registerEvents(l, this);
         }
@@ -291,6 +294,10 @@ public final class ColonySMP extends JavaPlugin {
 
     public BuildingManager buildings() {
         return buildings;
+    }
+
+    public BuildingMarker markers() {
+        return markers;
     }
 
     public SelectionManager selection() {

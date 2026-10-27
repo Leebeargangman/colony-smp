@@ -35,7 +35,8 @@ PART 1 - YOUR FIRST TEN MINUTES
 
 STEP 1 - Found the colony
   Type:   /colony create <name>
-  You get a Town Hall Core (a lodestone) and a Blueprint Book.
+  You get a Town Hall Core (a lodestone), a Building Marker (a light
+  blue banner) and a Blueprint Book.
 
 STEP 2 - Place the Town Hall Core
   Walk to where your town should stand and place the core. Pick flat,
@@ -56,16 +57,19 @@ STEP 3 - A Roof Overhead (house your settlers)
   Build a small closed room: walls, a roof, a wooden door and 2 beds.
   At least 3 x 3 inside is enough. Light it with a torch.
 
-  Stand inside it, hold the Blueprint Book (it starts on House) and
-  SHIFT + RIGHT-CLICK the floor. Or type:
-      /colony building register house
+  Place the Building Marker anywhere inside it. It works out that the
+  room is a house and registers it:
 
-  "Registered House #2 with 2 beds." Two settlers now have a home.
+  "Detected a House! Registered House #2 with 2 beds." Two settlers
+  now have a home. Break the marker again and keep it for the next
+  building: the house stays registered.
+
+  (The Blueprint Book does the same: stand inside, book on House,
+  SHIFT + RIGHT-CLICK the floor, or /colony building register house.)
 
 STEP 4 - Break Ground (a farm)
   Till a patch of farmland, 3 x 3 or bigger, with water nearby.
-  Turn the book to Farm (right-click to turn pages, or
-  /colony book farm), look at the farmland and SHIFT + RIGHT-CLICK.
+  Place the Building Marker on the farmland: it registers a Farm.
   Or look at it and type:
       /colony building register farm
 
@@ -122,10 +126,22 @@ BUILD IT YOURSELF, THEN REGISTER
   1. Build it: a closed room with what the type needs (a door, the
      right workstation, beds...). Fields, pens and yards are fenced or
      made of farmland instead.
-  2. Turn the Blueprint Book to the type: right-click to turn the
-     pages (Shift + right-click to go back), or /colony book <type>.
-  3. Shift + right-click inside it (or /colony building register
-     <type>). If something is missing, it tells you what.
+  2. Place the Building Marker inside it (on the farmland for a farm,
+     inside the fence for a pen or yard, on top for a watchtower). It
+     works out what the building is from what's in it - a bed makes
+     a House, a lectern a School, an anvil and furnace a Blacksmith -
+     and registers it. If the room could be more than one thing (a
+     furnace suits a Kitchen and a Bakery), a menu asks which. If it
+     isn't anything yet, it says what's missing for the closest type.
+       Right-click the marker      inspect it again
+       Shift + right-click it      choose another type
+       Break it                    the building stays registered;
+                                   the marker drops for next time
+     Lost it? /colony marker gives another (or craft one: any
+     banner, paper and a gold nugget makes 2).
+  3. Or do it by hand with the Blueprint Book: turn it to the type
+     (right-click to turn pages, or /colony book <type>) and
+     Shift + right-click inside (or /colony building register <type>).
 
   Examples of what level 1 needs:
     House         bed, wooden door, 9 floor tiles
@@ -473,6 +489,7 @@ PART 16 - CHEAT SHEET
   /colony create <name>          found a colony
   /colony menu                   the Town Hall (or right-click it)
   /colony info | needs | stats   how things are going
+  /colony marker                 a Building Marker
   /colony book <type>            turn the book to a building type
   /colony building register <t>  register the building you're in
   /colony construction order <t> have the builders build a plan
@@ -486,6 +503,7 @@ PART 16 - CHEAT SHEET
   /colony diplomacy              other colonies
   /colony help <topic>           everything else
 
+  Building Marker  place inside a building to register it
   Blueprint Book   right-click: next page; Shift + right-click a
                    block: register; Shift + left-click: order
   Copy Wand        copy a building into a plan

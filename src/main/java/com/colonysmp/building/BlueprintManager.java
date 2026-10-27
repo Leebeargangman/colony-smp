@@ -185,7 +185,7 @@ public final class BlueprintManager implements Listener {
         plugin.quests().check(c);
     }
 
-    private String summary(Building b) {
+    String summary(Building b) {
         return switch (b.type) {
             case HOUSE, BARRACKS, INN -> "with <white>" + b.beds.size() + "</white> bed" + (b.beds.size() == 1 ? "" : "s");
             case PRISON -> "holding <white>" + b.beds.size() + "</white> prisoner" + (b.beds.size() == 1 ? "" : "s");
@@ -197,7 +197,7 @@ public final class BlueprintManager implements Listener {
         };
     }
 
-    private String jobs(Colony c, Building b) {
+    String jobs(Colony c, Building b) {
         List<String> out = new ArrayList<>();
         for (Map.Entry<Job, Integer> e : b.type.jobs(b.level).entrySet()) {
             int n = b.slots(e.getKey());

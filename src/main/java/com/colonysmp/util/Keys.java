@@ -5,7 +5,7 @@ import org.bukkit.plugin.Plugin;
 
 /** PersistentDataContainer keys used to tag ColonySMP items and entities. */
 public final class Keys {
-    /** string: wand | core | book | rope | baton | war_banner */
+    /** string: wand | core | book | rope | baton | war_banner | marker (also on placed Building Marker banners) */
     public static NamespacedKey ITEM;
     /** string: colony id (Town Hall Core item) */
     public static NamespacedKey COLONY;
@@ -24,7 +24,7 @@ public final class Keys {
     /** double: base damage of a shot fired by a citizen (arrows, bolts, javelins, sling stones) */
     public static NamespacedKey SHOT;
 
-    public static NamespacedKey RECIPE_WAND, RECIPE_ROPE, RECIPE_BANNER, RECIPE_BOOK, RECIPE_BATON;
+    public static NamespacedKey RECIPE_WAND, RECIPE_ROPE, RECIPE_BANNER, RECIPE_BOOK, RECIPE_BATON, RECIPE_MARKER;
 
     private Keys() {}
 
@@ -43,5 +43,6 @@ public final class Keys {
         RECIPE_BANNER = new NamespacedKey(plugin, "war_banner");
         RECIPE_BOOK = new NamespacedKey(plugin, "blueprint_book");
         RECIPE_BATON = new NamespacedKey(plugin, "command_baton");
+        RECIPE_MARKER = new NamespacedKey(plugin, "building_marker");
     }
 }
