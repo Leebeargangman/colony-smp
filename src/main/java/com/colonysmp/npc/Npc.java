@@ -47,6 +47,10 @@ public final class Npc {
     public long napUntil;
     public Location idleSpot;
     public long idleUntil;
+    /** The chair they sit on (a tavern evening), the invisible seat they ride, and whether this think kept them there. */
+    public BlockPos seat;
+    public Entity seatEntity;
+    public boolean keepSeat;
 
     // combat
     public LivingEntity enemy;

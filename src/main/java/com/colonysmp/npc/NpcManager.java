@@ -85,6 +85,8 @@ public final class NpcManager implements Listener {
     private int pathBudget;
     /** Players who attacked a colony's people recently: colony id -> player -> until (ms). */
     private final Map<String, Map<UUID, Long>> aggressors = new HashMap<>();
+    /** Chairs taken: colony id -> chair -> citizen. */
+    final Map<String, Map<BlockPos, UUID>> seats = new HashMap<>();
     /** Farm tiles and trees being worked, so two workers don't pick the same one. */
     final Map<String, Set<BlockPos>> claimed = new HashMap<>();
     private final Map<String, CitizenSim.Context> contexts = new HashMap<>();
@@ -652,6 +654,71 @@ public final class NpcManager implements Listener {
         }
         if (n.mount != null && n.mount.isValid()) n.mount.remove();
         n.mount = null;
+        stand(n);
+    }
+
+    // ───────────── chairs ─────────────
+
+    /** Is a chair free (or already this citizen's)? */
+    boolean seatFree(Npc n, BlockPos chair) {
+        UUID who = seats.getOrDefault(n.c.colonyId, Map.of()).get(chair);
+        if (who == null || who.equals(n.c.id)) return true;
+        Npc o = byCitizen.get(who);
+        return o == null || !chair.equals(o.seat);
+    }
+
+    /** Sits a body down on a chair (stairs), facing away from its back. */
+    void sit(Npc n, BlockPos chair) {
+        if (chair.equals(n.seat) && n.seatEntity != null && n.seatEntity.isValid()) return;
+        stand(n);
+        World w = n.body.getWorld();
+        org.bukkit.block.Block b = chair.block(w);
+        float yaw = n.loc().getYaw();
+        if (b.getBlockData() instanceof org.bukkit.block.data.type.Stairs st) yaw = yawOf(st.getFacing().getOppositeFace());
+        Location at = new Location(w, chair.x() + 0.5, chair.y() + 0.3, chair.z() + 0.5, yaw, 0);
+        n.mover.stop();
+        org.bukkit.entity.ArmorStand seat = w.spawn(at, org.bukkit.entity.ArmorStand.class, as -> {
+            as.setMarker(true);
+            as.setInvisible(true);
+            as.setGravity(false);
+            as.setInvulnerable(true);
+            as.setSilent(true);
+            as.setPersistent(false);
+        });
+        n.body.teleport(at);
+        if (!seat.addPassenger(n.body)) {
+            seat.remove();
+            return;
+        }
+        n.body.setRotation(yaw, 0);
+        n.seat = chair;
+        n.seatEntity = seat;
+        seats.computeIfAbsent(n.c.colonyId, k -> new HashMap<>()).put(chair, n.c.id);
+    }
+
+    /** Gets up from a chair, if sitting. */
+    void stand(Npc n) {
+        if (n.seat != null) {
+            Map<BlockPos, UUID> s = seats.get(n.c.colonyId);
+            if (s != null && n.c.id.equals(s.get(n.seat))) s.remove(n.seat);
+        }
+        if (n.seatEntity != null) {
+            n.seatEntity.eject();
+            if (n.seatEntity.isValid()) n.seatEntity.remove();
+            if (n.body.isValid() && n.seat != null) n.body.teleport(n.body.getLocation().add(0, 0.6, 0));
+        }
+        n.seat = null;
+        n.seatEntity = null;
+        if (n.body.isValid()) n.mover.sync();
+    }
+
+    private static float yawOf(org.bukkit.block.BlockFace f) {
+        return switch (f) {
+            case SOUTH -> 0;
+            case WEST -> 90;
+            case NORTH -> 180;
+            default -> -90;
+        };
     }
 
     public void despawn(Npc n) {

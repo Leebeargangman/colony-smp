@@ -36,6 +36,8 @@ public final class Building {
     /** Workstations NPCs stand at (furnaces, anvils, lecterns...). */
     public final List<BlockPos> stations = new ArrayList<>();
     public final List<BlockPos> containers = new ArrayList<>();
+    /** Every seat (stairs) inside, and the ones a player chose as chairs (none chosen: all of them are). */
+    public final List<BlockPos> seats = new ArrayList<>(), chairs = new ArrayList<>();
     public int floor;
     public final Map<Feature, Integer> features = new EnumMap<>(Feature.class);
 
@@ -150,6 +152,8 @@ public final class Building {
         s.set("tiles", strs(tiles));
         s.set("stations", strs(stations));
         s.set("containers", strs(containers));
+        s.set("seats", strs(seats));
+        s.set("chairs", strs(chairs));
         s.set("floor", floor);
         for (Map.Entry<Feature, Integer> e : features.entrySet()) s.set("features." + e.getKey().name(), e.getValue());
         s.set("valid", valid);
@@ -189,6 +193,8 @@ public final class Building {
         parse(s.getStringList("tiles"), b.tiles);
         parse(s.getStringList("stations"), b.stations);
         parse(s.getStringList("containers"), b.containers);
+        parse(s.getStringList("seats"), b.seats);
+        parse(s.getStringList("chairs"), b.chairs);
         b.floor = s.getInt("floor");
         ConfigurationSection f = s.getConfigurationSection("features");
         if (f != null) {

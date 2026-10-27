@@ -20,6 +20,8 @@ public final class Mood {
         public int danger;
         public boolean employed, adult, suitsTrait, dislikesJob, skilledJob, longHours, unpaid;
         public boolean partnerNearby, familyTogether, bereaved;
+        /** Spent last evening at the tavern. */
+        public boolean tavern;
         /** Colony stability 0-100. */
         public double stability = 60;
         public double taxRate;
@@ -63,6 +65,7 @@ public final class Mood {
         put(f, "Company", (in.social - 50) / 50 * 6);
         if (in.partnerNearby) put(f, "Partner", 3);
         if (in.familyTogether) put(f, "Family together", 3);
+        if (in.tavern) put(f, "An evening at the tavern", 4);
         if (in.bereaved) put(f, "Grieving", -10);
         if (in.adult) {
             if (!in.employed) put(f, "No work", -6);

@@ -109,7 +109,7 @@ public final class Citizen {
     /** Work hours done today (wages and the daily report). */
     public transient double hoursToday;
     /** The day of their last meal and the last day they ate at a restaurant. */
-    public transient long lastMealDay = Long.MIN_VALUE, restaurantDay = Long.MIN_VALUE;
+    public transient long lastMealDay = Long.MIN_VALUE, restaurantDay = Long.MIN_VALUE, tavernDay = Long.MIN_VALUE;
     public transient double grief;
 
     public Citizen(UUID id) {

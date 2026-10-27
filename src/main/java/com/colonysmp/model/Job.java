@@ -66,6 +66,8 @@ public enum Job {
             "Treats the injured and the sick at a clinic and makes medicine."),
     INNKEEPER("Innkeeper", Material.CAKE, Skill.TRADING, Background.SERVICE, 3, 0, null, false,
             "Hosts travellers at an inn (income, and more travellers stop by)."),
+    BARKEEP("Barkeep", Material.HONEY_BOTTLE, Skill.TRADING, Background.SERVICE, 3, 0, null, false,
+            "Pours drinks at the tavern, where citizens meet after work."),
     WARDEN("Warden", Material.IRON_BARS, Skill.ADMINISTRATION, Background.SERVICE, 3, 0, null, false,
             "Feeds and talks to prisoners; holds criminals."),
     // defence
@@ -136,7 +138,7 @@ public enum Job {
             case ANIMAL_KEEPER -> Villager.Profession.SHEPHERD;
             case FORESTER, CRAFTSWORKER -> Villager.Profession.FLETCHER;
             case FISHER -> Villager.Profession.FISHERMAN;
-            case BUTCHER, COOK, INNKEEPER -> Villager.Profession.BUTCHER;
+            case BUTCHER, COOK, INNKEEPER, BARKEEP -> Villager.Profession.BUTCHER;
             case RESTAURANT_WORKER, FOOD_DISTRIBUTOR, CARPENTER -> Villager.Profession.LEATHERWORKER;
             case MINER, ENGINEER -> Villager.Profession.TOOLSMITH;
             case BLACKSMITH -> Villager.Profession.ARMORER;

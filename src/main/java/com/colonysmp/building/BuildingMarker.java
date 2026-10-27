@@ -78,6 +78,10 @@ public final class BuildingMarker implements Listener {
     public void onInteract(PlayerInteractEvent e) {
         if (e.getHand() != EquipmentSlot.HAND || e.getAction() != Action.RIGHT_CLICK_BLOCK || e.getClickedBlock() == null) return;
         Block b = e.getClickedBlock();
+        if (Tag.STAIRS.isTagged(b.getType()) && e.getPlayer().isSneaking() && e.getPlayer().getInventory().getItemInMainHand().getType().isAir()) {
+            if (chair(e.getPlayer(), b)) e.setCancelled(true);
+            return;
+        }
         if (!is(b)) return;
         e.setCancelled(true);
         inspect(e.getPlayer(), b, e.getPlayer().isSneaking());
@@ -100,6 +104,40 @@ public final class BuildingMarker implements Listener {
 
     private void drop(Block b) {
         b.getWorld().dropItemNaturally(b.getLocation().add(0.5, 0.5, 0.5), plugin.items().marker());
+    }
+
+    // ───────────── chairs ─────────────
+
+    /**
+     * Shift + Right-Click (empty hand) on stairs inside a tavern, restaurant or inn chooses it as a chair, or
+     * un-chooses it. Citizens only sit on the chosen chairs; with none chosen, they use every seat. False if
+     * these stairs aren't a seat of any building.
+     */
+    private boolean chair(Player p, Block stairs) {
+        Colony c = plugin.colonies().at(stairs);
+        if (c == null) return false;
+        com.colonysmp.util.BlockPos pos = com.colonysmp.util.BlockPos.of(stairs);
+        Building b = null;
+        for (Building x : c.buildings.values()) if (x.seats.contains(pos)) b = x;
+        if (b == null) return false;
+        if (!plugin.access().can(p, c, Perm.MANAGE_BUILDINGS)) {
+            Text.send(p, "<red>You may not choose the chairs of " + Text.esc(b.label()) + ".");
+            return true;
+        }
+        boolean on = !b.chairs.remove(pos);
+        if (on) b.chairs.add(pos);
+        plugin.requestSave();
+        Fx.sound(p, "minecraft:block.wood.place", 0.8f, on ? 1.4f : 0.8f);
+        for (com.colonysmp.util.BlockPos ch : b.chairs) {
+            p.spawnParticle(Particle.HAPPY_VILLAGER, ch.x() + 0.5, ch.y() + 0.8, ch.z() + 0.5, 6, 0.2, 0.2, 0.2, 0);
+        }
+        if (b.chairs.isEmpty()) {
+            Text.send(p, "<yellow>No chairs chosen in <white>" + Text.esc(b.label()) + "</white>: citizens sit on any of its " + b.seats.size() + " seats.");
+        } else {
+            Text.send(p, (on ? "<green>Chair chosen" : "<yellow>Chair removed") + "<gray> - <white>" + b.chairs.size() + "</white> of " + b.seats.size()
+                    + " seats in " + Text.esc(b.label()) + " are chairs. Citizens sit only on chairs.");
+        }
+        return true;
     }
 
     // ───────────── detecting and registering ─────────────

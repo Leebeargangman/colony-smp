@@ -43,6 +43,8 @@ public final class CitizenSim {
         public boolean school, protest, wages;
         public Policies.Hours hours;
         public Building restaurant;
+        /** A tavern standing (citizens meet there after work). */
+        public boolean tavern;
         public double healBonus;
         /** Occupants per home, for crowding. */
         public final Map<Integer, Integer> occupants = new java.util.HashMap<>();
@@ -90,6 +92,8 @@ public final class CitizenSim {
             x.healBonus = 0.4;
         }
         if (staffed(c, BuildingType.INN) != null) x.services++;
+        if (staffed(c, BuildingType.TAVERN) != null) x.services++;
+        x.tavern = !c.valid(BuildingType.TAVERN).isEmpty();
         x.school = staffed(c, BuildingType.SCHOOL) != null;
         for (Citizen ct : c.citizens.values()) if (ct.home != 0) x.occupants.merge(ct.home, 1, Integer::sum);
         return x;
@@ -156,6 +160,11 @@ public final class CitizenSim {
         }
         updateInjury(c);
         double company = leisureH > 0 ? company(col, c) * leisureH / Math.max(hours, 0.01) : 0;
+        // evenings at the tavern: everyone sociable meets there
+        if (leisureH > 0 && ctx.tavern && c.trait.social() > 0 && stage(c) != LifeStage.CHILD) {
+            company = Math.min(1, company + 0.5 * leisureH / Math.max(hours, 0.01));
+            c.tavernDay = ctx.day;
+        }
         c.needs.socialize(hours, company * c.trait.social(), p);
         if (c.trait.social() == 0) c.needs.social = Math.max(c.needs.social, 60);
         c.grief = Math.max(0, c.grief - hours / 24 * 4);
@@ -328,6 +337,7 @@ public final class CitizenSim {
             if (o != null && o.home == c.home && c.home != 0) in.familyTogether = true;
         }
         in.bereaved = c.grief > 0;
+        in.tavern = c.tavernDay >= ctx.day - 1;
         in.stability = ctx.stability;
         in.taxRate = ctx.taxRate;
         in.services = ctx.services + (stage == LifeStage.CHILD && ctx.school ? 1 : 0);

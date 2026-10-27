@@ -137,6 +137,7 @@ high enough). Upgrades cost money and goods.
 | Masonry | room | 9 floor, door, stonecutter, furnace | Mason |
 | Workshop | room | 9 floor, door, fletching table | Craftsworker |
 | Market | room | 12 floor, door, 2 barrels | Shopkeeper |
+| Tavern | room | 16 floor, door, 4 stairs (chairs), barrel | Barkeep |
 | Trading Post | room | 9 floor, door, cartography table, chest/barrel | Merchant |
 | School | room | 9 floor, door, lectern (bookshelves at level 2) | Teacher |
 | Clinic | room | 9 floor, door, bed, brewing stand | Doctor |
@@ -164,7 +165,11 @@ lose health. Mood follows the needs, plus food variety, wages and taxes, the wor
 crowding, grief and the colony's policies. Unhappy citizens work slower, and very unhappy ones riot or
 leave.
 
-**A day:** work hours (set by policy), leisure, and sleep from dusk. When there's danger, civilians
+**A day:** work hours (set by policy), leisure, and sleep from dusk. When work is over, sociable citizens
+meet at the **Tavern**: they walk over, take a free chair and sit together until bedtime (a staffed
+tavern sells them a drink). Chairs are the stairs inside; **Shift + Right-Click** stairs with an empty
+hand to choose which ones are chairs (none chosen: every seat is). A good evening lifts their mood and
+their social need. When there's danger, civilians
 shelter, flee, or fight (the emergency policy decides which). A citizen's brain checks its priorities in
 order: danger, starving, injured, exhausted, then the time of day.
 
@@ -180,11 +185,14 @@ Doctor 40.
 bad food, spread through shared homes and workplaces, and are cured by doctors with medicine. Quarantine
 slows an outbreak but keeps the ill off work.
 
-**Jobs** (30 of them): Farmer, Animal Keeper, Miller, Forester, Fisher, Butcher, Cook, Baker, Restaurant
+**Jobs** (31 of them): Farmer, Animal Keeper, Miller, Forester, Fisher, Butcher, Cook, Baker, Restaurant
 Worker, Food Distributor, Miner, Blacksmith, Carpenter, Mason, Craftsworker, Engineer, Builder, Merchant,
-Shopkeeper, Warehouse Worker, Administrator, Treasurer, Teacher, Doctor, Innkeeper, Warden, Guard,
-Soldier, Student, Unemployed. Assign them with `/colony assign <citizen> <job> [building]`, the citizen
-menu, or let an **Administrator** fill empty places with the unemployed every day.
+Shopkeeper, Warehouse Worker, Administrator, Treasurer, Teacher, Doctor, Innkeeper, Barkeep, Warden,
+Guard, Soldier, Student, Unemployed. With the **Automatic jobs** policy (on by default) you don't have to
+assign anyone: a new building is staffed the moment it's registered by the idle citizens most skilled at
+its work, the unemployed are placed every day, and a worker who turns out to be much better at an open
+job moves to it. Jobs you give by hand (`/colony assign <citizen> <job> [building]` or the citizen menu)
+are never changed.
 
 **New citizens:** recruit settlers from the Town Hall (`/colony settler`), take in **travellers** who stop
 by (`/colony traveller recruit`), have children, or win prisoners over. Every newcomer needs a free bed
@@ -227,7 +235,7 @@ disrepair.
 ## Policies
 
 `/colony policies` (or the Town Hall): economy model, wage level, tax rate, working hours, recruitment,
-population limit, births, military service, defence posture, emergency response, production priority,
+population limit, births, automatic jobs, military service, defence posture, emergency response, production priority,
 food reserve, rationing, quarantine, auto-sell, auto-buy, and who may trade with you. Every policy says
 what it costs and what it does to mood.
 

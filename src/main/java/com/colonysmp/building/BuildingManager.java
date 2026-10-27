@@ -362,6 +362,9 @@ public final class BuildingManager {
         b.tiles.addAll(s.tiles);
         b.stations.clear();
         b.containers.clear();
+        b.seats.clear();
+        b.seats.addAll(s.found.getOrDefault(Feature.SEAT, List.of()));
+        b.chairs.retainAll(b.seats);
         for (Map.Entry<Feature, List<BlockPos>> e : s.found.entrySet()) {
             if (e.getKey() == Feature.CONTAINER || e.getKey() == Feature.BARREL) {
                 for (BlockPos p : e.getValue()) if (!b.containers.contains(p)) b.containers.add(p);

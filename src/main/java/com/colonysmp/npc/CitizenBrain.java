@@ -44,6 +44,7 @@ public final class CitizenBrain {
     public final Doctoring doctoring;
     public final StationWork stations;
     public final Hauling hauling;
+    final Taverns taverns;
 
     CitizenBrain(ColonySMP plugin, NpcManager m) {
         this.plugin = plugin;
@@ -60,6 +61,7 @@ public final class CitizenBrain {
         this.doctoring = new Doctoring(plugin, m);
         this.stations = new StationWork(plugin, m);
         this.hauling = new Hauling(plugin, m);
+        this.taverns = new Taverns(plugin, m);
     }
 
     /** Cached plans that depend on a colony's buildings are dropped. */
@@ -77,9 +79,11 @@ public final class CitizenBrain {
         m.rename(n);
         life.tick(n, col, plugin.sim().gameTime(col));
         n.working = false;
+        n.keepSeat = false;
         // what the background simulation was waiting for no longer applies to a body; behaviours set their own
         n.c.waiting = null;
         if (n.c.downed()) {
+            if (n.seat != null) m.stand(n);
             n.mover.stop();
             n.doing("Downed");
             return;
@@ -89,6 +93,8 @@ public final class CitizenBrain {
             case RIOTER -> riot(n, col, now);
             case CITIZEN -> citizen(n, col, now);
         }
+        // up from the chair for anything but an evening at the tavern
+        if (n.seat != null && !n.keepSeat) m.stand(n);
         m.showHand(n);
     }
 
@@ -300,6 +306,8 @@ public final class CitizenBrain {
         var p = plugin.settings().needs;
         if ((c.needs.hungry(p) || c.lastMealDay != m.context(col).day) && life.meal(n, col, now, false)) return;
         if (m.returnCarried(n, col)) return;
+        // when work is over, the tavern
+        if (plugin.sim().citizens().stage(c) != LifeStage.CHILD && taverns.evening(n, col, now)) return;
         // somewhere with people: an inn, the market, the restaurant, the Town Hall
         World w = n.body.getWorld();
         Location spot = null;

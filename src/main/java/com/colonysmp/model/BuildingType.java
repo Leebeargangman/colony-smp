@@ -21,6 +21,8 @@ public enum BuildingType {
             "Beds for citizens. Bigger, better-furnished houses are more comfortable."),
     INN("Inn", Category.COMMERCIAL, Shape.ROOM, Material.CAKE, 3,
             "Lodges travellers, who pay for their stay and are more likely to settle."),
+    TAVERN("Tavern", Category.COMMERCIAL, Shape.ROOM, Material.HONEY_BOTTLE, 3,
+            "Where citizens meet when work is over: they sit on its chairs (stairs) and talk. Happier, closer citizens."),
     WAREHOUSE("Warehouse", Category.INFRASTRUCTURE, Shape.ROOM, Material.CHEST, 3,
             "Storage: every chest or barrel inside adds storage slots. Warehouse workers carry goods."),
     GRANARY("Granary", Category.AGRICULTURAL, Shape.ROOM, Material.HAY_BLOCK, 3,
@@ -237,6 +239,8 @@ public enum BuildingType {
                 .lv(30, Feature.BED, 1, Feature.DOOR, 1, Feature.CONTAINER, 1, Feature.BOOKSHELF, 1).cost(30, "#planks", 24);
         INN.lv(16, Feature.BED, 2, Feature.DOOR, 1, Feature.BARREL, 1).lv(30, Feature.BED, 4, Feature.DOOR, 1, Feature.BARREL, 1)
                 .lv(45, Feature.BED, 6, Feature.DOOR, 1, Feature.BARREL, 2).job(Job.INNKEEPER, 1, 1, 2).cost(60, "#planks", 32).upkeepPerLevel(1).stock(4);
+        TAVERN.lv(16, Feature.DOOR, 1, Feature.SEAT, 4, Feature.BARREL, 1).lv(25, Feature.DOOR, 1, Feature.SEAT, 8, Feature.BARREL, 2)
+                .lv(40, Feature.DOOR, 1, Feature.SEAT, 12, Feature.BARREL, 3).job(Job.BARKEEP, 1, 1, 2).cost(50, "#planks", 32).upkeepPerLevel(1).stock(4);
         WAREHOUSE.lv(9, Feature.DOOR, 1, Feature.CONTAINER, 2).lv(16, Feature.DOOR, 1, Feature.CONTAINER, 4).lv(25, Feature.DOOR, 1, Feature.CONTAINER, 6)
                 .job(Job.WAREHOUSE_WORKER, 1, 2, 3).cost(60, "#planks", 32, "cobblestone", 32).upkeepPerLevel(1);
         GRANARY.lv(9, Feature.DOOR, 1, Feature.CONTAINER, 2).lv(16, Feature.DOOR, 1, Feature.CONTAINER, 4).lv(25, Feature.DOOR, 1, Feature.CONTAINER, 6)
