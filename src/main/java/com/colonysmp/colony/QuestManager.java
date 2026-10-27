@@ -53,10 +53,47 @@ public final class QuestManager implements Listener {
         };
     }
 
+    private static String button(String label, String command, String hover) {
+        return "<click:run_command:'" + command + "'><hover:show_text:'<gray>" + hover + "'><aqua>[" + label + "]</aqua></hover></click>";
+    }
+
+    /** What to do next, with buttons that do it: shown on founding, after each step and with /colony guide. */
+    public void guide(Player p, Colony c) {
+        if (c.questStage >= DONE) {
+            Text.raw(p, "<gold><bold>" + Text.esc(c.name) + "</bold> <gray>- your first steps are done. Ideas for what's next:");
+            Text.raw(p, " <gray>• A <white>Tavern</white> (door, 4 stairs, a barrel): citizens meet there after work.");
+            Text.raw(p, " <gray>• A <white>School</white> (door, lectern) so children and workers learn, and a <white>Clinic</white> for the sick.");
+            Text.raw(p, " <gray>• Kitchens, a Bakery, a Market... place the Building Marker in anything you build to see what it is.");
+            Text.raw(p, " " + button("Town Hall", "/colony menu", "Open the Town Hall menu") + " " + button("Building Marker", "/colony marker", "Get a Building Marker"));
+            return;
+        }
+        int s = c.questStage;
+        Text.raw(p, "<gold><bold>Step " + s + "/" + COUNT + ": " + title(s) + "</bold>");
+        Text.raw(p, " <gray>" + task(s));
+        switch (s) {
+            case 1 -> Text.raw(p, " " + button("Get the Town Hall Core", "/colony core", "Hands you the core if you lost it"));
+            case 2 -> {
+                Text.raw(p, " <gray>Easiest: let your builder do it. Or build a room (3x3 inside, roof, wooden door, 2 beds) and place the marker in it.");
+                Text.raw(p, " " + (c.starterHouse ? "" : button("Build me a free house", "/colony starterhouse", "Your builder builds a House next to the Town Hall; the materials are free") + " ")
+                        + button("Building Marker", "/colony marker", "Get a Building Marker"));
+            }
+            case 3 -> {
+                Text.raw(p, " <gray>Till 9+ dirt into farmland next to water, then place the Building Marker on the farmland. A Farmer is put to work automatically.");
+                Text.raw(p, " " + button("Building Marker", "/colony marker", "Get a Building Marker") + " " + button("Citizens", "/colony citizens", "See your citizens"));
+            }
+            case 4 -> {
+                Text.raw(p, " <gray>Your farmer fills storage as crops ripen. Speed it up by putting bread, carrots or potatoes in the storage chest.");
+                Text.raw(p, " " + button("Storage", "/colony storage", "What the colony has"));
+            }
+            default -> {
+            }
+        }
+    }
+
     public String task(int stage) {
         return switch (stage) {
             case 1 -> "Place the Town Hall Core where your colony should stand.";
-            case 2 -> "Build an enclosed room with a door and 2 beds, then place the Building Marker inside it (/colony marker) to register it as a House.";
+            case 2 -> "Get your settlers a House with 2 beds.";
             case 3 -> "Register a Farm (place the Building Marker on its farmland) and have a Farmer working it.";
             case 4 -> "Have " + FOOD_GOAL + " food in colony storage (bread, carrots, potatoes, cooked meat...).";
             default -> "All first steps are done.";
@@ -130,8 +167,8 @@ public final class QuestManager implements Listener {
             for (Player p : c.onlineMembers()) {
                 Text.title(p, "<gold>Step Complete", "<white>" + title(done), 5, 50, 15);
                 Fx.sound(p, "minecraft:entity.player.levelup", 0.8f, 1.2f);
-                Text.send(p, "<green>✔ Step " + done + "/" + COUNT + ": <white>" + title(done) + "</white>."
-                        + (c.questStage < DONE ? " <gray>Next: <gold>" + title(c.questStage) + "</gold> - " + task(c.questStage) : ""));
+                Text.send(p, "<green>✔ Step " + done + "/" + COUNT + ": <white>" + title(done) + "</white>.");
+                if (c.questStage < DONE) guide(p, c);
             }
             if (c.questStage == DONE) reward(c);
             plugin.requestSave();

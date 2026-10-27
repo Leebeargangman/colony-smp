@@ -87,6 +87,8 @@ public final class Colony {
 
     // onboarding
     public int questStage = 1;
+    /** The free first house (ordered next to the Town Hall with its materials) has been given. */
+    public boolean starterHouse;
     public boolean founded;
     public final Set<UUID> questHidden = new HashSet<>();
 
@@ -299,6 +301,7 @@ public final class Colony {
         s.set("war-cooldown", warCooldownUntil);
         s.set("mobilized-until", mobilizedUntil);
         s.set("quest-stage", questStage);
+        s.set("starter-house", starterHouse);
         s.set("founded", founded);
         List<String> hidden = new ArrayList<>();
         for (UUID u : questHidden) hidden.add(u.toString());
@@ -384,6 +387,7 @@ public final class Colony {
         c.warCooldownUntil = s.getLong("war-cooldown");
         c.mobilizedUntil = s.getLong("mobilized-until");
         c.questStage = s.getInt("quest-stage", 1);
+        c.starterHouse = s.getBoolean("starter-house");
         c.founded = s.getBoolean("founded");
         for (String u : s.getStringList("quest-hidden")) {
             try {

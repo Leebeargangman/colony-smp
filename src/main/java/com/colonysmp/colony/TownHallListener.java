@@ -170,6 +170,7 @@ public final class TownHallListener implements Listener {
             plugin.sim().population().settlers(c);
         }
         plugin.quests().check(c);
+        if (p != null) plugin.quests().guide(p, c);
         plugin.requestSave();
     }
 

@@ -1077,7 +1077,7 @@ public final class NpcManager implements Listener {
         return s::contains;
     }
 
-    static String good(org.bukkit.Material m) {
+    public static String good(org.bukkit.Material m) {
         return Goods.key(m.name());
     }
 }

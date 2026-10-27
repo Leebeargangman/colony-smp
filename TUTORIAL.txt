@@ -54,6 +54,12 @@ STEP 2 - Place the Town Hall Core
   seeds and food to storage.
 
 STEP 3 - A Roof Overhead (house your settlers)
+  The easy way: type /colony starterhouse (or click [Build me a free
+  house] in /colony guide). Your builder builds a House next to the
+  Town Hall, and every block it needs is put in storage for free.
+  Once per colony.
+
+  Or build it yourself:
   Build a small closed room: walls, a roof, a wooden door and 2 beds.
   At least 3 x 3 inside is enough. Light it with a torch.
 
@@ -489,6 +495,8 @@ PART 16 - CHEAT SHEET
   /colony create <name>          found a colony
   /colony menu                   the Town Hall (or right-click it)
   /colony info | needs | stats   how things are going
+  /colony guide                  what to do next, with buttons
+  /colony starterhouse           a free first house, built for you
   /colony marker                 a Building Marker
   /colony book <type>            turn the book to a building type
   /colony building register <t>  register the building you're in

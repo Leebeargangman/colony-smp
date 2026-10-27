@@ -305,6 +305,74 @@ public final class BlueprintManager implements Listener {
         plugin.requestSave();
     }
 
+    // ───────────── the starter house ─────────────
+
+    /**
+     * The colony's free first house: a standard House ordered on flat ground near the Town Hall, with every block
+     * it needs sent to storage so the builder can start at once. Once per colony. Returns why not, or null.
+     */
+    public String starterHouse(Player p, Colony c) {
+        if (c.starterHouse) return "Your colony has already had its free starter house. Order more with the Blueprint Book.";
+        if (c.core == null) return "Place the Town Hall Core first.";
+        World w = c.world();
+        Blueprint bp = Blueprint.of(BuildingType.HOUSE);
+        if (w == null || bp == null) return "The colony's world isn't loaded.";
+        Placement spot = null;
+        for (int r = 6; r <= 28 && spot == null; r++) {
+            for (int dx = -r; dx <= r && spot == null; dx++) {
+                for (int dz = -r; dz <= r && spot == null; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != r) continue;
+                    int x = c.core.x() + dx, z = c.core.z() + dz;
+                    if (!w.isChunkLoaded(x >> 4, z >> 4)) continue;
+                    Block top = w.getHighestBlockAt(x, z, org.bukkit.HeightMap.MOTION_BLOCKING_NO_LEAVES);
+                    BlockFace f = Math.abs(dx) >= Math.abs(dz) ? (dx > 0 ? BlockFace.EAST : BlockFace.WEST) : (dz > 0 ? BlockFace.SOUTH : BlockFace.NORTH);
+                    Placement pl = new Placement(BuildingType.HOUSE, null, BlockPos.of(top.getRelative(BlockFace.UP)), f, bp);
+                    if (check(c, pl) == null && flat(w, pl)) spot = pl;
+                }
+            }
+        }
+        if (spot == null) return "There's no flat, clear ground near the Town Hall for a house. Build one yourself and place the Building Marker in it.";
+        BuildOrder j = new BuildOrder(c.newBuildingId(), BuildingType.HOUSE, null, spot.origin, spot.facing, System.currentTimeMillis());
+        c.buildQueue.add(0, j);
+        c.starterHouse = true;
+        // every block it takes, plus some foundation for uneven ground
+        Map<String, Integer> gift = new java.util.LinkedHashMap<>();
+        for (Blueprint.Step s : bp.steps) {
+            if (s.spec() == Blueprint.Spec.AIR || s.spec() == Blueprint.Spec.EXACT) continue;
+            List<org.bukkit.Material> mats = Blueprint.candidates(s.spec());
+            if (!mats.isEmpty()) gift.merge(com.colonysmp.npc.NpcManager.good(mats.get(0)), 1, Integer::sum);
+        }
+        gift.merge(com.colonysmp.npc.NpcManager.good(org.bukkit.Material.COBBLESTONE), 16, Integer::sum);
+        gift.forEach((k, v) -> c.storage.force(k, v));
+        c.log(ColonyEvent.Type.CONSTRUCTION, plugin.sim().day(c), (p == null ? "" : p.getName() + " asked for ") + "the starter house; its materials were sent to storage.");
+        if (p != null) {
+            Fx.sound(p, "minecraft:entity.villager.work_mason", 1f, 1f);
+            Text.send(p, "<green>Your builder will build a <white>House</white> at <white>" + spot.origin.x() + ", " + spot.origin.y() + ", " + spot.origin.z()
+                    + "</white>. Every block it needs is in storage. Hold the Blueprint Book to see where.");
+            boolean builders = false;
+            for (Citizen ct : c.citizens.values()) if (ct.job == Job.BUILDER && ct.status.free()) builders = true;
+            if (!builders) Text.send(p, "<yellow>You have no Builder yet: assign one (/colony assign <citizen> builder).");
+        }
+        plugin.requestSave();
+        return null;
+    }
+
+    /** Level, dry, open ground under a plan: the surface within a block of the floor and no trees in the way. */
+    private static boolean flat(World w, Placement pl) {
+        BlockPos[] bb = pl.bp.bounds(pl.origin, pl.facing);
+        int y0 = pl.origin.y() - 1;
+        for (int x = bb[0].x() - 1; x <= bb[1].x() + 1; x++) {
+            for (int z = bb[0].z() - 1; z <= bb[1].z() + 1; z++) {
+                if (!w.isChunkLoaded(x >> 4, z >> 4)) return false;
+                Block h = w.getHighestBlockAt(x, z, org.bukkit.HeightMap.MOTION_BLOCKING_NO_LEAVES);
+                org.bukkit.Material m = h.getType();
+                if (h.getY() < y0 - 1 || h.getY() > y0 || h.isLiquid() || !m.isSolid() || org.bukkit.Tag.LOGS.isTagged(m)
+                        || org.bukkit.Tag.LEAVES.isTagged(m) || m == org.bukkit.Material.CHEST || m == org.bukkit.Material.LODESTONE) return false;
+            }
+        }
+        return true;
+    }
+
     // ───────────── outlines ─────────────
 
     /** Every 5 ticks: outlines for players holding the book. */

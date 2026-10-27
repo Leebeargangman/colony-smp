@@ -56,7 +56,7 @@ import java.util.UUID;
 public final class ColonyCommand implements CommandExecutor, TabCompleter {
 
     private static final List<String> SUBS = List.of("help", "create", "info", "list", "map", "claim", "unclaim", "invite", "join", "leave", "kick", "members",
-            "promote", "demote", "rename", "settings", "menu", "core", "book", "marker", "wand", "rope", "baton", "banner", "disband", "quests",
+            "promote", "demote", "rename", "settings", "menu", "core", "book", "marker", "guide", "starterhouse", "wand", "rope", "baton", "banner", "disband", "quests",
             "citizens", "citizen", "jobs", "assign", "home", "needs", "settler", "traveller", "exile", "release",
             "buildings", "building", "validate", "upgrade", "construction",
             "resources", "storage", "economy", "trade", "production", "deposit", "withdraw", "shop", "policies",
@@ -177,6 +177,14 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
                 } else items(p, c, sub);
             }
             case "marker", "wand", "rope", "baton", "banner" -> items(p, c, sub);
+            case "guide" -> {
+                if (!need(p, c)) plugin.quests().guide(p, c);
+            }
+            case "starterhouse" -> {
+                if (need(p, c) || !plugin.access().check(p, c, Perm.MANAGE_BUILDINGS)) return;
+                String err = plugin.blueprints().starterHouse(p, c);
+                if (err != null) Text.send(p, "<red>" + err);
+            }
             case "disband" -> disband(p, c);
             case "quests" -> quests(p, c, a);
             case "citizens" -> {
@@ -355,7 +363,7 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
         give(p, plugin.items().marker());
         Text.send(p, "<green>The colony of <white>" + Text.esc(c.name) + "</white> is created.</green> Place the <aqua>Town Hall Core</aqua> (in your inventory) where it should stand: "
                 + "the land around it becomes yours and your first settlers arrive. Place the <aqua>Building Marker</aqua> inside a building you've built to register it "
-                + "(it works out what the building is); the <white>Blueprint Book</white> orders new ones.");
+                + "(it works out what the building is); the <white>Blueprint Book</white> orders new ones. Lost? <click:run_command:'/colony guide'><aqua>[/colony guide]</aqua></click>");
         plugin.quests().refresh(c);
     }
 

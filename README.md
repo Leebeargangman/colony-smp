@@ -47,6 +47,10 @@ not carried over. The old tables stay in the database (`v1_*`) as a record. The 
 - Your first settlers arrive, with provisions to last until the first harvest.
 - You get a 72-hour peace shield.
 
+A clickable guide (`/colony guide`) shows what to do next. For the first house you don't have to build
+anything: `/colony starterhouse` has your builder build a House next to the Town Hall, with every block it
+needs sent to storage for free (once per colony).
+
 Claim more chunks next to your land with `/colony claim`. Each claim costs more than the last, and the
 settlement level sets the limit. Colonies must keep a gap of free chunks between them. `/colony map` shows
 the land around you.
@@ -331,7 +335,7 @@ is down, because the world doesn't move either. Long gaps are caught up to `max-
 
 | Topic | Commands |
 |---|---|
-| Colony | `create <name>` · `info [colony]` · `list` · `map` · `claim` · `unclaim` · `menu` · `core` · `book [type]` · `marker` · `wand` · `baton` · `banner` · `disband` · `quests` · `events [type] [page]` · `stats` |
+| Colony | `create <name>` · `info [colony]` · `list` · `map` · `claim` · `unclaim` · `menu` · `core` · `guide` · `starterhouse` · `book [type]` · `marker` · `wand` · `baton` · `banner` · `disband` · `quests` · `events [type] [page]` · `stats` |
 | Members | `invite <player>` · `join <colony>` · `leave` · `kick <player>` · `members` · `promote\|demote <player> [role]` · `rename <name>` · `settings` |
 | Citizens | `citizens` · `citizen <name>` · `jobs` · `assign <citizen> <job> [building]` · `home <citizen> [house]` · `needs [citizen]` · `settler` · `traveller recruit\|dismiss` · `exile <citizen>` · `release <citizen>` |
 | Buildings | `buildings` · `building <id>` · `building register <type>` · `building crop\|herd\|recipe\|name\|remove ...` · `validate [id\|all]` · `upgrade <id>` · `construction [order <type> \| pause\|resume\|cancel\|first <id>]` |
