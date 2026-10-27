@@ -16,7 +16,11 @@ public final class MenuListener implements Listener {
         if (!(e.getView().getTopInventory().getHolder() instanceof Menu menu)) return;
         e.setCancelled(true);
         if (!(e.getWhoClicked() instanceof Player p)) return;
-        if (e.getClickedInventory() == null || e.getClickedInventory() != e.getView().getTopInventory()) return;
+        if (e.getClickedInventory() == null) return;
+        if (e.getClickedInventory() != e.getView().getTopInventory()) {
+            menu.bottom(new Menu.Click(p, e.getClick(), e.getRawSlot()), e.getSlot());
+            return;
+        }
         try {
             menu.click(new Menu.Click(p, e.getClick(), e.getRawSlot()));
         } catch (RuntimeException ex) {

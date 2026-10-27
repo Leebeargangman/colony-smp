@@ -1,10 +1,14 @@
 package com.colonysmp.colony;
 
 import com.colonysmp.ColonySMP;
-import com.colonysmp.data.Building;
-import com.colonysmp.data.BuildingType;
-import com.colonysmp.data.Colony;
+import com.colonysmp.core.Goods;
+import com.colonysmp.model.Building;
+import com.colonysmp.model.BuildingType;
+import com.colonysmp.model.Citizen;
+import com.colonysmp.model.Colony;
+import com.colonysmp.model.Job;
 import com.colonysmp.util.Fx;
+import com.colonysmp.util.ItemGoods;
 import com.colonysmp.util.Text;
 import net.kyori.adventure.bossbar.BossBar;
 import org.bukkit.Bukkit;
@@ -23,12 +27,12 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Guided starter quests, shown on a boss bar:
- * 1 Found the State (place the core), 2 Worker Shelter (house with 2 beds), 3 Feed the Commune (32 food).
+ * Guided first steps, shown on a boss bar: found the colony, house the settlers, start a farm with a farmer,
+ * and stock food. Finishing them sends starter supplies to storage.
  */
 public final class QuestManager implements Listener {
 
-    public static final int DONE = 4;
+    public static final int COUNT = 4, DONE = COUNT + 1;
     private static final int FOOD_GOAL = 32, BED_GOAL = 2;
 
     private final ColonySMP plugin;
@@ -39,33 +43,26 @@ public final class QuestManager implements Listener {
         this.plugin = plugin;
     }
 
-    public void start(Colony c) {
-        c.questStage = 1;
-        for (Player p : c.onlineMembers()) {
-            Text.send(p, "<gold>Starter quests unlocked!</gold> <gray>Follow the bar at the top of your screen. <white>/colony quests</white> lists them.");
-        }
-        check(c);
-    }
-
     public String title(int stage) {
         return switch (stage) {
-            case 1 -> "Found the State";
-            case 2 -> "Worker Shelter";
-            case 3 -> "Feed the Commune";
+            case 1 -> "Found the Colony";
+            case 2 -> "A Roof Overhead";
+            case 3 -> "Break Ground";
+            case 4 -> "Stock the Stores";
             default -> "Complete";
         };
     }
 
     public String task(int stage) {
         return switch (stage) {
-            case 1 -> "Place the Town Hall Core inside your claim.";
-            case 2 -> "Build an enclosed 5x5 room (walls included) with a door and 2 beds, then Shift + Right-Click inside it with the Blueprint Book (Starter House).";
-            case 3 -> "Stock " + FOOD_GOAL + " food items (bread, wheat, carrots, meat...) in the Central State Chest.";
-            default -> "All starter quests are done.";
+            case 1 -> "Place the Town Hall Core where your colony should stand.";
+            case 2 -> "Build an enclosed room with a door and 2 beds, then Shift + Right-Click inside it with the Blueprint Book (set to House).";
+            case 3 -> "Register a Farm (farmland, Blueprint Book set to Farm) and have a Farmer working it.";
+            case 4 -> "Have " + FOOD_GOAL + " food in colony storage (bread, carrots, potatoes, cooked meat...).";
+            default -> "All first steps are done.";
         };
     }
 
-    /** Progress of the current quest, 0..1, and a short label. */
     private double progress(Colony c, StringBuilder label) {
         switch (c.questStage) {
             case 1 -> {
@@ -74,11 +71,17 @@ public final class QuestManager implements Listener {
             }
             case 2 -> {
                 int best = bestHouseBeds(c);
-                label.append(Math.min(best, BED_GOAL)).append("/").append(BED_GOAL).append(" beds in a registered house");
+                label.append(Math.min(best, BED_GOAL)).append("/").append(BED_GOAL).append(" beds in a house");
                 return Math.min(1.0, best / (double) BED_GOAL);
             }
             case 3 -> {
-                int food = c.storage.foodItems(plugin.settings().neverEat);
+                boolean farm = !c.valid(BuildingType.FARM).isEmpty();
+                boolean farmer = farmer(c);
+                label.append(farm ? "farm registered" : "no farm yet").append(", ").append(farmer ? "farmer at work" : "no farmer yet");
+                return (farm ? 0.5 : 0) + (farmer ? 0.5 : 0);
+            }
+            case 4 -> {
+                long food = food(c);
                 label.append(Math.min(food, FOOD_GOAL)).append("/").append(FOOD_GOAL).append(" food");
                 return Math.min(1.0, food / (double) FOOD_GOAL);
             }
@@ -88,17 +91,32 @@ public final class QuestManager implements Listener {
         }
     }
 
-    private int bestHouseBeds(Colony c) {
+    private static int bestHouseBeds(Colony c) {
         int best = 0;
-        for (Building b : c.buildings(BuildingType.HOUSE)) best = Math.max(best, b.beds.size());
+        for (Building b : c.valid(BuildingType.HOUSE)) best = Math.max(best, b.beds.size());
         return best;
+    }
+
+    private static boolean farmer(Colony c) {
+        for (Citizen ct : c.citizens.values()) {
+            Building w = c.building(ct.workplace);
+            if (ct.job == Job.FARMER && w != null && w.type == BuildingType.FARM && w.valid) return true;
+        }
+        return false;
+    }
+
+    private static long food(Colony c) {
+        long n = 0;
+        for (Map.Entry<String, Long> e : c.storage.contents().entrySet()) if (Goods.get(e.getKey()).nutrition() >= 1) n += e.getValue();
+        return n;
     }
 
     private boolean complete(Colony c) {
         return switch (c.questStage) {
             case 1 -> c.core != null;
             case 2 -> bestHouseBeds(c) >= BED_GOAL;
-            case 3 -> c.storage.foodItems(plugin.settings().neverEat) >= FOOD_GOAL;
+            case 3 -> !c.valid(BuildingType.FARM).isEmpty() && farmer(c);
+            case 4 -> food(c) >= FOOD_GOAL;
             default -> false;
         };
     }
@@ -106,13 +124,13 @@ public final class QuestManager implements Listener {
     /** Advances quests whose goals are met and refreshes the bar. Cheap enough to call often. */
     public void check(Colony c) {
         int guard = 0;
-        while (c.questStage < DONE && complete(c) && guard++ < 4) {
+        while (c.questStage < DONE && complete(c) && guard++ < COUNT) {
             int done = c.questStage;
             c.questStage++;
             for (Player p : c.onlineMembers()) {
-                Text.title(p, "<gold>Quest Complete", "<white>" + title(done), 5, 50, 15);
+                Text.title(p, "<gold>Step Complete", "<white>" + title(done), 5, 50, 15);
                 Fx.sound(p, "minecraft:entity.player.levelup", 0.8f, 1.2f);
-                Text.send(p, "<green>✔ Quest " + done + "/3 complete: <white>" + title(done) + "</white>."
+                Text.send(p, "<green>✔ Step " + done + "/" + COUNT + ": <white>" + title(done) + "</white>."
                         + (c.questStage < DONE ? " <gray>Next: <gold>" + title(c.questStage) + "</gold> - " + task(c.questStage) : ""));
             }
             if (c.questStage == DONE) reward(c);
@@ -122,16 +140,18 @@ public final class QuestManager implements Listener {
     }
 
     private void reward(Colony c) {
-        List<ItemStack> left = c.storage.addAll(plugin.settings().questReward.stream().map(ItemStack::clone).toList());
-        c.spoils.addAll(left);
+        for (ItemStack it : plugin.settings().questReward) {
+            String good = ItemGoods.goodOf(it);
+            if (good != null) c.storage.force(good, it.getAmount());
+            else c.equipment.force(it);
+        }
         for (Player p : c.onlineMembers()) {
-            Text.title(p, "<red>☭ <gold>The Commune Thrives", "<gray>Starter tools and seeds sent to the State Chest", 10, 70, 20);
+            Text.title(p, "<gold>The Colony Takes Root", "<gray>Starter supplies sent to storage", 10, 70, 20);
             Fx.sound(p, "minecraft:ui.toast.challenge_complete", 1f, 1f);
-            Text.send(p, "<gold>All starter quests complete!</gold> Farming tools and seeds were delivered to the <gold>Central State Chest</gold>.");
+            Text.send(p, "<gold>First steps complete!</gold> Tools, seeds and food were delivered to colony storage. Open the Town Hall to see what to build next.");
         }
     }
 
-    /** Shows or hides the bar for each online member. */
     public void refresh(Colony c) {
         BossBar bar = bars.get(c.id);
         Set<UUID> shown = viewers.computeIfAbsent(c.id, k -> new HashSet<>());
@@ -148,9 +168,9 @@ public final class QuestManager implements Listener {
         }
         StringBuilder label = new StringBuilder();
         double prog = progress(c, label);
-        String name = "<gold>☭ Quest " + c.questStage + "/3: <yellow>" + title(c.questStage) + "</yellow> <gray>— " + label;
+        String name = "<aqua>Step " + c.questStage + "/" + COUNT + ": <yellow>" + title(c.questStage) + "</yellow> <gray>- " + label;
         if (bar == null) {
-            bar = BossBar.bossBar(Text.mm(name), (float) prog, BossBar.Color.YELLOW, BossBar.Overlay.NOTCHED_10);
+            bar = BossBar.bossBar(Text.mm(name), (float) prog, BossBar.Color.BLUE, BossBar.Overlay.NOTCHED_10);
             bars.put(c.id, bar);
         } else {
             bar.name(Text.mm(name));
@@ -159,11 +179,10 @@ public final class QuestManager implements Listener {
         Set<UUID> want = new HashSet<>();
         for (Player p : c.onlineMembers()) if (!c.questHidden.contains(p.getUniqueId())) want.add(p.getUniqueId());
         for (UUID u : new HashSet<>(shown)) {
-            if (!want.contains(u)) {
-                Player p = Bukkit.getPlayer(u);
-                if (p != null) p.hideBossBar(bar);
-                shown.remove(u);
-            }
+            if (want.contains(u)) continue;
+            Player p = Bukkit.getPlayer(u);
+            if (p != null) p.hideBossBar(bar);
+            shown.remove(u);
         }
         for (UUID u : want) {
             if (shown.add(u)) {
@@ -186,11 +205,10 @@ public final class QuestManager implements Listener {
     public void colonyRemoved(Colony c) {
         BossBar bar = bars.remove(c.id);
         Set<UUID> shown = viewers.remove(c.id);
-        if (bar != null && shown != null) {
-            for (UUID u : shown) {
-                Player p = Bukkit.getPlayer(u);
-                if (p != null) p.hideBossBar(bar);
-            }
+        if (bar == null || shown == null) return;
+        for (UUID u : shown) {
+            Player p = Bukkit.getPlayer(u);
+            if (p != null) p.hideBossBar(bar);
         }
     }
 

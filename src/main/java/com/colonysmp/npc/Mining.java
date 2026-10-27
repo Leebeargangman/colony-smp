@@ -1,13 +1,12 @@
 package com.colonysmp.npc;
 
 import com.colonysmp.ColonySMP;
-import com.colonysmp.colony.Blueprint;
-import com.colonysmp.colony.MineableBlocks;
-import com.colonysmp.data.Building;
-import com.colonysmp.data.BuildingType;
-import com.colonysmp.data.Colony;
-import com.colonysmp.data.Job;
-import com.colonysmp.store.Storage;
+import com.colonysmp.building.Blueprint;
+import com.colonysmp.building.MineableBlocks;
+import com.colonysmp.core.Skill;
+import com.colonysmp.model.Building;
+import com.colonysmp.model.Colony;
+import com.colonysmp.model.ColonyEvent;
 import com.colonysmp.util.BlockPos;
 import com.colonysmp.util.Text;
 import com.colonysmp.util.Tools;
@@ -27,14 +26,16 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Miners dig a staircase down from a registered Mine Entrance to the configured depth, then a branch mine:
- * a main tunnel with side tunnels every four blocks. Ore showing in the walls is dug out as a vein.
- * Everything goes straight into the State Chest.
+ * Miners dig a staircase down from their mine's entrance to the configured depth, then a branch mine: a main
+ * tunnel with side tunnels every four blocks, lit with torches. Ore showing in the walls is dug out as a vein.
+ * What they dig goes into the mine's stock for the haulers.
  */
 public final class Mining {
 
     /** One block to dig, where to stand to dig it, and extras. */
     record Cell(BlockPos pos, BlockPos stand, boolean torch, boolean floor) {}
+
+    private static final BlockFace[] AROUND = {BlockFace.UP, BlockFace.DOWN, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST};
 
     private final ColonySMP plugin;
     private final NpcManager m;
@@ -45,64 +46,65 @@ public final class Mining {
         this.m = m;
     }
 
-    public void think(Npc n, Colony col, long now) {
+    void think(Npc n, Colony col, Building mine, long now) {
         World w = n.body.getWorld();
-        Building mine = pick(n, col);
-        if (mine == null) {
-            boolean any = !col.buildings(BuildingType.MINE).isEmpty();
-            m.brain().idle(n, col, now, any ? "All mines exhausted - register a new Mine Entrance" : "No mine registered (use the Blueprint Book)");
+        if (mine.exhausted || mine.anchor == null) {
+            m.brain().wanderAt(n, col, mine, now, mine.label() + " is exhausted: register a new mine entrance");
             return;
         }
         if (!m.ensureTool(n, col, Tools.Kind.PICKAXE, now)) return;
         if (n.c.tool == null) {
-            m.brain().idle(n, col, now, "Needs a pickaxe from the State Chest");
+            m.brain().wanderAt(n, col, mine, now, "Needs a pickaxe (make one at a blacksmith or put one in storage)");
             return;
         }
-        // torches for the tunnels are carried down from the State Chest
-        if (n.c.carried(Mining::torch) == 0 && m.fetch(n, col, Mining::torch, 16, "torches") == NpcManager.Fetch.FETCHING) return;
+        // torches for the tunnels
+        if (n.c.carried.get("torch") == 0 && mine.stock.available("torch") > 0) {
+            n.c.carried.add("torch", mine.stock.take("torch", 16));
+        }
+        if (n.c.carried.get("torch") == 0 && m.fetch(n, col, List.of("torch"), 16, "torches") == NpcManager.Fetch.FETCHING) return;
         // ore showing in the walls first
         while (!n.veins.isEmpty()) {
             BlockPos v = n.veins.get(0);
-            Block vb = v.block(w);
-            if (!v.loaded(w) || !MineableBlocks.isOre(vb.getType()) || v.distSq(n.body.getLocation()) > 30) {
+            if (!v.loaded(w) || !MineableBlocks.isOre(v.block(w).getType()) || v.distSq(n.loc()) > 30) {
                 n.veins.remove(0);
                 continue;
             }
+            n.working = true;
             if (now < n.actionAt) return;
             CitizenBrain.face(n, v.center(w));
-            dig(n, col, vb, now);
+            dig(n, col, mine, v.block(w), now);
             n.veins.remove(0);
             vein(w, v, n.veins);
-            n.activity = "Mining out an ore vein";
+            n.doing("Mining out an ore vein");
             return;
         }
         List<Cell> plan = plan(col, mine, w);
         int guard = 0;
-        while (mine.progress < plan.size() && guard++ < 24) {
-            Cell c = plan.get(mine.progress);
+        while (mine.dug < plan.size() && guard++ < 24) {
+            Cell c = plan.get(mine.dug);
             if (!c.pos.loaded(w)) return;
             Block b = c.pos.block(w);
-            if (b.getType().isAir() || (!MineableBlocks.mineable(b.getType()) && !b.isLiquid())) {
-                mine.progress++;
+            if (b.getType().isAir() || !MineableBlocks.mineable(b.getType()) && !b.isLiquid()) {
+                mine.dug++;
                 continue;
             }
             break;
         }
-        if (mine.progress >= plan.size()) {
+        if (mine.dug >= plan.size()) {
             mine.exhausted = true;
-            for (Player p : col.onlineMembers()) {
-                Text.send(p, "<yellow>" + mine.label() + " is exhausted. Register a new Mine Entrance with the Blueprint Book.");
-            }
+            col.log(ColonyEvent.Type.PRODUCTION, plugin.sim().day(col), mine.label() + " is exhausted.");
+            for (Player p : col.onlineMembers()) Text.send(p, "<yellow>" + mine.label() + " is exhausted. Register a new mine entrance with the Blueprint Book.");
             return;
         }
-        Cell cell = plan.get(mine.progress);
+        Cell cell = plan.get(mine.dug);
         Location st = cell.stand.center(w);
         if (!n.mover.near(st, 1.4)) {
             n.mover.moveTo(st, plugin.settings().walkSpeed, 1.0);
-            n.activity = "Walking down the mine";
+            n.doing("Walking down " + mine.label());
             return;
         }
         n.mover.stop();
+        n.working = true;
         if (now < n.actionAt) return;
         Block b = cell.pos.block(w);
         CitizenBrain.face(n, cell.pos.center(w));
@@ -111,31 +113,32 @@ public final class Mining {
             n.actionAt = now + 10;
             return;
         }
-        dig(n, col, b, now);
+        dig(n, col, mine, b, now);
         plug(w, cell.pos);
         if (cell.floor) floor(w, cell.pos.add(0, -1, 0));
         if (cell.torch) torch(n, w, cell.pos, mine.facing);
-        if (b.getType().isAir()) mine.progress++;
-        for (BlockFace f : new BlockFace[]{BlockFace.UP, BlockFace.DOWN, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST}) {
+        if (b.getType().isAir()) mine.dug++;
+        for (BlockFace f : AROUND) {
             BlockPos np = cell.pos.relative(f);
             if (np.loaded(w) && MineableBlocks.isOre(np.block(w).getType()) && !n.veins.contains(np)) n.veins.add(np);
         }
-        n.activity = cell.pos.y() < mine.anchor.y() - 3 ? "Digging at Y " + cell.pos.y() : "Digging the mine shaft";
+        n.doing(cell.pos.y() < mine.anchor.y() - 3 ? "Digging at depth " + cell.pos.y() : "Digging the mine shaft");
     }
 
-    private void dig(Npc n, Colony col, Block b, long now) {
+    private void dig(Npc n, Colony col, Building mine, Block b, long now) {
         World w = b.getWorld();
         List<ItemStack> drops = new ArrayList<>(b.getDrops(n.c.tool));
         w.playEffect(b.getLocation(), Effect.STEP_SOUND, b.getType());
         b.setType(Material.AIR);
-        m.deposit(col, drops);
+        m.deposit(col, mine, drops, n.loc());
         m.wearTool(n, col);
-        double eff = m.efficiency(col, n.c, Job.MINER);
+        n.c.skills.gain(Skill.MINING, 0.7 * n.c.trait.learning());
+        double eff = m.efficiency(col, n.c);
         n.actionAt = now + m.interval(plugin.settings().mineInterval, eff, n.c.tool);
     }
 
     private static void vein(World w, BlockPos from, List<BlockPos> veins) {
-        for (BlockFace f : new BlockFace[]{BlockFace.UP, BlockFace.DOWN, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST}) {
+        for (BlockFace f : AROUND) {
             BlockPos np = from.relative(f);
             if (veins.size() < 16 && np.loaded(w) && MineableBlocks.isOre(np.block(w).getType()) && !veins.contains(np)) veins.add(np);
         }
@@ -143,7 +146,7 @@ public final class Mining {
 
     /** Seals lava and water next to a freshly dug block. */
     private static void plug(World w, BlockPos p) {
-        for (BlockFace f : new BlockFace[]{BlockFace.UP, BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST, BlockFace.DOWN}) {
+        for (BlockFace f : AROUND) {
             Block nb = p.relative(f).block(w);
             if (nb.isLiquid()) nb.setType(Material.COBBLESTONE);
         }
@@ -154,44 +157,27 @@ public final class Mining {
         if (b.isPassable() || b.isLiquid()) b.setType(Material.COBBLESTONE);
     }
 
-    static boolean torch(ItemStack it) {
-        return it.getType() == Material.TORCH && Storage.plain(it);
-    }
-
     private void torch(Npc n, World w, BlockPos head, BlockFace facing) {
         Block at = head.block(w);
         if (!at.getType().isAir()) return;
         BlockFace left = Blueprint.right(facing).getOppositeFace();
         Block wall = at.getRelative(left);
         if (!wall.getType().isOccluding()) return;
-        if (n.c.useCarried(Mining::torch, 1) != 1) return;
+        if (n.c.carried.take("torch", 1) != 1) return;
         var data = Material.WALL_TORCH.createBlockData();
         if (data instanceof Directional d) d.setFacing(left.getOppositeFace());
         at.setBlockData(data, false);
     }
 
-    private Building pick(Npc n, Colony col) {
-        List<Building> mines = new ArrayList<>();
-        for (Building b : col.buildings(BuildingType.MINE)) if (!b.exhausted && b.anchor != null) mines.add(b);
-        if (mines.isEmpty()) return null;
-        if (n.jobKey != null) {
-            for (Building b : mines) if (("mine:" + b.id).equals(n.jobKey)) return b;
-        }
-        Building b = mines.get((int) (Math.abs(n.c.id.getMostSignificantBits()) % mines.size()));
-        n.jobKey = "mine:" + b.id;
-        return b;
-    }
-
-    /** The full dig plan of a mine (cached; it only depends on the entrance, its facing and the claim). */
+    /** The full dig plan of a mine (cached; it only depends on the entrance, its facing and the land). */
     List<Cell> plan(Colony col, Building mine, World w) {
-        String key = col.id + ":" + mine.id + ":" + mine.anchor + ":" + mine.facing;
+        String key = col.id + ":" + mine.id + ":" + mine.anchor + ":" + mine.facing + ":" + col.territory.size();
         List<Cell> cached = plans.get(key);
         if (cached != null) return cached;
         List<Cell> out = new ArrayList<>();
         BlockPos o = mine.anchor;
         BlockFace f = mine.facing;
         BlockFace r = Blueprint.right(f);
-        // down to the configured depth, but always at least a few steps (entrances in caves or low ground), never into bedrock
         int target = Math.max(w.getMinHeight() + 6, Math.min(plugin.settings().mineTargetY, o.y() - 6));
         // staircase: each step one forward and one down, dug three high
         BlockPos prevStand = new BlockPos(o.x() - f.getModX(), o.y() + 1, o.z() - f.getModZ());
@@ -199,7 +185,7 @@ public final class Mining {
         BlockPos lastFeet = null;
         while (o.y() - i > target && i < 160) {
             int x = o.x() + f.getModX() * i, z = o.z() + f.getModZ() * i, y = o.y() - i;
-            if (!col.region.contains(x, z)) break;
+            if (!col.territory.contains(x, z)) break;
             BlockPos feet = new BlockPos(x, y, z);
             out.add(new Cell(feet.add(0, 2, 0), prevStand, false, false));
             out.add(new Cell(feet.add(0, 1, 0), prevStand, i % 6 == 3, false));
@@ -208,13 +194,13 @@ public final class Mining {
             lastFeet = feet;
             i++;
         }
-        if (lastFeet == null) lastFeet = o; // no room to go down: tunnel at the entrance's level
+        if (lastFeet == null) lastFeet = o;
         // branch mine at the bottom
         int len = plugin.settings().mineTunnelLength, branch = plugin.settings().mineBranchLength;
         BlockPos stand = lastFeet;
         for (int j = 1; j <= len; j++) {
             BlockPos feet = lastFeet.add(f.getModX() * j, 0, f.getModZ() * j);
-            if (!col.region.contains(feet)) break;
+            if (!col.territory.contains(feet)) break;
             out.add(new Cell(feet.add(0, 1, 0), stand, j % 8 == 0, false));
             out.add(new Cell(feet, stand, false, true));
             stand = feet;
@@ -223,7 +209,7 @@ public final class Mining {
                     BlockPos bs = feet;
                     for (int k = 1; k <= branch; k++) {
                         BlockPos bf = feet.add(r.getModX() * k * side, 0, r.getModZ() * k * side);
-                        if (!col.region.contains(bf)) break;
+                        if (!col.territory.contains(bf)) break;
                         out.add(new Cell(bf.add(0, 1, 0), bs, false, false));
                         out.add(new Cell(bf, bs, false, true));
                         bs = bf;

@@ -1,75 +1,76 @@
 package com.colonysmp.npc;
 
 import com.colonysmp.ColonySMP;
-import com.colonysmp.data.Colony;
-import com.colonysmp.data.Job;
-import com.colonysmp.data.Status;
+import com.colonysmp.model.Building;
+import com.colonysmp.model.Colony;
 import com.colonysmp.util.Fx;
 import org.bukkit.Location;
 import org.bukkit.Particle;
-import org.bukkit.attribute.Attribute;
-import org.bukkit.attribute.AttributeInstance;
 
-/** Doctors run to the downed and get them back up, and patch up the injured. */
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * Doctors see the sick and wounded who come to their clinic (and anyone hurt close by), treating them with
+ * medicine; with no patients they prepare medicine at the brewing stand.
+ */
 public final class Doctoring {
+
+    /** Game ticks between treatments of the same patient. */
+    private static final long COURSE = 1000;
 
     private final ColonySMP plugin;
     private final NpcManager m;
+    private final Map<UUID, Long> treated = new HashMap<>();
 
     Doctoring(ColonySMP plugin, NpcManager m) {
         this.plugin = plugin;
         this.m = m;
     }
 
-    private static double max(Npc n) {
-        AttributeInstance a = n.body.getAttribute(Attribute.MAX_HEALTH);
-        return a == null ? 20 : a.getValue();
-    }
-
-    void think(Npc n, Colony col, long now) {
+    void think(Npc n, Colony col, Building clinic, long now) {
+        long game = plugin.sim().gameTime(col);
         Npc patient = null;
         double best = Double.MAX_VALUE;
-        boolean urgent = false;
-        Location here = n.body.getLocation();
         for (Npc o : m.of(col)) {
-            if (o == n || o.body.getWorld() != here.getWorld()) continue;
-            Status s = o.c.status;
-            if (s != Status.CITIZEN && s != Status.CHILD && s != Status.SLAVE && s != Status.PRISONER) continue;
-            boolean down = o.c.downed();
-            boolean hurt = o.body.getHealth() < max(o) * 0.75;
-            if (!down && !hurt) continue;
-            // the downed come first, then the nearest
-            double d = o.body.getLocation().distanceSquared(here) - (down ? 1e6 : 0);
+            if (o == n || !o.c.status.free()) continue;
+            boolean needs = o.c.ill() && !o.c.treated || o.c.injured || o.patient && o.c.needs.healthFraction() < 1;
+            if (!needs) continue;
+            Long last = treated.get(o.c.id);
+            if (last != null && game - last < COURSE && game >= last) continue;
+            boolean here = o.patient || clinic.inside(o.loc().getX(), o.loc().getY(), o.loc().getZ()) || o.loc().distanceSquared(n.loc()) < 100;
+            if (!here) continue;
+            double d = o.loc().distanceSquared(n.loc()) - (o.patient ? 1000 : 0);
             if (d < best) {
                 best = d;
                 patient = o;
-                urgent = down;
             }
         }
         if (patient == null) {
-            Location core = col.coreLocation();
-            if (core != null) m.brain().wander(n, core, 5, now, "Running the clinic (no one is hurt)");
+            m.brain().stations.craft(n, col, clinic, now);
             return;
         }
-        Location at = patient.body.getLocation();
-        if (!n.mover.near(at, 1.8)) {
-            n.mover.moveTo(at, urgent ? plugin.settings().runSpeed : plugin.settings().walkSpeed, 1.4);
-            n.activity = urgent ? "Running to save " + patient.c.name + "!" : "Going to treat " + patient.c.name;
+        Location at = patient.loc();
+        if (!n.mover.near(at, 2)) {
+            n.mover.moveTo(at, plugin.settings().walkSpeed, 1.6);
+            n.doing("Going to see " + patient.c.name);
             return;
         }
         n.mover.stop();
+        n.working = true;
         CitizenBrain.face(n, at);
         if (now < n.actionAt) return;
-        double eff = m.efficiency(col, n.c, Job.DOCTOR);
-        n.actionAt = now + m.interval(3.0, eff);
-        if (patient.c.downed()) {
-            plugin.prison().revive(patient, 10);
-            n.activity = "Revived " + patient.c.name;
-            return;
+        n.actionAt = now + m.interval(3, m.efficiency(col, n.c));
+        if (plugin.sim().health().treat(col, n.c, patient.c)) {
+            treated.put(patient.c.id, game);
+            patient.body.setHealth(Math.min(patient.c.needs.maxHealth, patient.c.needs.health));
+            at.getWorld().spawnParticle(Particle.HEART, at.clone().add(0, 1.8, 0), 3, 0.3, 0.2, 0.3, 0);
+            Fx.sound(at, "minecraft:entity.villager.work_cleric", 0.8f, 1f);
+            n.doing("Treated " + patient.c.name);
+        } else {
+            n.doing("Can't treat " + patient.c.name + ": no medicine");
+            treated.put(patient.c.id, game);
         }
-        patient.body.setHealth(Math.min(max(patient), patient.body.getHealth() + 4));
-        at.getWorld().spawnParticle(Particle.HEART, at.clone().add(0, 1.8, 0), 3, 0.3, 0.2, 0.3, 0);
-        Fx.sound(at, "minecraft:entity.generic.drink", 0.5f, 1.2f);
-        n.activity = "Treating " + patient.c.name;
     }
 }

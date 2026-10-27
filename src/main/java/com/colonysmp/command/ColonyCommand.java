@@ -1,28 +1,42 @@
 package com.colonysmp.command;
 
 import com.colonysmp.ColonySMP;
+import com.colonysmp.building.Blueprint;
 import com.colonysmp.colony.QuestManager;
-import com.colonysmp.data.Citizen;
-import com.colonysmp.data.Colony;
-import com.colonysmp.data.Policy;
-import com.colonysmp.data.Rank;
-import com.colonysmp.data.Status;
+import com.colonysmp.core.Category;
+import com.colonysmp.core.Goods;
+import com.colonysmp.core.MilitaryClass;
+import com.colonysmp.core.Recipe;
+import com.colonysmp.core.Recipes;
 import com.colonysmp.gui.BuildingsMenu;
 import com.colonysmp.gui.CitizensMenu;
 import com.colonysmp.gui.ConfirmMenu;
-import com.colonysmp.gui.EstablishMenu;
+import com.colonysmp.gui.DiplomacyMenu;
+import com.colonysmp.gui.EconomyMenu;
+import com.colonysmp.gui.MilitaryMenu;
+import com.colonysmp.gui.PoliciesMenu;
+import com.colonysmp.gui.ShopMenu;
 import com.colonysmp.gui.TownHallMenu;
-import com.colonysmp.gui.WarMenu;
-import com.colonysmp.npc.NpcManager;
+import com.colonysmp.model.BuildOrder;
+import com.colonysmp.model.Building;
+import com.colonysmp.model.BuildingType;
+import com.colonysmp.model.Citizen;
+import com.colonysmp.model.Colony;
+import com.colonysmp.model.ColonyEvent;
+import com.colonysmp.model.Job;
+import com.colonysmp.model.Perm;
+import com.colonysmp.model.Policies;
+import com.colonysmp.model.Proposal;
+import com.colonysmp.model.Relation;
+import com.colonysmp.model.Role;
+import com.colonysmp.model.Squad;
+import com.colonysmp.model.Status;
+import com.colonysmp.model.War;
+import com.colonysmp.util.BlockPos;
 import com.colonysmp.util.Items;
 import com.colonysmp.util.Text;
-import com.colonysmp.war.WarManager;
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
-import org.bukkit.World;
-import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -33,701 +47,1426 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
-/** /colony - the command hub. */
+/** /colony: every player command, and the admin tools under /colony admin. */
 public final class ColonyCommand implements CommandExecutor, TabCompleter {
 
-    private static final List<String> SUBS = List.of("help", "info", "quests", "mobilize", "declare", "surrender", "war", "storage", "citizens",
-            "prison", "buildings", "blueprints", "school", "invite", "join", "leave", "kick", "promote", "demote", "rename", "policy", "relocate", "abandon",
-            "book", "core", "list", "spoils", "traveler", "admin");
-    private static final List<String> ADMIN = List.of("reload", "give", "delete", "stability", "shield", "traveler", "endwar", "save", "bypass", "tp", "ration", "food", "stock", "who", "addcitizen", "job");
+    private static final List<String> SUBS = List.of("help", "create", "info", "list", "map", "claim", "unclaim", "invite", "join", "leave", "kick", "members",
+            "promote", "demote", "rename", "settings", "menu", "core", "book", "wand", "rope", "baton", "banner", "disband", "quests",
+            "citizens", "citizen", "jobs", "assign", "home", "needs", "settler", "traveller", "exile", "release",
+            "buildings", "building", "validate", "upgrade", "construction",
+            "resources", "storage", "economy", "trade", "production", "deposit", "withdraw", "shop", "policies",
+            "military", "recruit", "army", "orders", "squad", "mobilize",
+            "diplomacy", "declarewar", "peace", "surrender", "prison", "events", "stats", "admin");
 
     private final ColonySMP plugin;
+    private final Info info;
+    private final AdminCommand admin;
 
     public ColonyCommand(ColonySMP plugin) {
         this.plugin = plugin;
+        this.info = new Info(plugin);
+        this.admin = new AdminCommand(plugin, info);
     }
 
-    @Override
-    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        String sub = args.length == 0 ? "info" : args[0].toLowerCase(Locale.ROOT);
-        if (sub.equals("admin")) {
-            admin(sender, Arrays.copyOfRange(args, 1, args.length));
-            return true;
-        }
-        if (sub.equals("list")) {
-            list(sender);
-            return true;
-        }
-        if (sub.equals("help")) {
-            help(sender);
-            return true;
-        }
-        if (!(sender instanceof Player p)) {
-            Text.send(sender, "Players only (try /colony list or /colony admin).");
-            return true;
-        }
-        if (!p.hasPermission("colonysmp.play")) {
-            Text.send(p, "<red>You don't have permission.");
-            return true;
-        }
-        Colony c = plugin.colonies().of(p);
-        switch (sub) {
-            case "info" -> {
-                Colony target = args.length > 1 ? plugin.colonies().byName(join(args, 1)) : c != null ? c : plugin.colonies().at(p.getLocation());
-                if (target == null) {
-                    Text.send(p, "You don't belong to a colony. Craft a <gold>Colony Selection Wand</gold> (stick + gold nugget side by side) to found one.");
-                    return true;
-                }
-                sendInfo(p, target);
-            }
-            case "quests" -> {
-                if (need(p, c)) return true;
-                if (args.length > 1 && (args[1].equalsIgnoreCase("hide") || args[1].equalsIgnoreCase("show"))) {
-                    plugin.quests().setHidden(c, p, args[1].equalsIgnoreCase("hide"));
-                    Text.send(p, "Quest bar " + (args[1].equalsIgnoreCase("hide") ? "hidden" : "shown") + ".");
-                    return true;
-                }
-                QuestManager q = plugin.quests();
-                Text.raw(p, "<gold><bold>☭ Starter Quests</bold> <gray>- " + Text.esc(c.name));
-                for (int i = 1; i <= 3; i++) {
-                    String mark = c.questStage > i ? "<green>✔" : c.questStage == i ? "<yellow>➤" : "<dark_gray>✘";
-                    Text.raw(p, " " + mark + " <white>" + i + ". " + q.title(i) + " <gray>- " + q.task(i));
-                }
-                Text.raw(p, c.questStage >= QuestManager.DONE ? "<green> All done! Tools and seeds were sent to the State Chest." : "<dark_gray> Reward: starter farming tools and seeds in the State Chest. (/colony quests hide|show)");
-            }
-            case "mobilize" -> {
-                if (need(p, c) || lead(p, c)) return true;
-                if (args.length > 1 && args[1].equalsIgnoreCase("stop")) {
-                    if (!c.mobilized()) Text.send(p, "The colony isn't mobilized.");
-                    else plugin.sim().demobilize(c, Text.esc(p.getName()) + " stood the militia down.");
-                    return true;
-                }
-                String err = plugin.sim().mobilize(c, p);
-                if (err != null) Text.send(p, "<red>" + err);
-            }
-            case "declare" -> {
-                if (need(p, c)) return true;
-                if (args.length < 2) {
-                    new WarMenu(plugin, p).open();
-                    return true;
-                }
-                Colony target = plugin.colonies().byName(join(args, 1));
-                String err = plugin.wars().declare(p, target);
-                if (err != null) Text.send(p, "<red>" + err);
-            }
-            case "surrender" -> {
-                String err = plugin.wars().surrender(p);
-                if (err != null) Text.send(p, "<red>" + err);
-            }
-            case "war" -> new WarMenu(plugin, p).open();
-            case "storage", "chest" -> {
-                if (need(p, c)) return true;
-                if (!c.region.contains(p.getLocation()) || !p.getWorld().getName().equals(c.world)) {
-                    Text.send(p, "<red>You must be inside your colony to open the State Chest remotely.");
-                    return true;
-                }
-                int page = 0;
-                if (args.length > 1) {
-                    try {
-                        page = Integer.parseInt(args[1]) - 1;
-                    } catch (NumberFormatException ignored) {
-                    }
-                }
-                plugin.townHall().openStorage(p, c, page);
-            }
-            case "citizens" -> {
-                if (need(p, c)) return true;
-                new CitizensMenu(plugin, p, c, false, 0).open();
-            }
-            case "prison" -> {
-                if (need(p, c)) return true;
-                new CitizensMenu(plugin, p, c, true, 0).open();
-            }
-            case "buildings" -> {
-                if (need(p, c)) return true;
-                new BuildingsMenu(plugin, p, c, 0).open();
-            }
-            case "school", "schools", "education" -> {
-                if (need(p, c)) return true;
-                school(p, c);
-            }
-            case "blueprints", "blueprint", "copies" -> {
-                if (need(p, c)) return true;
-                blueprints(p, c, args);
-            }
-            case "hall", "townhall", "menu" -> {
-                if (need(p, c)) return true;
-                new TownHallMenu(plugin, p, c).open();
-            }
-            case "invite" -> {
-                if (need(p, c) || lead(p, c)) return true;
-                if (args.length < 2) {
-                    Text.send(p, "/colony invite <player>");
-                    return true;
-                }
-                Player t = Bukkit.getPlayerExact(args[1]);
-                if (t == null) {
-                    Text.send(p, "<red>That player isn't online.");
-                    return true;
-                }
-                if (plugin.colonies().coloniesOf(t.getUniqueId()).size() >= plugin.settings().maxColoniesPerPlayer) {
-                    Text.send(p, "<red>" + Text.esc(t.getName()) + " already belongs to a colony.");
-                    return true;
-                }
-                c.invites.add(t.getUniqueId());
-                Text.send(p, "Invited <white>" + Text.esc(t.getName()) + "</white>.");
-                t.sendMessage(Text.mm(Text.PREFIX + "<gold>" + Text.esc(p.getName()) + "</gold> invites you to join <gold>" + Text.esc(c.name) + "</gold>. ")
-                        .append(Text.mm("<green><bold>[Join]").clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/colony join " + c.id))));
-            }
-            case "join" -> {
-                if (args.length < 2) {
-                    Text.send(p, "/colony join <colony>");
-                    return true;
-                }
-                Colony t = plugin.colonies().byName(join(args, 1));
-                if (t == null || !t.invites.contains(p.getUniqueId())) {
-                    Text.send(p, "<red>You haven't been invited to that colony.");
-                    return true;
-                }
-                if (plugin.colonies().coloniesOf(p.getUniqueId()).size() >= plugin.settings().maxColoniesPerPlayer) {
-                    Text.send(p, "<red>Leave your current colony first.");
-                    return true;
-                }
-                t.invites.remove(p.getUniqueId());
-                t.members.put(p.getUniqueId(), Rank.MEMBER);
-                for (Player m : t.onlineMembers()) Text.send(m, "<green>" + Text.esc(p.getName()) + " joined " + Text.esc(t.name) + ". Welcome, comrade!");
-                plugin.quests().refresh(t);
-                plugin.requestSave();
-            }
-            case "leave" -> {
-                if (need(p, c)) return true;
-                if (c.founder.equals(p.getUniqueId())) {
-                    Text.send(p, "<red>The Chairman can't leave. Use /colony abandon to dissolve the colony, or promote someone and ask an admin.");
-                    return true;
-                }
-                c.members.remove(p.getUniqueId());
-                plugin.quests().refresh(c);
-                Text.send(p, "You left " + Text.esc(c.name) + ".");
-                for (Player m : c.onlineMembers()) Text.send(m, "<gray>" + Text.esc(p.getName()) + " left the colony.");
-                plugin.requestSave();
-            }
-            case "kick", "promote", "demote" -> {
-                if (need(p, c) || lead(p, c)) return true;
-                if (args.length < 2) {
-                    Text.send(p, "/colony " + sub + " <player>");
-                    return true;
-                }
-                UUID u = member(c, args[1]);
-                if (u == null) {
-                    Text.send(p, "<red>No member called " + Text.esc(args[1]) + ".");
-                    return true;
-                }
-                if (u.equals(c.founder)) {
-                    Text.send(p, "<red>That's the Chairman.");
-                    return true;
-                }
-                if (!c.founder.equals(p.getUniqueId()) && c.rank(u) == Rank.OFFICER) {
-                    Text.send(p, "<red>Only the Chairman can do that to a Commissar.");
-                    return true;
-                }
-                switch (sub) {
-                    case "kick" -> {
-                        c.members.remove(u);
-                        Text.send(p, "Removed " + Text.esc(args[1]) + " from the colony.");
-                        Player t = Bukkit.getPlayer(u);
-                        if (t != null) Text.send(t, "<red>You were removed from " + Text.esc(c.name) + ".");
-                    }
-                    case "promote" -> {
-                        c.members.put(u, Rank.OFFICER);
-                        Text.send(p, Text.esc(args[1]) + " is now a Commissar.");
-                    }
-                    default -> {
-                        c.members.put(u, Rank.MEMBER);
-                        Text.send(p, Text.esc(args[1]) + " is now a Comrade.");
-                    }
-                }
-                plugin.quests().refresh(c);
-                plugin.requestSave();
-            }
-            case "rename" -> {
-                if (need(p, c) || lead(p, c)) return true;
-                if (args.length < 2) {
-                    Text.send(p, "/colony rename <name>");
-                    return true;
-                }
-                String name = join(args, 1);
-                String bad = EstablishMenu.checkName(plugin, name, c);
-                if (bad != null) {
-                    Text.send(p, "<red>" + bad);
-                    return true;
-                }
-                c.name = name;
-                Text.send(p, "The colony is now called <gold>" + Text.esc(name) + "</gold>.");
-                plugin.requestSave();
-            }
-            case "policy" -> {
-                if (need(p, c) || lead(p, c)) return true;
-                Policy pol = args.length > 1 ? Policy.parse(args[1]) : null;
-                if (pol == null) {
-                    Text.send(p, "Default prisoner policy: <white>" + c.defaultPolicy.display + "</white>. /colony policy <indoctrinate|enslave>");
-                    return true;
-                }
-                c.defaultPolicy = pol;
-                Text.send(p, "New prisoners will be put under <white>" + pol.display + "</white>.");
-                plugin.requestSave();
-            }
-            case "relocate" -> {
-                if (need(p, c)) return true;
-                if (!c.founder.equals(p.getUniqueId())) {
-                    Text.send(p, "<red>Only the Chairman can move the Town Hall.");
-                    return true;
-                }
-                if (plugin.wars().warOf(c) != null) {
-                    Text.send(p, "<red>Not during a war.");
-                    return true;
-                }
-                if (c.core == null) {
-                    Text.send(p, "Your Town Hall Core isn't placed. Use /colony core if you lost the item.");
-                    return true;
-                }
-                new ConfirmMenu(p, "<yellow>Move the Town Hall?", List.of("<gray>The core and State Chest block are", "<gray>removed (the chest's contents are kept)",
-                        "<gray>and you get the core back to place again."), () -> {
-                    World w = c.world();
-                    if (w != null) {
-                        Block core = c.core.block(w), chest = c.chest == null ? null : c.chest.block(w);
-                        if (core.getType() == Material.LODESTONE) core.setType(Material.AIR);
-                        if (chest != null && chest.getType() == Material.CHEST) chest.setType(Material.AIR);
-                    }
-                    c.core = null;
-                    c.chest = null;
-                    plugin.npcs().despawnColony(c);
-                    give(p, plugin.items().core(c.id, c.name));
-                    Text.send(p, "The Town Hall was dismantled. Place the core again inside your claim.");
-                    plugin.requestSave();
-                }, null).open();
-            }
-            case "abandon", "disband" -> {
-                if (need(p, c)) return true;
-                if (!c.founder.equals(p.getUniqueId())) {
-                    Text.send(p, "<red>Only the Chairman can dissolve the colony.");
-                    return true;
-                }
-                new ConfirmMenu(p, "<red>Dissolve " + Text.esc(c.name) + "?", List.of("<gray>Every citizen leaves, the claim is released", "<gray>and the State Chest spills its contents.", "<red>This can't be undone."),
-                        () -> plugin.colonies().delete(c, "dissolved by its Chairman"), null).open();
-            }
-            case "book" -> {
-                if (need(p, c)) return true;
-                give(p, plugin.items().book());
-                Text.send(p, "Here is a Colony Blueprint Book.");
-            }
-            case "core" -> {
-                if (need(p, c) || lead(p, c)) return true;
-                if (c.core != null) {
-                    Text.send(p, "<red>Your Town Hall is already standing.");
-                    return true;
-                }
-                for (ItemStack it : p.getInventory().getContents()) {
-                    if (Items.is(it, Items.CORE) && c.id.equals(Items.colonyOf(it))) {
-                        Text.send(p, "<gray>You already carry the Town Hall Core.");
-                        return true;
-                    }
-                }
-                give(p, plugin.items().core(c.id, c.name));
-                Text.send(p, "Here is your Town Hall Core. Place it inside your claim.");
-            }
-            case "spoils" -> {
-                if (need(p, c)) return true;
-                claimSpoils(p, c);
-            }
-            case "traveler" -> {
-                if (need(p, c)) return true;
-                String act = args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : "";
-                String err = switch (act) {
-                    case "recruit" -> plugin.travelers().recruit(c, p);
-                    case "dismiss", "turnaway", "away" -> plugin.travelers().dismiss(c, p);
-                    default -> "/colony traveler <recruit|dismiss>";
-                };
-                if (err != null) Text.send(p, "<red>" + err);
-            }
-            default -> help(p);
-        }
-        return true;
+    public Info info() {
+        return info;
     }
 
-    private boolean need(Player p, Colony c) {
-        if (c != null) return false;
-        Text.send(p, "<red>You don't belong to a colony. Craft a Colony Selection Wand (stick + gold nugget side by side) to found one.");
-        return true;
-    }
-
-    private boolean lead(Player p, Colony c) {
-        if (c.leads(p.getUniqueId()) || plugin.isBypassing(p)) return false;
-        Text.send(p, "<red>Only the Chairman or a Commissar can do that.");
-        return true;
-    }
-
-    private static UUID member(Colony c, String name) {
-        for (UUID u : c.members.keySet()) {
-            OfflinePlayer op = Bukkit.getOfflinePlayer(u);
-            if (op.getName() != null && op.getName().equalsIgnoreCase(name)) return u;
-        }
-        return null;
-    }
-
-    private static String join(String[] a, int from) {
-        return String.join(" ", Arrays.copyOfRange(a, from, a.length)).trim();
-    }
-
+    /** Gives an item, dropping what doesn't fit. */
     public static void give(Player p, ItemStack it) {
         for (ItemStack left : p.getInventory().addItem(it).values()) p.getWorld().dropItemNaturally(p.getLocation(), left);
     }
 
-    public void claimSpoils(Player p, Colony c) {
-        if (c.spoils.isEmpty()) {
-            Text.send(p, "There's nothing waiting to go into the State Chest.");
-            return;
-        }
-        int moved = 0;
-        Iterator<ItemStack> it = c.spoils.iterator();
-        List<ItemStack> keep = new ArrayList<>();
-        while (it.hasNext()) {
-            ItemStack s = it.next();
-            ItemStack left = c.storage.add(s);
-            moved += s.getAmount() - (left == null ? 0 : left.getAmount());
-            if (left != null) keep.add(left);
-            it.remove();
-        }
-        c.spoils.addAll(keep);
-        Text.send(p, "Moved <white>" + moved + "</white> items into the State Chest" + (keep.isEmpty() ? "." : ". <red>It's full: " + keep.size() + " stacks still waiting."));
-        plugin.requestSave();
-    }
-
     public void sendInfo(CommandSender to, Colony c) {
-        long now = System.currentTimeMillis();
-        OfflinePlayer f = Bukkit.getOfflinePlayer(c.founder);
-        double need = plugin.sim().dailyNeed(c);
-        double food = c.storage.foodPoints(plugin.settings().neverEat);
-        int prisoners = 0, slaves = 0, children = 0;
-        for (Citizen ct : c.citizens.values()) {
-            if (ct.status == Status.PRISONER || ct.status == Status.CAPTIVE) prisoners++;
-            if (ct.status == Status.SLAVE) slaves++;
-            if (ct.status == Status.CHILD) children++;
-        }
-        Text.raw(to, "<dark_red>☭ <gold><bold>" + Text.esc(c.name) + "</bold></gold> <dark_gray>(" + c.id + ")");
-        Text.raw(to, "<gray> Chairman: <white>" + Text.esc(f.getName() == null ? "?" : f.getName()) + "</white>  Members: <white>" + c.members.size());
-        Text.raw(to, "<gray> Land: <white>" + c.region.width() + "x" + c.region.length() + "</white> at <white>" + c.region.minX() + ", " + c.region.minZ() + "</white> to <white>"
-                + c.region.maxX() + ", " + c.region.maxZ() + "</white> (" + Text.esc(c.world) + ")");
-        Text.raw(to, "<gray> Town Hall: " + (c.core == null ? "<red>not placed" : "<white>" + c.core));
-        Text.raw(to, "<gray> Population: <white>" + c.population() + "</white> (" + children + " children)  Prisoners: <white>" + prisoners + "</white>  Forced labour: <white>" + slaves);
-        Text.raw(to, "<gray> Stability: " + Text.stabilityColor(c.stability) + Math.round(c.stability) + "%" + (c.strike ? " <dark_red><bold>ON STRIKE" : "")
-                + "  <gray>Food: <white>" + Math.round(food) + " pts" + (need > 0 ? " (" + String.format("%.1f", food / need) + " days)" : ""));
-        double edu = 0;
-        int people = 0;
-        for (Citizen ct : c.citizens.values()) {
-            if (ct.status != Status.CITIZEN && ct.status != Status.CHILD) continue;
-            edu += ct.education;
-            people++;
-        }
-        Text.raw(to, "<gray> Happiness: <white>" + Math.round(com.colonysmp.npc.Needs.average(c)) + "/100  <gray>Education: <white>" + (people == 0 ? 0 : Math.round(edu / people))
-                + "/100  <gray>Blueprints: <white>" + c.blueprints.size());
-        Text.raw(to, "<gray> Reputation: <white>" + c.reputation + "/100  <gray>Peace Shield: " + (c.shielded() ? "<aqua>" + Text.duration(c.shieldUntil - now) : "<red>none"));
-        WarManager.War w = plugin.wars().warOf(c);
-        if (w != null) {
-            Colony atk = plugin.colonies().get(w.attacker), def = plugin.colonies().get(w.defender);
-            Text.raw(to, "<red> At war: " + (atk == null ? "?" : Text.esc(atk.name)) + " vs " + (def == null ? "?" : Text.esc(def.name)) + " <gray>(" + Text.nice(w.phase.name()) + ", "
-                    + Text.duration(Math.max(0, w.phaseEnds - now)) + " left)");
-        }
-        if (c.mobilized()) Text.raw(to, "<red> Mobilized for " + Text.duration(c.mobilizedUntil - now));
+        Text.raw(to, "<aqua><bold>" + Text.esc(c.name) + "</bold></aqua>");
+        for (String l : info.colony(c)) Text.raw(to, " " + l);
     }
 
-    private void school(Player p, Colony c) {
-        List<com.colonysmp.data.Building> schools = c.buildings(com.colonysmp.data.BuildingType.SCHOOL);
-        double sum = 0;
-        int n = 0, teachers = 0, students = 0, children = 0;
-        for (Citizen ct : c.citizens.values()) {
-            if (ct.status != Status.CITIZEN && ct.status != Status.CHILD) continue;
-            sum += ct.education;
-            n++;
-            if (ct.status == Status.CHILD) children++;
-            else if (ct.job == com.colonysmp.data.Job.TEACHER) teachers++;
-            else if (ct.job == com.colonysmp.data.Job.STUDENT) students++;
-        }
-        Text.raw(p, "<aqua><bold>Education</bold> <gray>- " + Text.esc(c.name));
-        Text.raw(p, " <gray>Average education: <white>" + (n == 0 ? 0 : Math.round(sum / n)) + "/100  <gray>Teachers: <white>" + teachers
-                + "  <gray>Students: <white>" + students + "  <gray>Children: <white>" + children);
-        if (schools.isEmpty()) {
-            Text.raw(p, " <yellow>No school yet. Build an enclosed room with a door and a lectern (bookshelves help), or order the School blueprint, then register it with the Blueprint Book.");
-        }
-        World w = c.world();
-        long today = w == null ? 0 : NpcManager.day(w);
-        for (com.colonysmp.data.Building b : schools) {
-            Text.raw(p, " <white>" + b.label() + " <gray>- " + b.tiles.size() + " lectern(s), " + b.progress + " bookshelves, "
-                    + (b.bookDay == today ? "<green>book in use today" : "<yellow>no book today (keep books in the State Chest)"));
-        }
-        Text.raw(p, "<dark_gray> Skilled jobs: Smith 25, Teacher 30, Doctor 40 education. Educated citizens work up to 30% faster.");
-    }
+    // ───────────── dispatch ─────────────
 
-    private void blueprints(Player p, Colony c, String[] args) {
-        String a = args.length > 1 ? args[1].toLowerCase(Locale.ROOT) : "";
-        if (a.isEmpty()) {
-            new com.colonysmp.gui.BlueprintsMenu(plugin, p, c).open();
-            return;
-        }
-        if (a.equals("list")) {
-            if (c.blueprints.isEmpty()) {
-                Text.send(p, "No blueprints yet. Select a structure with the <gold>Colony Wand</gold> (two opposite corners, top and bottom) and <yellow>Shift + Right-Click</yellow>.");
-                return;
-            }
-            Text.raw(p, "<aqua><bold>Colony Blueprints</bold> <gray>(" + c.blueprints.size() + "/" + plugin.settings().blueprintMax + ")");
-            for (com.colonysmp.data.CustomBlueprint cb : c.blueprints.values()) {
-                Text.raw(p, " <white>" + Text.esc(cb.name) + " <gray>- " + cb.size() + ", " + cb.solid() + " blocks, by " + Text.esc(cb.author));
-            }
-            return;
-        }
-        com.colonysmp.data.CustomBlueprint cb = args.length > 2 ? c.blueprints.get(com.colonysmp.data.CustomBlueprint.key(join(args, 2))) : null;
-        if (cb == null) {
-            Text.send(p, "<red>Usage: /colony blueprints <list|info|select|delete> <name>" + (args.length > 2 ? " (no blueprint called that)" : ""));
-            return;
-        }
-        switch (a) {
-            case "info" -> {
-                Text.raw(p, "<aqua><bold>" + Text.esc(cb.name) + "</bold> <gray>- " + cb.size() + ", " + cb.solid() + " blocks, copied by " + Text.esc(cb.author));
-                List<Map.Entry<String, Integer>> needs = new ArrayList<>(com.colonysmp.colony.Blueprint.custom(cb).needs().entrySet());
-                needs.sort((x, y) -> y.getValue() - x.getValue());
-                for (Map.Entry<String, Integer> e : needs) Text.raw(p, "<dark_gray>  • <white>" + e.getValue() + "x</white> <gray>" + e.getKey());
-            }
-            case "select" -> {
-                plugin.blueprints().selectCustom(p, cb);
-                Text.send(p, "<green>Selected <white>" + Text.esc(cb.name) + "</white> in your Blueprint Book. Look at the ground and <gold>Shift + Left-Click</gold> to order it.");
-            }
-            case "delete", "remove" -> {
-                if (lead(p, c)) return;
-                int n = com.colonysmp.colony.Copier.delete(c, cb);
-                plugin.requestSave();
-                Text.send(p, "Deleted blueprint <white>" + Text.esc(cb.name) + "</white>" + (n > 0 ? " and cancelled " + n + " order(s)." : "."));
-            }
-            default -> Text.send(p, "<red>Usage: /colony blueprints <list|info|select|delete> <name>");
-        }
-    }
-
-    public void help(CommandSender to) {
-        Text.raw(to, "<dark_red>☭ <gold><bold>ColonySMP</bold></gold> <gray>- commands");
-        String[][] lines = {
-                {"info [colony]", "colony overview"},
-                {"quests [hide|show]", "starter quests"},
-                {"citizens | prison | buildings", "management menus"},
-                {"blueprints [list|info|select|delete <name>]", "structures copied with the wand"},
-                {"school", "schools and education"},
-                {"storage [page]", "open the Central State Chest (inside your claim)"},
-                {"mobilize [stop]", "arm your workers as militia"},
-                {"declare <colony>", "declare war (needs a War Banner)"},
-                {"war | surrender", "war status / give up"},
-                {"invite | join | leave | kick | promote | demote", "members"},
-                {"rename <name> | policy <indoctrinate|enslave>", "settings"},
-                {"traveler <recruit|dismiss>", "answer a visiting traveler"},
-                {"book | core | spoils | relocate | abandon", "items and the Town Hall"},
-                {"list", "every colony on the server"},
-        };
-        for (String[] l : lines) Text.raw(to, " <yellow>/colony " + l[0] + " <dark_gray>- <gray>" + l[1]);
-        Text.raw(to, "<dark_gray> Wand: stick + gold nugget side by side. Rope: 3 string in a column. Shackles: iron, chain, iron. War Banner: red banner + iron sword + gold ingot.");
-        if (to.hasPermission("colonysmp.admin")) Text.raw(to, " <red>/colony admin <" + String.join("|", ADMIN) + ">");
-    }
-
-    private void list(CommandSender to) {
-        if (plugin.colonies().all().isEmpty()) {
-            Text.send(to, "No colonies have been founded yet.");
-            return;
-        }
-        Text.raw(to, "<dark_red>☭ <gold>Colonies <gray>(" + plugin.colonies().all().size() + ")");
-        for (Colony c : plugin.colonies().all()) {
-            String state = plugin.wars().warOf(c) != null ? " <red>[WAR]" : c.shielded() ? " <aqua>[shield]" : "";
-            Text.raw(to, " <gold>" + Text.esc(c.name) + "</gold> <gray>- pop " + c.population() + ", " + c.members.size() + " members, stability " + Math.round(c.stability) + "%" + state);
-        }
-    }
-
-    // ───────────── admin ─────────────
-
-    private void admin(CommandSender s, String[] a) {
-        if (!s.hasPermission("colonysmp.admin")) {
-            Text.send(s, "<red>You don't have permission.");
-            return;
-        }
-        String sub = a.length == 0 ? "" : a[0].toLowerCase(Locale.ROOT);
-        switch (sub) {
-            case "reload" -> {
-                plugin.reload();
-                Text.send(s, "<green>ColonySMP configuration reloaded.");
-            }
-            case "save" -> {
-                plugin.saveNow();
-                Text.send(s, "<green>Saved.");
-            }
-            case "give" -> {
-                if (a.length < 2) {
-                    Text.send(s, "/colony admin give <wand|book|rope|shackles|war_banner> [player] [amount]");
-                    return;
-                }
-                ItemStack it = plugin.items().byId(a[1].toLowerCase(Locale.ROOT));
-                if (it == null) {
-                    Text.send(s, "<red>Unknown item.");
-                    return;
-                }
-                Player t = a.length > 2 ? Bukkit.getPlayerExact(a[2]) : s instanceof Player p ? p : null;
-                if (t == null) {
-                    Text.send(s, "<red>No such player.");
-                    return;
-                }
-                int n = 1;
-                if (a.length > 3) {
-                    try {
-                        n = Math.max(1, Math.min(64, Integer.parseInt(a[3])));
-                    } catch (NumberFormatException ignored) {
-                    }
-                }
-                it.setAmount(Math.min(n, it.getMaxStackSize()));
-                give(t, it);
-                Text.send(s, "Gave " + a[1] + " to " + t.getName() + ".");
-            }
-            case "bypass" -> {
-                if (!(s instanceof Player p)) return;
-                boolean on = plugin.toggleBypass(p);
-                Text.send(p, "Claim bypass " + (on ? "<green>on" : "<red>off"));
-            }
-            case "delete", "stability", "shield", "traveler", "endwar", "tp", "ration", "food", "stock", "who", "addcitizen", "job" -> {
-                if (a.length < 2) {
-                    Text.send(s, "/colony admin " + sub + " <colony> ...");
-                    return;
-                }
-                Colony c = plugin.colonies().byName(a[1]);
-                if (c == null) {
-                    Text.send(s, "<red>No such colony.");
-                    return;
-                }
-                switch (sub) {
-                    case "delete" -> {
-                        plugin.colonies().delete(c, "removed by an administrator");
-                        Text.send(s, "Deleted " + Text.esc(c.name) + ".");
-                    }
-                    case "stability" -> {
-                        double v = a.length > 2 ? parse(a[2], c.stability) : c.stability;
-                        c.stability = Math.max(0, Math.min(100, v));
-                        Text.send(s, Text.esc(c.name) + " stability set to " + Math.round(c.stability) + "%.");
-                    }
-                    case "shield" -> {
-                        double h = a.length > 2 ? parse(a[2], 0) : 0;
-                        c.shieldUntil = h <= 0 ? 0 : System.currentTimeMillis() + (long) (h * 3600_000L);
-                        Text.send(s, Text.esc(c.name) + " Peace Shield " + (h <= 0 ? "removed." : "set to " + h + " hours."));
-                    }
-                    case "traveler" -> Text.send(s, plugin.travelers().summon(c) ? "A traveler is on the way." : "<red>Couldn't summon one (already one there, no Town Hall, or not loaded).");
-                    case "endwar" -> Text.send(s, plugin.wars().forceEnd(c) ? "War ended." : "<red>That colony isn't at war.");
-                    case "tp" -> {
-                        if (!(s instanceof Player p)) return;
-                        Location l = c.coreLocation();
-                        if (l == null) {
-                            World w = c.world();
-                            if (w == null) return;
-                            l = new Location(w, c.region.centerX(), w.getHighestBlockYAt((int) c.region.centerX(), (int) c.region.centerZ()) + 1, c.region.centerZ());
-                        }
-                        p.teleport(l.add(0, 1, 0));
-                    }
-                    case "ration" -> {
-                        World w = c.world();
-                        if (w == null) return;
-                        plugin.sim().ration(c, w, NpcManager.day(w));
-                        Text.send(s, "Ran the nightly rationing for " + Text.esc(c.name) + ".");
-                    }
-                    case "addcitizen" -> {
-                        String what = a.length > 2 ? a[2].toUpperCase(Locale.ROOT) : "NONE";
-                        boolean child = what.equals("CHILD");
-                        com.colonysmp.data.Job j = child ? com.colonysmp.data.Job.NONE : com.colonysmp.data.Job.parse(what);
-                        if (j == null) {
-                            Text.send(s, "<red>Unknown job. Jobs: " + Arrays.toString(com.colonysmp.data.Job.values()) + " or CHILD");
-                            return;
-                        }
-                        Citizen ct = plugin.npcs().newCitizen(c, j, child ? Status.CHILD : Status.CITIZEN);
-                        if (child) ct.bornDay = c.world() == null ? 0 : NpcManager.day(c.world());
-                        Location at = c.coreLocation();
-                        if (at != null && plugin.npcs().active(c)) plugin.npcs().spawn(c, ct, plugin.npcs().spotNear(at, 2, 5));
-                        plugin.sim().assignBeds(c);
-                        Text.send(s, "Added " + Text.esc(ct.name) + " (" + ct.title() + ", education " + Math.round(ct.education) + ") to " + Text.esc(c.name) + ".");
-                    }
-                    case "job" -> {
-                        if (a.length < 4) {
-                            Text.send(s, "/colony admin job <colony> <citizen name> <job>");
-                            return;
-                        }
-                        com.colonysmp.data.Job j = com.colonysmp.data.Job.parse(a[a.length - 1]);
-                        String who = String.join(" ", Arrays.copyOfRange(a, 2, a.length - 1)).replace('_', ' ');
-                        Citizen ct = null;
-                        for (Citizen x : c.citizens.values()) if (x.name.equalsIgnoreCase(who)) ct = x;
-                        if (ct == null || j == null) {
-                            Text.send(s, "<red>No citizen called " + Text.esc(who) + ", or unknown job.");
-                            return;
-                        }
-                        ct.job = j;
-                        com.colonysmp.npc.Npc n = plugin.npcs().npc(ct);
-                        if (n != null) {
-                            n.resetWork();
-                            n.mover.stop();
-                            plugin.npcs().refresh(n);
-                        }
-                        Text.send(s, Text.esc(ct.name) + " is now a " + j.display + ".");
-                    }
-                    case "who" -> {
-                        Text.raw(s, "<gold>" + Text.esc(c.name) + " <gray>- citizens");
-                        for (Citizen ct : c.citizens.values()) {
-                            com.colonysmp.npc.Npc n = plugin.npcs().npc(ct);
-                            StringBuilder bag = new StringBuilder();
-                            for (ItemStack it : ct.carry) bag.append(it.getType().name().toLowerCase()).append('x').append(it.getAmount()).append(' ');
-                            Text.raw(s, " <white>" + Text.esc(ct.name) + " <gray>" + ct.title() + " | " + (n == null ? "no body" : Text.esc(n.activity) + " @" + n.body.getLocation().getBlockX() + "," + n.body.getLocation().getBlockY() + "," + n.body.getLocation().getBlockZ())
-                                    + " | rest " + Math.round(ct.rest) + " happy " + Math.round(ct.happiness) + " edu " + Math.round(ct.education) + " | bag " + bag);
-                        }
-                    }
-                    case "stock" -> {
-                        Material m = a.length > 2 ? Material.matchMaterial(a[2]) : null;
-                        if (m == null || !m.isItem()) {
-                            Text.send(s, "/colony admin stock <colony> <item> [amount]");
-                            return;
-                        }
-                        int amount = a.length > 3 ? (int) parse(a[3], 1) : m.getMaxStackSize();
-                        int left = 0;
-                        for (int done = 0; done < amount; ) {
-                            int n = Math.min(m.getMaxStackSize(), amount - done);
-                            ItemStack rest = c.storage.add(new ItemStack(m, n));
-                            if (rest != null) left += rest.getAmount();
-                            done += n;
-                        }
-                        Text.send(s, "Put " + (amount - left) + " " + m.name().toLowerCase() + " in the State Chest of " + Text.esc(c.name) + (left > 0 ? " (" + left + " didn't fit)." : "."));
-                    }
-                    case "food" -> {
-                        double pts = c.storage.foodPoints(plugin.settings().neverEat);
-                        Text.send(s, Text.esc(c.name) + ": " + Math.round(pts) + " food points, daily need " + Math.round(plugin.sim().dailyNeed(c)) + ".");
-                    }
-                    default -> {
-                    }
-                }
-                plugin.requestSave();
-            }
-            default -> {
-                Text.raw(s, "<red>/colony admin reload | save | bypass | give <item> [player] [amount]");
-                Text.raw(s, "<red>/colony admin delete|stability|shield|traveler|endwar|tp|ration|food <colony> [value]");
-                Text.raw(s, "<red>/colony admin stock <colony> <item> [amount] | who <colony> | addcitizen <colony> [job|CHILD] | job <colony> <name> <job>");
-            }
-        }
-    }
-
-    private static double parse(String s, double def) {
+    @Override
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+        String sub = args.length == 0 ? "info" : args[0].toLowerCase(Locale.ROOT);
+        String[] rest = args.length == 0 ? new String[0] : Arrays.copyOfRange(args, 1, args.length);
         try {
-            return Double.parseDouble(s);
+            if (sub.equals("admin")) {
+                admin.run(sender, rest);
+                return true;
+            }
+            if (sub.equals("help")) {
+                help(sender, rest);
+                return true;
+            }
+            if (sub.equals("list")) {
+                list(sender);
+                return true;
+            }
+            if (!(sender instanceof Player p)) {
+                Text.send(sender, "Players only (try /colony list or /colony admin).");
+                return true;
+            }
+            if (!p.hasPermission("colonysmp.play")) {
+                Text.send(p, "<red>You don't have permission.");
+                return true;
+            }
+            run(p, sub, rest);
+        } catch (RuntimeException ex) {
+            plugin.getLogger().log(java.util.logging.Level.WARNING, "/colony " + String.join(" ", args) + " failed", ex);
+            Text.send(sender, "<red>Something went wrong: " + Text.esc(String.valueOf(ex.getMessage())));
+        }
+        return true;
+    }
+
+    private void run(Player p, String sub, String[] a) {
+        Colony c = plugin.colonies().of(p);
+        switch (sub) {
+            case "create" -> create(p, a);
+            case "info" -> {
+                Colony t = a.length > 0 ? plugin.colonies().byName(String.join(" ", a)) : c != null ? c : plugin.colonies().at(p.getLocation());
+                if (t == null) {
+                    Text.send(p, "You don't belong to a colony. Start one with <white>/colony create <name></white>.");
+                    return;
+                }
+                sendInfo(p, t);
+            }
+            case "map" -> {
+                for (String l : plugin.territory().map(p)) Text.raw(p, l);
+            }
+            case "claim", "unclaim" -> {
+                if (need(p, c)) return;
+                String err = sub.equals("claim") ? plugin.territory().claim(p, c, p.getLocation().getChunk()) : plugin.territory().unclaim(p, c, p.getLocation().getChunk());
+                if (err != null) Text.send(p, "<red>" + err);
+            }
+            case "invite" -> invite(p, c, a);
+            case "join" -> join(p, a);
+            case "leave" -> leave(p, c);
+            case "kick" -> kick(p, c, a);
+            case "members" -> members(p, c);
+            case "promote", "demote" -> promote(p, c, a, sub.equals("promote"));
+            case "rename" -> rename(p, c, a);
+            case "settings" -> settings(p, c, a);
+            case "menu" -> {
+                if (!need(p, c)) new TownHallMenu(plugin, p, c).open();
+            }
+            case "core" -> {
+                if (need(p, c)) return;
+                if (c.core != null) {
+                    Text.send(p, "<red>" + Text.esc(c.name) + " already has its Town Hall.");
+                    return;
+                }
+                if (!plugin.access().check(p, c, Perm.SETTINGS)) return;
+                give(p, plugin.items().core(c.id, c.name));
+                Text.send(p, "Here is the <aqua>Town Hall Core</aqua> of " + Text.esc(c.name) + ". Place it where the colony should stand.");
+            }
+            case "book" -> {
+                // /colony book <type>: turns the book to a building type (and hands one over if needed)
+                if (a.length > 0) {
+                    BuildingType t = BuildingType.parse(String.join("_", a));
+                    if (t == null) {
+                        Text.send(p, "<red>No building type called " + Text.esc(String.join(" ", a)) + ". Try /colony help buildings.");
+                        return;
+                    }
+                    plugin.blueprints().select(p, t);
+                    if (!p.getInventory().contains(plugin.items().book().getType())) items(p, c, sub);
+                    Text.send(p, "<yellow>Plan:</yellow> <white>" + t.display + "</white>. Shift + right-click inside it to register it.");
+                } else items(p, c, sub);
+            }
+            case "wand", "rope", "baton", "banner" -> items(p, c, sub);
+            case "disband" -> disband(p, c);
+            case "quests" -> quests(p, c, a);
+            case "citizens" -> {
+                if (!need(p, c)) new CitizensMenu(plugin, p, c, null).open();
+            }
+            case "citizen" -> citizen(p, c, a);
+            case "jobs" -> jobs(p, c);
+            case "assign" -> assign(p, c, a);
+            case "home" -> home(p, c, a);
+            case "needs" -> needs(p, c, a);
+            case "settler" -> {
+                if (need(p, c) || !plugin.access().check(p, c, Perm.MANAGE_CITIZENS)) return;
+                String err = plugin.sim().population().recruit(p, c);
+                if (err != null) Text.send(p, "<red>" + err);
+                else Text.send(p, "<green>A settler arrives from the region.");
+            }
+            case "traveller", "traveler" -> {
+                if (need(p, c)) return;
+                String err = a.length > 0 && a[0].equalsIgnoreCase("dismiss") ? plugin.travelers().dismiss(c, p) : plugin.travelers().recruit(c, p);
+                if (err != null) Text.send(p, "<red>" + err);
+            }
+            case "exile" -> exile(p, c, a);
+            case "release" -> release(p, c, a);
+            case "buildings" -> {
+                if (!need(p, c)) new BuildingsMenu(plugin, p, c).open();
+            }
+            case "building" -> building(p, c, a);
+            case "validate" -> validate(p, c, a);
+            case "upgrade" -> upgrade(p, c, a);
+            case "construction" -> construction(p, c, a);
+            case "resources" -> {
+                if (need(p, c)) return;
+                Category only = null;
+                if (a.length > 0) {
+                    for (Category cat : Category.values()) if (cat.name().equalsIgnoreCase(a[0]) || cat.display.equalsIgnoreCase(a[0])) only = cat;
+                }
+                Text.raw(p, "<aqua><bold>Resources of " + Text.esc(c.name));
+                for (String l : info.resources(c, only)) Text.raw(p, " " + l);
+            }
+            case "storage" -> storage(p, c, a);
+            case "economy" -> {
+                if (need(p, c)) return;
+                if (a.length == 0) {
+                    new EconomyMenu(plugin, p, c).open();
+                    return;
+                }
+                for (String l : info.economy(c)) Text.raw(p, " " + l);
+            }
+            case "trade" -> trade(p, c, a);
+            case "production" -> {
+                if (need(p, c)) return;
+                Text.raw(p, "<aqua><bold>Production in " + Text.esc(c.name));
+                for (String l : info.production(c)) Text.raw(p, " " + l);
+            }
+            case "deposit", "withdraw" -> money(p, c, a, sub.equals("deposit"));
+            case "shop" -> {
+                Colony t = a.length > 0 ? plugin.colonies().byName(String.join(" ", a)) : plugin.colonies().at(p.getLocation());
+                if (t == null) t = c;
+                if (t == null) {
+                    Text.send(p, "Stand in a colony (or name one) to shop at its market.");
+                    return;
+                }
+                new ShopMenu(plugin, p, t).open();
+            }
+            case "policies" -> policies(p, c, a);
+            case "military" -> {
+                if (need(p, c)) return;
+                if (a.length == 0) new MilitaryMenu(plugin, p, c).open();
+                else for (String l : info.military(c)) Text.raw(p, " " + l);
+            }
+            case "recruit" -> recruit(p, c, a);
+            case "army" -> army(p, c);
+            case "orders" -> orders(p, c, a);
+            case "squad" -> squad(p, c, a);
+            case "mobilize", "mobilise" -> {
+                if (need(p, c)) return;
+                String err = plugin.military().mobilize(p, c);
+                if (err != null) Text.send(p, "<red>" + err);
+            }
+            case "diplomacy" -> diplomacy(p, c, a);
+            case "declarewar" -> declare(p, c, a);
+            case "peace" -> peace(p, c, a);
+            case "surrender" -> {
+                if (need(p, c)) return;
+                String err = plugin.wars().surrender(p, c);
+                if (err != null) Text.send(p, "<red>" + err);
+            }
+            case "prison" -> prison(p, c, a);
+            case "events" -> events(p, c, a);
+            case "stats" -> stats(p, c);
+            default -> Text.send(p, "Unknown subcommand. Try <white>/colony help</white>.");
+        }
+    }
+
+    // ───────────── helpers ─────────────
+
+    /** True (and a message) if the player has no colony. */
+    private boolean need(Player p, Colony c) {
+        if (c != null) return false;
+        Text.send(p, "You don't belong to a colony. Start one with <white>/colony create <name></white> or join one with <white>/colony join <name></white>.");
+        return true;
+    }
+
+    private static String join(String[] a, int from) {
+        return from >= a.length ? "" : String.join(" ", Arrays.copyOfRange(a, from, a.length));
+    }
+
+    private Citizen findCitizen(Colony c, String name) {
+        if (name == null || name.isEmpty()) return null;
+        Citizen partial = null;
+        for (Citizen ct : c.citizens.values()) {
+            if (ct.name.equalsIgnoreCase(name)) return ct;
+            if (partial == null && ct.name.toLowerCase(Locale.ROOT).startsWith(name.toLowerCase(Locale.ROOT))) partial = ct;
+        }
+        return partial;
+    }
+
+    /** A citizen named by the words from a[from] on (names have spaces), and how many words the name took. */
+    private record Named(Citizen citizen, int words) {
+    }
+
+    private Named leading(Colony c, String[] a, int from) {
+        for (int n = a.length - from; n >= 1; n--) {
+            String name = String.join(" ", Arrays.copyOfRange(a, from, from + n));
+            for (Citizen ct : c.citizens.values()) if (ct.name.equalsIgnoreCase(name)) return new Named(ct, n);
+        }
+        return new Named(from < a.length ? findCitizen(c, a[from]) : null, 1);
+    }
+
+    private Building findBuilding(Colony c, String s) {
+        try {
+            return c.building(Integer.parseInt(s.replace("#", "")));
+        } catch (NumberFormatException e) {
+            for (Building b : c.buildings.values()) if (b.label().equalsIgnoreCase(s) || b.name != null && b.name.equalsIgnoreCase(s)) return b;
+            return null;
+        }
+    }
+
+    private static long number(String s, long def) {
+        try {
+            return Long.parseLong(s.replace(",", ""));
         } catch (NumberFormatException e) {
             return def;
         }
+    }
+
+    private static String good(String s) {
+        String k = Goods.key(s.replace(' ', '_'));
+        return Goods.known(k) ? k : null;
+    }
+
+    // ───────────── membership ─────────────
+
+    private void create(Player p, String[] a) {
+        if (a.length == 0) {
+            Text.send(p, "Usage: <white>/colony create <name>");
+            return;
+        }
+        if (plugin.colonies().coloniesOf(p.getUniqueId()).size() >= plugin.settings().maxColoniesPerPlayer && !plugin.isBypassing(p)) {
+            Text.send(p, "<red>You already belong to " + plugin.settings().maxColoniesPerPlayer + " colony(ies). Leave one first.");
+            return;
+        }
+        if (!plugin.settings().worldAllowed(p.getWorld().getName())) {
+            Text.send(p, "<red>Colonies can't be founded in this world.");
+            return;
+        }
+        String name = String.join(" ", a);
+        String err = plugin.colonies().checkName(name, null);
+        if (err != null) {
+            Text.send(p, "<red>" + err);
+            return;
+        }
+        Colony c = plugin.colonies().create(p, name);
+        give(p, plugin.items().core(c.id, c.name));
+        give(p, plugin.items().book());
+        Text.send(p, "<green>The colony of <white>" + Text.esc(c.name) + "</white> is created.</green> Place the <aqua>Town Hall Core</aqua> (in your inventory) where it should stand: "
+                + "the land around it becomes yours and your first settlers arrive. The <white>Blueprint Book</white> registers buildings.");
+        plugin.quests().refresh(c);
+    }
+
+    private void invite(Player p, Colony c, String[] a) {
+        if (need(p, c) || !plugin.access().check(p, c, Perm.MEMBERS)) return;
+        if (a.length == 0) {
+            Text.send(p, "Usage: <white>/colony invite <player>");
+            return;
+        }
+        Player t = Bukkit.getPlayerExact(a[0]);
+        if (t == null) {
+            Text.send(p, "<red>That player isn't online.");
+            return;
+        }
+        if (c.isMember(t.getUniqueId())) {
+            Text.send(p, Text.esc(t.getName()) + " is already a member.");
+            return;
+        }
+        c.invites.add(t.getUniqueId());
+        Text.send(p, "Invited <white>" + Text.esc(t.getName()) + "</white>.");
+        Text.send(t, Text.esc(p.getName()) + " invited you to <aqua>" + Text.esc(c.name) + "</aqua>. <click:run_command:'/colony join " + Text.esc(c.name)
+                + "'><green>[Join]</green></click>");
+    }
+
+    private void join(Player p, String[] a) {
+        Colony c = a.length == 0 ? null : plugin.colonies().byName(String.join(" ", a));
+        if (c == null) {
+            Text.send(p, "Usage: <white>/colony join <colony></white> (you need an invitation).");
+            return;
+        }
+        if (!c.invites.remove(p.getUniqueId()) && !plugin.isBypassing(p)) {
+            Text.send(p, "<red>You haven't been invited to " + Text.esc(c.name) + ".");
+            return;
+        }
+        if (plugin.colonies().coloniesOf(p.getUniqueId()).size() >= plugin.settings().maxColoniesPerPlayer && !plugin.isBypassing(p)) {
+            Text.send(p, "<red>You already belong to as many colonies as you may.");
+            return;
+        }
+        c.members.put(p.getUniqueId(), Role.RESIDENT);
+        c.log(ColonyEvent.Type.COLONY, plugin.sim().day(c), p.getName() + " joined the colony.");
+        for (Player m : c.onlineMembers()) Text.send(m, "<green>" + Text.esc(p.getName()) + " joined " + Text.esc(c.name) + ".");
+        plugin.quests().refresh(c);
+        plugin.requestSave();
+    }
+
+    private void leave(Player p, Colony c) {
+        if (need(p, c)) return;
+        if (c.owner.equals(p.getUniqueId())) {
+            Text.send(p, "<red>The owner can't leave. Hand the colony over (/colony promote <player> owner) or disband it (/colony disband).");
+            return;
+        }
+        c.members.remove(p.getUniqueId());
+        c.log(ColonyEvent.Type.COLONY, plugin.sim().day(c), p.getName() + " left the colony.");
+        Text.send(p, "You left " + Text.esc(c.name) + ".");
+        plugin.quests().refresh(c);
+        plugin.requestSave();
+    }
+
+    private void kick(Player p, Colony c, String[] a) {
+        if (need(p, c) || !plugin.access().check(p, c, Perm.MEMBERS)) return;
+        OfflinePlayer t = a.length == 0 ? null : Bukkit.getOfflinePlayerIfCached(a[0]);
+        if (t == null || !c.isMember(t.getUniqueId())) {
+            Text.send(p, "<red>No member called that.");
+            return;
+        }
+        if (!plugin.access().outranks(p, c, t.getUniqueId())) {
+            Text.send(p, "<red>You can only remove members below your own rank.");
+            return;
+        }
+        c.members.remove(t.getUniqueId());
+        c.log(ColonyEvent.Type.COLONY, plugin.sim().day(c), p.getName() + " removed " + t.getName() + " from the colony.");
+        Text.send(p, "Removed " + Text.esc(t.getName()) + ".");
+        plugin.requestSave();
+    }
+
+    private void members(Player p, Colony c) {
+        if (need(p, c)) return;
+        Text.raw(p, "<aqua><bold>Members of " + Text.esc(c.name));
+        for (Map.Entry<UUID, Role> e : c.members.entrySet()) {
+            boolean online = Bukkit.getPlayer(e.getKey()) != null;
+            Text.raw(p, " " + (online ? "<green>●" : "<dark_gray>●") + " <white>" + Text.esc(Info.name(e.getKey())) + " <gray>" + e.getValue().display);
+        }
+    }
+
+    private void promote(Player p, Colony c, String[] a, boolean up) {
+        if (need(p, c)) return;
+        if (a.length == 0) {
+            Text.send(p, "Usage: <white>/colony " + (up ? "promote" : "demote") + " <player> [role]");
+            return;
+        }
+        OfflinePlayer t = Bukkit.getOfflinePlayerIfCached(a[0]);
+        if (t == null || !c.isMember(t.getUniqueId())) {
+            Text.send(p, "<red>No member called that.");
+            return;
+        }
+        Role cur = c.role(t.getUniqueId());
+        Role to = a.length > 1 ? Role.parse(a[1]) : null;
+        if (to == null) {
+            Role[] order = {Role.RESIDENT, Role.MANAGER, Role.CO_OWNER};
+            int i = Math.max(0, Arrays.asList(order).indexOf(cur));
+            to = up ? order[Math.min(order.length - 1, i + 1)] : order[Math.max(0, i - 1)];
+        }
+        if (!to.member) {
+            Text.send(p, "<red>Members can be Owner, Co-owner, Manager or Resident.");
+            return;
+        }
+        if (to == Role.OWNER) {
+            if (!plugin.access().owner(p, c)) {
+                Text.send(p, "<red>Only the owner can hand over the colony.");
+                return;
+            }
+            c.members.put(c.owner, Role.CO_OWNER);
+            c.owner = t.getUniqueId();
+            c.members.put(t.getUniqueId(), Role.OWNER);
+        } else {
+            if (!plugin.access().outranks(p, c, t.getUniqueId()) || c.role(p.getUniqueId()) != null && to.rank() >= c.role(p.getUniqueId()).rank() && !plugin.isBypassing(p)) {
+                Text.send(p, "<red>You can only change the role of members below you, to a role below yours.");
+                return;
+            }
+            c.members.put(t.getUniqueId(), to);
+        }
+        c.log(ColonyEvent.Type.COLONY, plugin.sim().day(c), p.getName() + " made " + t.getName() + " " + to.display + ".");
+        Text.send(p, Text.esc(t.getName()) + " is now <white>" + to.display + "</white>.");
+        plugin.requestSave();
+    }
+
+    private void rename(Player p, Colony c, String[] a) {
+        if (need(p, c) || !plugin.access().check(p, c, Perm.SETTINGS)) return;
+        String name = String.join(" ", a);
+        String err = plugin.colonies().checkName(name, c);
+        if (err != null) {
+            Text.send(p, "<red>" + err);
+            return;
+        }
+        c.log(ColonyEvent.Type.COLONY, plugin.sim().day(c), p.getName() + " renamed the colony from " + c.name + " to " + name.trim() + ".");
+        c.name = name.trim();
+        Text.send(p, "The colony is now called <white>" + Text.esc(c.name) + "</white>.");
+        plugin.requestSave();
+    }
+
+    /** /colony settings perm <role> <permission> <on|off> -- what each role may do here. */
+    private void settings(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        if (a.length >= 4 && a[0].equalsIgnoreCase("perm")) {
+            if (!plugin.access().check(p, c, Perm.ROLES)) return;
+            Role r = Role.parse(a[1]);
+            Perm perm;
+            try {
+                perm = Perm.valueOf(a[2].toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                perm = null;
+            }
+            if (r == null || !r.editable() || perm == null) {
+                Text.send(p, "<red>Editable roles: manager, resident, ally, visitor. Permissions: " + Arrays.toString(Perm.values()).toLowerCase(Locale.ROOT));
+                return;
+            }
+            var set = java.util.EnumSet.noneOf(Perm.class);
+            set.addAll(c.perms(r));
+            if (a[3].equalsIgnoreCase("on") || a[3].equalsIgnoreCase("true")) set.add(perm);
+            else set.remove(perm);
+            c.perms.put(r, set);
+            Text.send(p, r.display + "s " + (set.contains(perm) ? "<green>may</green>" : "<red>may not</red>") + " " + perm.description.toLowerCase() + ".");
+            plugin.requestSave();
+            return;
+        }
+        Text.raw(p, "<aqua><bold>Permissions in " + Text.esc(c.name) + "</bold> <gray>(/colony settings perm <role> <permission> on|off)");
+        for (Role r : Role.values()) {
+            List<String> l = new ArrayList<>();
+            for (Perm perm : c.perms(r)) l.add(perm.name().toLowerCase(Locale.ROOT));
+            Text.raw(p, " <white>" + r.display + "</white><gray>: " + (l.isEmpty() ? "nothing" : String.join(", ", l)));
+        }
+    }
+
+    private void items(Player p, Colony c, String which) {
+        switch (which) {
+            case "book" -> give(p, plugin.items().book());
+            case "wand" -> give(p, plugin.items().wand());
+            case "rope" -> {
+                if (!plugin.isBypassing(p)) {
+                    Text.send(p, "Rope is crafted from 3 string in a column (makes 2; see /colony help prisoners).");
+                    return;
+                }
+                give(p, plugin.items().rope());
+            }
+            case "baton" -> {
+                if (need(p, c) || !plugin.access().check(p, c, Perm.MILITARY)) return;
+                give(p, plugin.items().baton());
+            }
+            default -> {
+                if (!plugin.isBypassing(p)) {
+                    Text.send(p, "The War Banner is crafted: red banner, iron sword, gold ingot.");
+                    return;
+                }
+                give(p, plugin.items().warBanner());
+            }
+        }
+    }
+
+    private void disband(Player p, Colony c) {
+        if (need(p, c)) return;
+        if (!plugin.access().owner(p, c)) {
+            Text.send(p, "<red>Only the owner can disband the colony.");
+            return;
+        }
+        new ConfirmMenu(p, "<red>Disband " + Text.esc(c.name) + "?", List.of("<gray>Its citizens leave, its land is freed", "<gray>and its storage is lost. This can't be undone."),
+                () -> plugin.colonies().delete(c, "disbanded by " + p.getName()), null).open();
+    }
+
+    private void quests(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        if (a.length > 0 && (a[0].equalsIgnoreCase("hide") || a[0].equalsIgnoreCase("show"))) {
+            plugin.quests().setHidden(c, p, a[0].equalsIgnoreCase("hide"));
+            Text.send(p, "Quest bar " + (a[0].equalsIgnoreCase("hide") ? "hidden" : "shown") + ".");
+            return;
+        }
+        QuestManager q = plugin.quests();
+        Text.raw(p, "<gold><bold>First steps</bold> <gray>- " + Text.esc(c.name));
+        for (int i = 1; i <= QuestManager.COUNT; i++) {
+            String mark = c.questStage > i ? "<green>✔" : c.questStage == i ? "<yellow>➤" : "<dark_gray>✘";
+            Text.raw(p, " " + mark + " <white>" + i + ". " + q.title(i) + " <gray>- " + q.task(i));
+        }
+    }
+
+    // ───────────── citizens ─────────────
+
+    private void citizen(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        Citizen ct = findCitizen(c, join(a, 0));
+        if (ct == null) {
+            Text.send(p, "<red>No citizen called that. (/colony citizens lists them)");
+            return;
+        }
+        Text.raw(p, "<aqua><bold>" + Text.esc(ct.name) + "</bold></aqua>");
+        for (String l : info.citizen(c, ct)) Text.raw(p, " " + l);
+    }
+
+    private void jobs(Player p, Colony c) {
+        if (need(p, c)) return;
+        Map<Job, Integer> count = new java.util.EnumMap<>(Job.class);
+        for (Citizen ct : c.citizens.values()) if (ct.status.free()) count.merge(ct.job, 1, Integer::sum);
+        Text.raw(p, "<aqua><bold>Jobs in " + Text.esc(c.name) + "</bold> <gray>(/colony assign <citizen> <job> [building])");
+        List<String> l = new ArrayList<>();
+        count.forEach((j, n) -> l.add("<white>" + n + "</white> " + j.display));
+        Text.raw(p, " " + String.join("<gray>, ", l));
+        var open = plugin.sim().jobs().openings(c);
+        if (open.isEmpty()) Text.raw(p, " <gray>No open places. Build or upgrade workplaces for more jobs.");
+        for (var o : open) Text.raw(p, " <green>" + o.free() + "</green> <gray>× " + o.job().display + " at <white>" + Text.esc(o.building().label()) + "</white>"
+                + (o.job().education > 0 ? " <dark_gray>(education " + o.job().education + ")" : ""));
+        if (!plugin.sim().jobs().administrated(c)) Text.raw(p, " <dark_gray>Tip: an Administrator at the Town Hall places the unemployed automatically.");
+    }
+
+    private void assign(Player p, Colony c, String[] a) {
+        if (need(p, c) || !plugin.access().check(p, c, Perm.MANAGE_JOBS)) return;
+        if (a.length < 2) {
+            Text.send(p, "Usage: <white>/colony assign <citizen> <job> [building id]");
+            return;
+        }
+        Named who = leading(c, a, 0);
+        Citizen ct = who.citizen();
+        int at0 = who.words();
+        Job j = at0 < a.length ? Job.parse(a[at0]) : null;
+        if (ct == null || j == null) {
+            Text.send(p, "<red>" + (ct == null ? "No citizen called that." : "No such job. Jobs: " + Arrays.toString(Job.values()).toLowerCase(Locale.ROOT)));
+            return;
+        }
+        if (j == Job.SOLDIER) {
+            Text.send(p, "Use <white>/colony recruit " + ct.name + " <class></white> to make someone a soldier.");
+            return;
+        }
+        Building b = a.length > at0 + 1 ? findBuilding(c, a[at0 + 1]) : null;
+        if (a.length > at0 + 1 && b == null) {
+            Text.send(p, "<red>No building with that id (see /colony buildings).");
+            return;
+        }
+        String err = plugin.sim().jobs().assign(c, ct, j, b);
+        if (err != null) Text.send(p, "<red>" + err);
+        else {
+            Building at = c.building(ct.workplace);
+            Text.send(p, "<white>" + Text.esc(ct.name) + "</white> is now " + Text.a("<white>" + j.display) + "</white>" + (at != null ? " at " + Text.esc(at.label()) : "")
+                    + (j.needsWorkplace() && at == null ? " <yellow>(no free place yet: they'll start when there is one)" : "") + ".");
+        }
+    }
+
+    private void home(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        Named who = leading(c, a, 0);
+        Citizen ct = who.citizen();
+        if (ct == null) {
+            Text.send(p, "Usage: <white>/colony home <citizen> [house id]");
+            return;
+        }
+        if (a.length <= who.words()) {
+            Building h = c.building(ct.home);
+            Text.send(p, Text.esc(ct.name) + (h == null ? " has no home." : " lives in " + Text.esc(h.label()) + (ct.bed != null ? " (bed at " + ct.bed + ")" : "") + "."));
+            return;
+        }
+        if (!plugin.access().check(p, c, Perm.MANAGE_CITIZENS)) return;
+        Building h = findBuilding(c, a[who.words()]);
+        if (h == null || h.type != BuildingType.HOUSE && h.type != BuildingType.BARRACKS || !h.valid) {
+            Text.send(p, "<red>That isn't a working house.");
+            return;
+        }
+        BlockPos free = null;
+        for (BlockPos bed : h.beds) {
+            boolean taken = false;
+            for (Citizen o : c.citizens.values()) if (o != ct && bed.equals(o.bed)) taken = true;
+            if (!taken) {
+                free = bed;
+                break;
+            }
+        }
+        if (free == null) {
+            Text.send(p, "<red>" + Text.esc(h.label()) + " has no free bed.");
+            return;
+        }
+        ct.home = h.id;
+        ct.bed = free;
+        Text.send(p, Text.esc(ct.name) + " moves into " + Text.esc(h.label()) + ".");
+        plugin.requestSave();
+    }
+
+    private void needs(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        if (a.length > 0) {
+            citizen(p, c, a);
+            return;
+        }
+        double hunger = 0, energy = 0, health = 0, social = 0, mood = 0, housing = 0;
+        int n = 0, employed = 0, adults = 0, ill = 0;
+        for (Citizen ct : c.citizens.values()) {
+            if (!ct.status.free()) continue;
+            n++;
+            hunger += ct.needs.satiety;
+            energy += ct.needs.energy;
+            health += ct.needs.healthFraction() * 100;
+            social += ct.needs.social;
+            mood += ct.needs.mood;
+            housing += info.housing(c, ct);
+            if (ct.ill() || ct.injured) ill++;
+            if (plugin.sim().citizens().stage(ct) != com.colonysmp.model.LifeStage.CHILD) {
+                adults++;
+                if (ct.job.employed()) employed++;
+            }
+        }
+        if (n == 0) {
+            Text.send(p, "No citizens yet.");
+            return;
+        }
+        Text.raw(p, "<aqua><bold>Needs in " + Text.esc(c.name) + "</bold> <gray>(averages of " + n + " citizens)");
+        Text.raw(p, " <gray>Hunger " + Text.meter(hunger / n) + " <gray>Energy " + Text.meter(energy / n) + " <gray>Health " + Text.meter(health / n));
+        Text.raw(p, " <gray>Housing " + Text.meter(housing / n) + " <gray>Social " + Text.meter(social / n) + " <gray>Mood " + Text.meter(mood / n));
+        Text.raw(p, " <gray>Safety " + Text.meter(plugin.wars().fighting(c) ? 10 : plugin.military().threatened(c) ? 45 : 90) + " <gray>Employment "
+                + Text.meter(adults == 0 ? 100 : employed * 100.0 / adults) + " <gray>(" + ill + " ill or hurt)");
+    }
+
+    private void exile(Player p, Colony c, String[] a) {
+        if (need(p, c) || !plugin.access().check(p, c, Perm.MANAGE_CITIZENS)) return;
+        Citizen ct = findCitizen(c, join(a, 0));
+        if (ct == null || !ct.status.free()) {
+            Text.send(p, "<red>No free citizen called that.");
+            return;
+        }
+        new ConfirmMenu(p, "<red>Exile " + Text.esc(ct.name) + "?", List.of("<gray>They leave the colony for good.", "<gray>Their family and friends won't be pleased."), () -> {
+            c.addStability(-2);
+            plugin.sim().population().leave(c, ct, "was exiled by " + p.getName());
+        }, null).open();
+    }
+
+    private void release(Player p, Colony c, String[] a) {
+        if (need(p, c) || !plugin.access().check(p, c, Perm.MANAGE_CITIZENS)) return;
+        Citizen ct = findCitizen(c, join(a, 0));
+        if (ct == null) {
+            Text.send(p, "<red>No prisoner called that.");
+            return;
+        }
+        String err = plugin.prison().release(p, c, ct);
+        if (err != null) Text.send(p, "<red>" + err);
+        else Text.send(p, Text.esc(ct.name) + " was released.");
+    }
+
+    // ───────────── buildings ─────────────
+
+    private void building(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        if (a.length == 0) {
+            Text.send(p, "Usage: <white>/colony building <id> | info <id> | register <type> | crop <id> <crop|auto> | herd <id> <size> | recipe <id> <recipe> on|off | name <id> <name> | remove <id>");
+            return;
+        }
+        String op = a[0].toLowerCase(Locale.ROOT);
+        if (op.equals("register")) {
+            // the Blueprint Book's Shift + Right-Click as a command: the room you stand in, or the block you look at
+            BuildingType t = a.length > 1 ? BuildingType.parse(String.join("_", Arrays.copyOfRange(a, 1, a.length))) : plugin.blueprints().type(p);
+            if (t == null) {
+                Text.send(p, "<red>Usage: /colony building register <type> (stand inside it, or look at it).");
+                return;
+            }
+            plugin.blueprints().select(p, t);
+            org.bukkit.block.Block look = p.getTargetBlockExact(6);
+            plugin.blueprints().register(p, look != null ? look : p.getLocation().getBlock().getRelative(org.bukkit.block.BlockFace.DOWN), org.bukkit.block.BlockFace.UP);
+            return;
+        }
+        if (!List.of("info", "crop", "herd", "recipe", "name", "remove").contains(op)) {
+            a = new String[]{"info", a[0]};
+            op = "info";
+        }
+        Building b = a.length > 1 ? findBuilding(c, a[1]) : null;
+        if (b == null) {
+            Text.send(p, "<red>No building with that id (see /colony buildings).");
+            return;
+        }
+        switch (op) {
+            case "info" -> {
+                Text.raw(p, "<aqua><bold>" + Text.esc(b.label()) + "</bold></aqua>");
+                for (String l : info.building(c, b)) Text.raw(p, " " + l);
+                List<Recipe> rs = Recipes.of(b.type.station());
+                if (!rs.isEmpty()) {
+                    List<String> l = new ArrayList<>();
+                    for (Recipe r : rs) l.add((b.disabled.contains(r.id) ? "<red>" : "<green>") + r.id);
+                    Text.raw(p, " <gray>Recipes: " + String.join("<gray>, ", l));
+                }
+            }
+            case "crop" -> {
+                if (!plugin.access().check(p, c, Perm.MANAGE_BUILDINGS)) return;
+                if (b.type != BuildingType.FARM || a.length < 3) {
+                    Text.send(p, "<red>Usage: /colony building crop <farm id> <wheat|carrots|potatoes|beetroots|auto>");
+                    return;
+                }
+                String crop = a[2].toLowerCase(Locale.ROOT);
+                if (!List.of("wheat", "carrots", "potatoes", "beetroots", "auto").contains(crop)) {
+                    Text.send(p, "<red>Crops: wheat, carrots, potatoes, beetroots, or auto.");
+                    return;
+                }
+                b.crop = crop.equals("auto") ? null : crop;
+                Text.send(p, Text.esc(b.label()) + " will grow " + (b.crop == null ? "whatever is needed" : b.crop) + ".");
+            }
+            case "herd" -> {
+                if (!plugin.access().check(p, c, Perm.MANAGE_BUILDINGS)) return;
+                if (b.type != BuildingType.ANIMAL_PEN && b.type != BuildingType.STABLES || a.length < 3) {
+                    Text.send(p, "<red>Usage: /colony building herd <pen id> <animals of each kind to keep>");
+                    return;
+                }
+                b.herdTarget = (int) Math.max(2, Math.min(64, number(a[2], 8)));
+                Text.send(p, Text.esc(b.label()) + " keeps up to " + b.herdTarget + " of each kind; the rest go to slaughter.");
+            }
+            case "recipe" -> {
+                if (!plugin.access().check(p, c, Perm.MANAGE_BUILDINGS)) return;
+                Recipe r = a.length > 2 ? Recipes.get(a[2]) : null;
+                if (r == null || !r.station.equals(b.type.station())) {
+                    Text.send(p, "<red>That workplace has no such recipe.");
+                    return;
+                }
+                boolean on = a.length < 4 || !a[3].equalsIgnoreCase("off");
+                if (on) b.disabled.remove(r.id);
+                else b.disabled.add(r.id);
+                Text.send(p, r.name + " is " + (on ? "<green>allowed" : "<red>not made") + "</green> at " + Text.esc(b.label()) + ".");
+            }
+            case "name" -> {
+                if (!plugin.access().check(p, c, Perm.MANAGE_BUILDINGS)) return;
+                String n = join(a, 2);
+                b.name = n.isBlank() ? null : n.substring(0, Math.min(24, n.length()));
+                Text.send(p, "Renamed to " + Text.esc(b.label()) + ".");
+            }
+            default -> {
+                if (!plugin.access().check(p, c, Perm.MANAGE_BUILDINGS)) return;
+                if (b.type == BuildingType.TOWN_HALL) {
+                    Text.send(p, "<red>The Town Hall can't be removed.");
+                    return;
+                }
+                Building fb = b;
+                new ConfirmMenu(p, "<red>Unregister " + Text.esc(b.label()) + "?", List.of("<gray>Its workers lose their workplace and its stock goes to storage.",
+                        "<gray>The blocks stay where they are."), () -> plugin.buildings().remove(c, fb, "removed by " + p.getName()), null).open();
+            }
+        }
+        plugin.requestSave();
+    }
+
+    private void validate(Player p, Colony c, String[] a) {
+        if (need(p, c) || !plugin.access().check(p, c, Perm.MANAGE_BUILDINGS)) return;
+        List<Building> list = new ArrayList<>();
+        if (a.length == 0 || a[0].equalsIgnoreCase("all")) list.addAll(c.buildings.values());
+        else {
+            Building b = findBuilding(c, a[0]);
+            if (b != null) list.add(b);
+        }
+        if (list.isEmpty()) {
+            Text.send(p, "<red>No such building.");
+            return;
+        }
+        int ok = 0;
+        for (Building b : list) {
+            String problem = plugin.buildings().validate(c, b);
+            if (problem == null) {
+                ok++;
+                b.valid = true;
+                b.problem = null;
+                b.invalidDays = 0;
+            } else {
+                b.valid = false;
+                b.problem = problem;
+                Text.raw(p, " <red>" + Text.esc(b.label()) + ": " + Text.esc(problem));
+            }
+        }
+        plugin.buildings().changed(c);
+        Text.send(p, ok + " of " + list.size() + " building(s) pass inspection." + (ok < list.size() ? " <gray>Broken ones stop working until fixed." : ""));
+    }
+
+    private void upgrade(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        Building b = a.length == 0 ? null : findBuilding(c, a[0]);
+        if (b == null) {
+            Text.send(p, "Usage: <white>/colony upgrade <building id></white> (see /colony buildings).");
+            return;
+        }
+        String err = plugin.buildings().upgrade(p, c, b);
+        if (err != null) Text.send(p, "<red>" + err);
+    }
+
+    private void construction(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        if (a.length >= 1 && a[0].equalsIgnoreCase("order")) {
+            // the Blueprint Book's Shift + Left-Click as a command: build at the ground you look at
+            BuildingType t = a.length > 1 ? BuildingType.parse(String.join("_", Arrays.copyOfRange(a, 1, a.length))) : plugin.blueprints().type(p);
+            if (t == null) {
+                Text.send(p, "<red>Usage: /colony construction order <type> (look at the ground where it should stand).");
+                return;
+            }
+            plugin.blueprints().select(p, t);
+            plugin.blueprints().order(p);
+            return;
+        }
+        if (a.length >= 2) {
+            if (!plugin.access().check(p, c, Perm.MANAGE_BUILDINGS)) return;
+            BuildOrder o = null;
+            for (BuildOrder x : c.buildQueue) if (String.valueOf(x.id).equals(a[1].replace("#", ""))) o = x;
+            if (o == null) {
+                Text.send(p, "<red>No build order #" + Text.esc(a[1]) + ".");
+                return;
+            }
+            switch (a[0].toLowerCase(Locale.ROOT)) {
+                case "pause" -> o.state = BuildOrder.State.PAUSED;
+                case "resume" -> o.state = o.step > 0 ? BuildOrder.State.UNDER_CONSTRUCTION : BuildOrder.State.PLANNED;
+                case "cancel" -> c.buildQueue.remove(o);
+                case "first", "top" -> {
+                    c.buildQueue.remove(o);
+                    c.buildQueue.add(0, o);
+                }
+                default -> {
+                    Text.send(p, "<red>Use pause, resume, cancel or first.");
+                    return;
+                }
+            }
+            Text.send(p, "Build order #" + o.id + " " + a[0].toLowerCase(Locale.ROOT) + (a[0].toLowerCase(Locale.ROOT).endsWith("e") ? "d" : "ed") + ".");
+            plugin.requestSave();
+            return;
+        }
+        Text.raw(p, "<aqua><bold>Construction in " + Text.esc(c.name) + "</bold> <gray>(/colony construction order <type> · pause|resume|cancel|first <id>)");
+        for (String l : info.construction(c)) Text.raw(p, " " + l);
+        if (c.buildQueue.isEmpty()) Text.raw(p, " <gray>No orders. Order a building with the Blueprint Book (choose a plan, look at the ground, Shift + Left-Click),"
+                + " or with /colony construction order <type>.");
+    }
+
+    // ───────────── storage and economy ─────────────
+
+    private void storage(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        if (a.length >= 2 && (a[0].equalsIgnoreCase("target") || a[0].equalsIgnoreCase("clear"))) {
+            if (!plugin.access().check(p, c, Perm.POLICIES)) return;
+            String g = good(a[1]);
+            if (g == null) {
+                Text.send(p, "<red>Unknown good: " + Text.esc(a[1]));
+                return;
+            }
+            if (a[0].equalsIgnoreCase("clear")) {
+                c.targets.remove(g);
+                Text.send(p, "Cleared the stock target for " + Goods.get(g).name() + ".");
+            } else {
+                int min = (int) Math.max(0, number(a.length > 2 ? a[2] : "0", 0)), max = (int) Math.max(min, number(a.length > 3 ? a[3] : "0", 0));
+                c.targets.put(g, new int[]{min, max});
+                Text.send(p, Goods.get(g).name() + ": keep at least <white>" + min + "</white>" + (max > 0 ? ", produce up to <white>" + max + "</white>" : "")
+                        + ". <gray>(Minimums aren't spent or sold; workshops stop at the maximum; auto-buy tops up to the minimum.)");
+            }
+            plugin.requestSave();
+            return;
+        }
+        Text.raw(p, "<aqua><bold>Storage of " + Text.esc(c.name) + "</bold> <gray>(" + c.storage.usedSlots() + "/" + c.storage.capacity() + " slots, granary "
+                + c.storage.usedGranarySlots() + "/" + c.storage.granaryCapacity() + ") <dark_gray>/colony storage target <good> <min> [max]");
+        for (String l : info.resources(c, null)) Text.raw(p, " " + l);
+        Text.raw(p, " <gray>Open the Town Hall chest to put goods in or take them out.");
+    }
+
+    private void trade(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        if (a.length >= 2 && (a[0].equalsIgnoreCase("sell") || a[0].equalsIgnoreCase("buy"))) {
+            String g = good(a[1]);
+            if (g == null) {
+                Text.send(p, "<red>Unknown good: " + Text.esc(a[1]));
+                return;
+            }
+            long qty = a.length > 2 ? Math.max(1, number(a[2], 1)) : Goods.stack(g);
+            long before = c.treasury.balance(), had = c.storage.get(g);
+            boolean sell = a[0].equalsIgnoreCase("sell");
+            String err = sell ? plugin.economy().sell(p, c, g, qty, false) : plugin.economy().buy(p, c, g, qty, false);
+            if (err != null) Text.send(p, "<red>" + err);
+            else {
+                long moved = Math.abs(c.storage.get(g) - had);
+                Text.send(p, (sell ? "Sold " : "Bought ") + moved + " " + Goods.get(g).name() + ": treasury " + Text.signed(c.treasury.balance() - before) + " <gray>" + plugin.settings().currency + "."
+                        + (moved < qty ? " <yellow>(" + (sell ? "the rest is kept back" : "storage had room for no more") + ")" : ""));
+            }
+            return;
+        }
+        if (a.length == 0) {
+            new EconomyMenu(plugin, p, c).trade();
+            return;
+        }
+        Text.send(p, "Usage: <white>/colony trade [sell|buy <good> [quantity]]");
+    }
+
+    private void money(Player p, Colony c, String[] a, boolean in) {
+        if (need(p, c)) return;
+        long amount = a.length == 0 ? 0 : number(a[0], 0);
+        if (amount <= 0) {
+            Text.send(p, "Usage: <white>/colony " + (in ? "deposit" : "withdraw") + " <amount></white>. You have " + plugin.economy().money(p) + ".");
+            return;
+        }
+        String err = in ? plugin.economy().deposit(p, c, amount) : plugin.economy().withdraw(p, c, amount);
+        if (err != null) Text.send(p, "<red>" + err);
+        else Text.send(p, (in ? "Deposited into" : "Withdrew from") + " the treasury. It now holds <gold>" + Text.money(c.treasury.balance(), plugin.settings().currency) + "</gold>.");
+    }
+
+    private void policies(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        if (a.length == 0) {
+            new PoliciesMenu(plugin, p, c).open();
+            return;
+        }
+        if (a.length < 3 || !a[0].equalsIgnoreCase("set")) {
+            Text.send(p, "Usage: <white>/colony policies set <policy> <value></white>, or /colony policies for the menu.");
+            return;
+        }
+        if (!plugin.access().check(p, c, Perm.POLICIES)) return;
+        String err = PoliciesMenu.set(plugin, c, a[1], a[2]);
+        if (err != null) Text.send(p, "<red>" + err);
+        else {
+            c.log(ColonyEvent.Type.COLONY, plugin.sim().day(c), p.getName() + " set the " + a[1] + " policy to " + a[2] + ".");
+            Text.send(p, "Policy changed.");
+            plugin.requestSave();
+        }
+    }
+
+    // ───────────── military ─────────────
+
+    private void recruit(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        if (a.length < 2) {
+            Text.raw(p, "<aqua><bold>Military classes</bold> <gray>(/colony recruit <citizen> <class>)");
+            for (MilitaryClass k : MilitaryClass.values()) {
+                String missing = plugin.military().missingFor(c, k);
+                Text.raw(p, " " + (missing == null ? "<green>" : "<yellow>") + k.display + " <dark_gray>- " + k.description + (missing == null ? "" : " <red>(needs " + missing + ")"));
+            }
+            return;
+        }
+        Named who = leading(c, a, 0);
+        Citizen ct = who.citizen();
+        MilitaryClass k = who.words() < a.length ? MilitaryClass.parse(join(a, who.words())) : null;
+        if (ct == null || k == null) {
+            Text.send(p, "<red>" + (ct == null ? "No citizen called that." : "No such class (see /colony recruit)."));
+            return;
+        }
+        String r = plugin.military().recruit(p, c, ct, k);
+        if (r == null) Text.send(p, "<green>" + Text.esc(ct.name) + " is now " + Text.a(k.display) + ".");
+        else Text.send(p, r.startsWith("!") ? "<yellow>" + r.substring(1) : "<red>" + r);
+    }
+
+    private void army(Player p, Colony c) {
+        if (need(p, c)) return;
+        Text.raw(p, "<aqua><bold>The army of " + Text.esc(c.name));
+        for (String l : info.military(c)) Text.raw(p, " " + l);
+        for (Citizen ct : plugin.military().army(c)) {
+            Squad q = c.squad(ct.squad);
+            String missing = plugin.military().missingArms(ct);
+            Text.raw(p, " <white>" + Text.esc(ct.name) + "</white> <gray>" + (ct.militaryClass == null ? "?" : ct.militaryClass.display) + " · trained " + Math.round(ct.training * 100)
+                    + "% · morale " + Math.round(ct.morale) + (q != null ? " · " + Text.esc(q.name) : "") + (missing != null ? " <red>lacks " + missing : ""));
+        }
+    }
+
+    private Squad findSquad(Colony c, String s) {
+        try {
+            Squad q = c.squad(Integer.parseInt(s.replace("#", "")));
+            if (q != null) return q;
+        } catch (NumberFormatException ignored) {
+            // by name
+        }
+        for (Squad q : c.squads.values()) if (q.name.equalsIgnoreCase(s)) return q;
+        return null;
+    }
+
+    private void orders(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        if (a.length < 2) {
+            Text.raw(p, "<aqua><bold>Orders</bold> <gray>(/colony orders <squad> <order> [here])");
+            for (Squad.Order o : Squad.Order.values()) Text.raw(p, " <white>" + o.name().toLowerCase(Locale.ROOT) + "</white> <dark_gray>- " + o.description);
+            return;
+        }
+        Squad q = findSquad(c, a[0]);
+        Squad.Order o = Squad.order(a[1]);
+        if (q == null || o == null) {
+            Text.send(p, "<red>" + (q == null ? "No such squad (see /colony army)." : "No such order (see /colony orders)."));
+            return;
+        }
+        boolean here = a.length > 2 && a[2].equalsIgnoreCase("here");
+        String err = plugin.military().order(p, c, q, o, here ? p.getLocation() : null);
+        if (err != null) Text.send(p, "<red>" + err);
+        else Text.send(p, "<gold>" + Text.esc(q.name) + "</gold>: " + o.display + (here ? " here" : "") + ".");
+    }
+
+    private void squad(Player p, Colony c, String[] a) {
+        if (need(p, c) || !plugin.access().check(p, c, Perm.MILITARY)) return;
+        if (a.length == 0) {
+            Text.send(p, "Usage: <white>/colony squad create <name> | delete <squad> | rename <squad> <name> | add <squad> <citizen> | remove <citizen> | formation <squad> <formation> | patrol <squad> add|clear | select <squad>");
+            return;
+        }
+        String op = a[0].toLowerCase(Locale.ROOT);
+        if (op.equals("create")) {
+            Squad q = plugin.military().createSquad(c, join(a, 1));
+            plugin.military().select(p, q);
+            Text.send(p, "Created squad <white>" + Text.esc(q.name) + "</white> (#" + q.id + "). Add soldiers with /colony squad add " + q.id + " <citizen>, or the Command Baton.");
+            return;
+        }
+        if (op.equals("remove")) {
+            Citizen ct = findCitizen(c, join(a, 1));
+            if (ct == null) {
+                Text.send(p, "<red>No citizen called that.");
+                return;
+            }
+            ct.squad = 0;
+            Text.send(p, Text.esc(ct.name) + " left their squad.");
+            plugin.requestSave();
+            return;
+        }
+        Squad q = a.length > 1 ? findSquad(c, a[1]) : null;
+        if (q == null) {
+            Text.send(p, "<red>No such squad.");
+            return;
+        }
+        switch (op) {
+            case "delete" -> {
+                plugin.military().deleteSquad(c, q);
+                Text.send(p, "Disbanded " + Text.esc(q.name) + ".");
+            }
+            case "rename" -> {
+                q.name = join(a, 2).isBlank() ? q.name : join(a, 2);
+                Text.send(p, "Renamed to " + Text.esc(q.name) + ".");
+            }
+            case "add" -> {
+                Citizen ct = findCitizen(c, join(a, 2));
+                if (ct == null || ct.job != Job.SOLDIER) {
+                    Text.send(p, "<red>No soldier called that.");
+                    return;
+                }
+                ct.squad = q.id;
+                Text.send(p, Text.esc(ct.name) + " joined " + Text.esc(q.name) + ".");
+            }
+            case "formation" -> {
+                Squad.Formation f = a.length > 2 ? Policies.parse(Squad.Formation.class, a[2], null) : null;
+                if (f == null) {
+                    Text.send(p, "<red>Formations: line, column, wedge, square, loose.");
+                    return;
+                }
+                q.formation = f;
+                Text.send(p, Text.esc(q.name) + " forms a " + f.display.toLowerCase(Locale.ROOT) + ".");
+            }
+            case "patrol" -> {
+                if (a.length > 2 && a[2].equalsIgnoreCase("clear")) {
+                    q.patrol.clear();
+                    Text.send(p, "Patrol route cleared.");
+                } else {
+                    q.patrol.add(BlockPos.of(p.getLocation()));
+                    q.world = p.getWorld().getName();
+                    Text.send(p, "Added a patrol point (" + q.patrol.size() + " in the route). Order them to patrol with /colony orders " + q.id + " patrol.");
+                }
+            }
+            case "select" -> {
+                plugin.military().select(p, q);
+                Text.send(p, "Selected " + Text.esc(q.name) + " for the Command Baton.");
+            }
+            default -> Text.send(p, "<red>Unknown squad action.");
+        }
+        plugin.requestSave();
+    }
+
+    // ───────────── diplomacy and war ─────────────
+
+    private Colony other(Player p, String name) {
+        Colony o = plugin.colonies().byName(name);
+        if (o == null) Text.send(p, "<red>No colony called " + Text.esc(name) + ".");
+        return o;
+    }
+
+    private void diplomacy(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        if (a.length == 0) {
+            new DiplomacyMenu(plugin, p, c).open();
+            return;
+        }
+        String op = a[0].toLowerCase(Locale.ROOT);
+        String err = null;
+        var dip = plugin.diplomacy();
+        switch (op) {
+            case "list", "relations" -> {
+                Text.raw(p, "<aqua><bold>Relations of " + Text.esc(c.name));
+                for (String l : info.diplomacy(c)) Text.raw(p, " " + l);
+                return;
+            }
+            case "offers" -> {
+                Text.raw(p, "<aqua><bold>Offers");
+                for (Proposal x : dip.incoming(c)) {
+                    Colony f = plugin.colonies().get(x.from);
+                    Text.raw(p, " <gray>From <white>" + (f == null ? "?" : Text.esc(f.name)) + "</white>: " + Text.esc(dip.describe(x))
+                            + " <click:run_command:'/colony diplomacy accept " + x.id + "'><green>[Accept]</green></click> <click:run_command:'/colony diplomacy decline " + x.id + "'><red>[Decline]</red></click>");
+                }
+                for (Proposal x : dip.outgoing(c)) {
+                    Colony t = plugin.colonies().get(x.to);
+                    Text.raw(p, " <gray>To <white>" + (t == null ? "?" : Text.esc(t.name)) + "</white>: " + Text.esc(dip.describe(x)) + " <click:run_command:'/colony diplomacy decline " + x.id
+                            + "'><red>[Withdraw]</red></click>");
+                }
+                for (var k : dip.contractsOf(c)) {
+                    Colony s = plugin.colonies().get(k.supplier), b = plugin.colonies().get(k.buyer);
+                    Text.raw(p, " <gray>Contract: " + (s == null ? "?" : Text.esc(s.name)) + " → " + (b == null ? "?" : Text.esc(b.name)) + ": " + k.qty + " " + Goods.get(k.good).name()
+                            + " every " + k.everyDays + " day(s) until day " + k.endDay + (k.lastProblem != null ? " <red>(" + Text.esc(k.lastProblem) + ")" : ""));
+                }
+                return;
+            }
+            case "accept", "decline" -> {
+                Proposal x = a.length > 1 ? dip.proposal(a[1]) : null;
+                if (x == null && a.length > 1) {
+                    // by colony name: their latest offer to us
+                    Colony from = plugin.colonies().byName(join(a, 1));
+                    for (Proposal y : dip.incoming(c)) if (from != null && y.from.equals(from.id) && (x == null || y.expires > x.expires)) x = y;
+                }
+                if (x == null) {
+                    Text.send(p, "<red>That offer is no longer there (see /colony diplomacy offers).");
+                    return;
+                }
+                err = op.equals("accept") ? dip.accept(p, x) : dip.decline(p, x);
+                if (err == null && op.equals("decline")) Text.send(p, "Declined.");
+            }
+            case "ally", "alliance" -> {
+                Colony o = a.length > 1 ? other(p, join(a, 1)) : null;
+                if (o == null) return;
+                err = dip.propose(p, c, o, dip.newProposal(Proposal.Type.ALLIANCE, c, o));
+                if (err == null) Text.send(p, "Alliance offered to " + Text.esc(o.name) + ".");
+            }
+            case "treaty" -> {
+                Relation.Treaty t = a.length > 2 ? Relation.Treaty.parse(a[a.length - 1]) : null;
+                Colony o = a.length > 2 ? other(p, join(Arrays.copyOf(a, a.length - 1), 1)) : null;
+                if (o == null || t == null) {
+                    if (t == null) Text.send(p, "Usage: <white>/colony diplomacy treaty <colony> <nonaggression|trade|defence|borders>");
+                    return;
+                }
+                Proposal x = dip.newProposal(Proposal.Type.TREATY, c, o);
+                x.treaty = t;
+                err = dip.propose(p, c, o, x);
+                if (err == null) Text.send(p, t.display + " offered to " + Text.esc(o.name) + ".");
+            }
+            case "cancel", "break" -> {
+                if (a.length < 3) {
+                    Text.send(p, "Usage: <white>/colony diplomacy cancel <colony> <alliance|treaty>");
+                    return;
+                }
+                Colony o = other(p, join(Arrays.copyOf(a, a.length - 1), 1));
+                if (o == null) return;
+                boolean alliance = a[a.length - 1].equalsIgnoreCase("alliance");
+                err = dip.cancel(p, c, o, alliance ? null : Relation.Treaty.parse(a[a.length - 1]), alliance);
+                if (err == null) Text.send(p, "Done.");
+            }
+            case "gift" -> {
+                if (a.length < 3) {
+                    Text.send(p, "Usage: <white>/colony diplomacy gift <colony> <money> | <good> <quantity>");
+                    return;
+                }
+                Colony o = other(p, a[1]);
+                if (o == null) return;
+                String g = good(a[2]);
+                err = g != null ? dip.gift(p, c, o, g, a.length > 3 ? number(a[3], 1) : 1, 0) : dip.gift(p, c, o, null, 0, number(a[2], 0));
+                if (err == null) Text.send(p, "Gift sent to " + Text.esc(o.name) + ".");
+            }
+            case "trade" -> err = tradeOffer(p, c, a);
+            case "contract" -> {
+                if (a.length < 7) {
+                    Text.send(p, "Usage: <white>/colony diplomacy contract <buyer colony> <good> <quantity> <every N days> <for N days> <price each delivery></white> (you supply them)");
+                    return;
+                }
+                Colony o = other(p, a[1]);
+                String g = good(a[2]);
+                if (o == null || g == null) {
+                    if (g == null) Text.send(p, "<red>Unknown good.");
+                    return;
+                }
+                Proposal x = dip.newProposal(Proposal.Type.CONTRACT, c, o);
+                x.good = g;
+                x.qty = (int) Math.max(1, number(a[3], 1));
+                x.everyDays = (int) Math.max(1, number(a[4], 1));
+                x.days = (int) Math.max(1, number(a[5], 7));
+                x.money = Math.max(0, number(a[6], 0));
+                err = dip.propose(p, c, o, x);
+                if (err == null) Text.send(p, "Supply contract offered to " + Text.esc(o.name) + ".");
+            }
+            case "calltoarms" -> {
+                Colony o = a.length > 1 ? other(p, join(a, 1)) : null;
+                if (o == null) return;
+                err = dip.propose(p, c, o, dip.newProposal(Proposal.Type.JOIN_WAR, c, o));
+                if (err == null) Text.send(p, "Called " + Text.esc(o.name) + " to arms.");
+            }
+            default -> {
+                Text.send(p, "Usage: <white>/colony diplomacy [list|offers|accept|decline|ally|treaty|cancel|gift|trade|contract|calltoarms]");
+                return;
+            }
+        }
+        if (err != null) Text.send(p, "<red>" + err);
+    }
+
+    /** /colony diplomacy trade <colony> give <good> <qty> [want <good> <qty>] [money <n>] */
+    private String tradeOffer(Player p, Colony c, String[] a) {
+        if (a.length < 4) return "Usage: /colony diplomacy trade <colony> [give <good> <qty>] [want <good> <qty>] [pay <money>] [ask <money>]";
+        Colony o = plugin.colonies().byName(a[1]);
+        if (o == null) return "No colony called " + Text.esc(a[1]) + ".";
+        Proposal x = plugin.diplomacy().newProposal(Proposal.Type.TRADE, c, o);
+        for (int i = 2; i < a.length; i++) {
+            String w = a[i].toLowerCase(Locale.ROOT);
+            if ((w.equals("give") || w.equals("want")) && i + 2 < a.length) {
+                String g = good(a[i + 1]);
+                if (g == null) return "Unknown good: " + Text.esc(a[i + 1]);
+                (w.equals("give") ? x.give : x.want).merge(g, Math.max(1, number(a[i + 2], 1)), Long::sum);
+                i += 2;
+            } else if ((w.equals("pay") || w.equals("ask")) && i + 1 < a.length) {
+                x.money += (w.equals("pay") ? 1 : -1) * Math.max(0, number(a[i + 1], 0));
+                i++;
+            }
+        }
+        if (x.give.isEmpty() && x.want.isEmpty() && x.money == 0) return "Offer something.";
+        String err = plugin.diplomacy().propose(p, c, o, x);
+        if (err == null) Text.send(p, "Trade offered to " + Text.esc(o.name) + ".");
+        return err;
+    }
+
+    private void declare(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        if (a.length == 0) {
+            Text.send(p, "Usage: <white>/colony declarewar <colony> [raid|siege]");
+            return;
+        }
+        War.Goal goal = War.Goal.SIEGE;
+        String[] names = a;
+        String last = a[a.length - 1].toLowerCase(Locale.ROOT);
+        if (last.equals("raid") || last.equals("siege")) {
+            goal = last.equals("raid") ? War.Goal.RAID : War.Goal.SIEGE;
+            names = Arrays.copyOf(a, a.length - 1);
+        }
+        Colony target = other(p, String.join(" ", names));
+        if (target == null) return;
+        War.Goal g = goal;
+        new ConfirmMenu(p, "<dark_red>Declare a " + goal.display.toLowerCase() + " on " + Text.esc(target.name) + "?",
+                List.of("<gray>Costs " + Text.money(plugin.settings().declareCost, plugin.settings().currency) + " and sours relations badly.",
+                        goal == War.Goal.SIEGE ? "<gray>You must raise a War Camp before the warm-up ends." : "<gray>A short raid: loot their storage, win on score."),
+                () -> {
+                    String err = plugin.wars().declare(p, c, target, g);
+                    if (err != null) Text.send(p, "<red>" + err);
+                }, null).open();
+    }
+
+    private void peace(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        if (a.length == 0) {
+            Text.send(p, "Usage: <white>/colony peace <colony> [truce days]");
+            return;
+        }
+        int days = plugin.settings().truceDays;
+        String[] names = a;
+        if (a.length > 1 && a[a.length - 1].matches("\\d+")) {
+            days = Integer.parseInt(a[a.length - 1]);
+            names = Arrays.copyOf(a, a.length - 1);
+        }
+        Colony o = other(p, String.join(" ", names));
+        if (o == null) return;
+        Proposal x = plugin.diplomacy().newProposal(Proposal.Type.PEACE, c, o);
+        x.truceDays = days;
+        String err = plugin.diplomacy().propose(p, c, o, x);
+        if (err != null) Text.send(p, "<red>" + err);
+        else Text.send(p, "Peace offered to " + Text.esc(o.name) + ".");
+    }
+
+    private void prison(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        if (a.length >= 2 && a[0].equalsIgnoreCase("release")) {
+            release(p, c, Arrays.copyOfRange(a, 1, a.length));
+            return;
+        }
+        if (a.length >= 2 && a[0].equalsIgnoreCase("ransom")) {
+            if (!plugin.access().check(p, c, Perm.DIPLOMACY)) return;
+            Named who = leading(c, a, 1);
+            Citizen ct = who.citizen();
+            if (ct == null || ct.status != Status.PRISONER || ct.origin == null || plugin.colonies().get(ct.origin) == null) {
+                Text.send(p, "<red>No prisoner from another colony called that.");
+                return;
+            }
+            Colony home = plugin.colonies().get(ct.origin);
+            Proposal x = plugin.diplomacy().newProposal(Proposal.Type.RANSOM, c, home);
+            x.release.add(ct.id);
+            int amountAt = 1 + who.words();
+            x.money = -(a.length > amountAt ? Math.max(0, number(a[amountAt], 0)) : plugin.prison().ransom(ct));
+            String err = plugin.diplomacy().propose(p, c, home, x);
+            if (err != null) Text.send(p, "<red>" + err);
+            else Text.send(p, "Ransom of " + Text.money(-x.money, plugin.settings().currency) + " asked of " + Text.esc(home.name) + " for " + Text.esc(ct.name) + ".");
+            return;
+        }
+        if (a.length >= 3 && a[0].equalsIgnoreCase("exchange")) {
+            if (!plugin.access().check(p, c, Perm.DIPLOMACY)) return;
+            Named first = leading(c, a, 1);
+            Citizen ours = first.citizen();
+            if (ours == null || ours.status != Status.PRISONER || ours.origin == null || plugin.colonies().get(ours.origin) == null) {
+                Text.send(p, "<red>No prisoner from another colony called " + Text.esc(a[1]) + ".");
+                return;
+            }
+            Colony home = plugin.colonies().get(ours.origin);
+            Citizen theirs = leading(home, a, 1 + first.words()).citizen();
+            if (theirs == null || theirs.status != Status.PRISONER || !c.id.equals(theirs.origin)) {
+                Text.send(p, "<red>" + Text.esc(home.name) + " holds no prisoner of yours called " + Text.esc(join(a, 1 + first.words())) + ".");
+                return;
+            }
+            Proposal x = plugin.diplomacy().newProposal(Proposal.Type.PRISONER_EXCHANGE, c, home);
+            x.release.add(ours.id);
+            x.demand.add(theirs.id);
+            String err = plugin.diplomacy().propose(p, c, home, x);
+            if (err != null) Text.send(p, "<red>" + err);
+            else Text.send(p, "Exchange offered to " + Text.esc(home.name) + ".");
+            return;
+        }
+        Text.raw(p, "<aqua><bold>Prisoners of " + Text.esc(c.name) + "</bold> <gray>(/colony prison release|ransom|exchange)");
+        List<Citizen> list = plugin.prison().prisoners(c);
+        if (list.isEmpty()) Text.raw(p, " <gray>None.");
+        for (Citizen ct : list) {
+            Text.raw(p, " <white>" + Text.esc(ct.name) + "</white> <gray>" + ct.status.display + (ct.origin == null ? " (sentence until day " + ct.sentenceUntil + ")"
+                    : " · resistance " + Math.round(ct.resistance) + "% · ransom " + Text.money(plugin.prison().ransom(ct), plugin.settings().currency)));
+        }
+    }
+
+    private void events(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        ColonyEvent.Type type = null;
+        int page = 1;
+        for (String s : a) {
+            if (s.matches("\\d+")) page = Integer.parseInt(s);
+            else type = ColonyEvent.Type.parse(s.toUpperCase(Locale.ROOT));
+        }
+        List<ColonyEvent> list = new ArrayList<>();
+        for (ColonyEvent e : c.events) if (type == null || e.type() == type) list.add(e);
+        int per = 10, from = (page - 1) * per;
+        Text.raw(p, "<aqua><bold>History of " + Text.esc(c.name) + "</bold> <gray>(page " + page + ", /colony events [type] [page])");
+        for (int i = from; i < Math.min(list.size(), from + per); i++) {
+            ColonyEvent e = list.get(i);
+            Text.raw(p, " <dark_gray>Day " + e.day() + "</dark_gray> " + e.type().color + e.type().display + "<gray>: " + Text.esc(e.message()));
+        }
+        if (list.isEmpty()) Text.raw(p, " <gray>Nothing yet.");
+    }
+
+    private void stats(Player p, Colony c) {
+        if (need(p, c)) return;
+        Text.raw(p, "<aqua><bold>Recent days in " + Text.esc(c.name));
+        for (Colony.DayStats d : c.stats) {
+            Text.raw(p, " <dark_gray>Day " + d.day() + "</dark_gray> <gray>pop <white>" + d.population() + "</white> food <white>" + Text.num(d.foodDays()) + "d</white> mood <white>"
+                    + Math.round(d.mood()) + "</white> stability <white>" + Math.round(d.stability()) + "</white> made <white>" + d.produced() + "</white> money <white>"
+                    + d.balance() + "</white> (" + Text.signed(d.income() - d.expenses()) + "<gray>)");
+        }
+        if (c.stats.isEmpty()) Text.raw(p, " <gray>The first day hasn't ended yet.");
+    }
+
+    // ───────────── help and lists ─────────────
+
+    private void list(CommandSender s) {
+        Text.raw(s, "<aqua><bold>Colonies</bold>");
+        for (Colony c : plugin.colonies().list()) {
+            Text.raw(s, " <white>" + Text.esc(c.name) + "</white> <gray>· " + Text.esc(Info.name(c.owner)) + " · " + c.population() + " citizens · level " + c.level() + " · " + c.territory.size() + " chunks");
+        }
+        if (plugin.colonies().list().isEmpty()) Text.raw(s, " <gray>None yet. Start one with /colony create <name>.");
+    }
+
+    private void help(CommandSender s, String[] a) {
+        String topic = a.length == 0 ? "" : a[0].toLowerCase(Locale.ROOT);
+        Text.raw(s, "<aqua><bold>ColonySMP</bold> <gray>- /colony help [colony|citizens|buildings|economy|military|diplomacy|prisoners|admin]");
+        List<String> l = switch (topic) {
+            case "citizens" -> List.of("citizens · citizen <name> · jobs · assign <citizen> <job> [building] · home <citizen> [house] · needs [citizen]",
+                    "settler (recruit from the region) · traveller recruit|dismiss · exile <citizen>",
+                    "Right-click a citizen for their menu. Children study; adults work; an Administrator fills empty jobs.");
+            case "buildings" -> List.of("buildings · building <id> · building register <type> · building crop|herd|recipe|name|remove ... · validate [id|all] · upgrade <id> · construction",
+                    "Build rooms and fields by hand, then Shift + Right-Click inside with the Blueprint Book to register them,",
+                    "or pick a plan in the book, look at the ground and Shift + Left-Click to order your builders to build it",
+                    "(or /colony construction order <type>, facing the way you look).",
+                    "Right-click with the book to turn its pages, or jump to a plan with /colony book <type>.");
+            case "economy" -> List.of("resources [category] · storage [target <good> <min> [max]] · economy · production · policies",
+                    "trade [sell|buy <good> <qty>] (needs a staffed Trading Post) · deposit|withdraw <amount> · shop [colony]");
+            case "military" -> List.of("military · recruit <citizen> <class> · army · squad create|add|formation|patrol ... · orders <squad> <order> [here]",
+                    "mobilize · baton (Command Baton: right-click a block to rally, shift-right-click for the next order, left-click an enemy to focus)");
+            case "diplomacy" -> List.of("diplomacy [list|offers|accept|decline|ally|treaty|cancel|gift|trade|contract|calltoarms]",
+                    "declarewar <colony> [raid|siege] · peace <colony> [truce days] · surrender");
+            case "prisoners" -> List.of("Downed enemies can be bound with Rope (3 string in a column) and led into a Prison.",
+                    "prison · prison release <name> · prison ransom <name> [price] · prison exchange <ours> <theirs>");
+            case "admin" -> List.of("admin reload|save|bypass|give|delete|tp|inspect|citizen|building|reservations|production|sim|perf|db|stuck|events",
+                    "admin simulate <colony> <hours> · setstock <colony> <good> <qty> · treasury <colony> set|add <n> · addcitizen <colony> [job] · endwar · shield · traveller · repair");
+            default -> List.of("create <name> · info [colony] · list · map · claim · unclaim · menu · core · book [type] · wand · baton · disband · quests",
+                    "invite <player> · join <colony> · leave · kick <player> · members · promote|demote <player> [role] · rename <name> · settings",
+                    "events [type] [page] · stats · and the topics above.");
+        };
+        for (String line : l) Text.raw(s, " <gray>" + line);
     }
 
     // ───────────── tab completion ─────────────
@@ -739,62 +1478,83 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
             for (String s : SUBS) if (s.startsWith(args[0].toLowerCase(Locale.ROOT)) && (!s.equals("admin") || sender.hasPermission("colonysmp.admin"))) out.add(s);
             return out;
         }
-        String sub = args[0].toLowerCase(Locale.ROOT);
+        if (args[0].equalsIgnoreCase("admin")) return admin.complete(sender, Arrays.copyOfRange(args, 1, args.length));
+        Colony c = sender instanceof Player p ? plugin.colonies().of(p) : null;
         String last = args[args.length - 1].toLowerCase(Locale.ROOT);
-        if (args.length == 2) {
-            switch (sub) {
-                case "info", "declare", "join" -> {
-                    for (Colony c : plugin.colonies().all()) if (c.name.toLowerCase(Locale.ROOT).startsWith(last) || c.id.startsWith(last)) out.add(c.id);
-                }
-                case "invite" -> {
-                    for (Player p : Bukkit.getOnlinePlayers()) if (p.getName().toLowerCase(Locale.ROOT).startsWith(last)) out.add(p.getName());
-                }
-                case "kick", "promote", "demote" -> {
-                    if (sender instanceof Player p) {
-                        Colony c = plugin.colonies().of(p);
-                        if (c != null) for (Map.Entry<UUID, Rank> e : c.members.entrySet()) {
-                            String n = Bukkit.getOfflinePlayer(e.getKey()).getName();
-                            if (n != null && n.toLowerCase(Locale.ROOT).startsWith(last)) out.add(n);
-                        }
-                    }
-                }
-                case "quests" -> out.addAll(filter(List.of("hide", "show"), last));
-                case "mobilize" -> out.addAll(filter(List.of("stop"), last));
-                case "policy" -> out.addAll(filter(List.of("indoctrinate", "enslave"), last));
-                case "blueprints" -> out.addAll(filter(List.of("list", "info", "select", "delete"), last));
-                case "traveler" -> out.addAll(filter(List.of("recruit", "dismiss"), last));
-                case "admin" -> {
-                    if (sender.hasPermission("colonysmp.admin")) out.addAll(filter(ADMIN, last));
-                }
-                default -> {
-                }
+        String sub = args[0].toLowerCase(Locale.ROOT);
+        List<String> options = new ArrayList<>();
+        switch (sub) {
+            case "info", "join", "declarewar", "peace", "shop" -> {
+                for (Colony o : plugin.colonies().list()) options.add(o.name);
+                if (sub.equals("declarewar") && args.length == 3) options = List.of("raid", "siege");
             }
-            return out;
-        }
-        if (sub.equals("blueprints") && args.length >= 3 && sender instanceof Player bp) {
-            Colony c = plugin.colonies().of(bp);
-            if (c != null) {
-                String typed = join(args, 2).toLowerCase(Locale.ROOT);
-                for (com.colonysmp.data.CustomBlueprint cb : c.blueprints.values()) if (cb.name.toLowerCase(Locale.ROOT).startsWith(typed)) out.add(cb.name);
+            case "citizen", "exile", "release", "home", "needs" -> {
+                if (c != null && args.length == 2) for (Citizen ct : c.citizens.values()) options.add(ct.name);
             }
-            return out;
-        }
-        if (sub.equals("admin") && sender.hasPermission("colonysmp.admin") && args.length == 3) {
-            String a = args[1].toLowerCase(Locale.ROOT);
-            if (a.equals("give")) out.addAll(filter(List.of(Items.WAND, Items.BOOK, Items.ROPE, Items.SHACKLES, Items.WAR_BANNER), last));
-            else if (!a.equals("reload") && !a.equals("save") && !a.equals("bypass")) {
-                for (Colony c : plugin.colonies().all()) if (c.id.startsWith(last)) out.add(c.id);
+            case "assign" -> {
+                if (c != null && args.length == 2) for (Citizen ct : c.citizens.values()) options.add(ct.name);
+                if (args.length == 3) for (Job j : Job.values()) options.add(j.name().toLowerCase(Locale.ROOT));
+            }
+            case "recruit" -> {
+                if (c != null && args.length == 2) for (Citizen ct : c.citizens.values()) if (ct.status.free()) options.add(ct.name);
+                if (args.length == 3) for (MilitaryClass k : MilitaryClass.values()) options.add(k.name().toLowerCase(Locale.ROOT));
+            }
+            case "orders" -> {
+                if (c != null && args.length == 2) for (Squad q : c.squads.values()) options.add(String.valueOf(q.id));
+                if (args.length == 3) for (Squad.Order o : Squad.Order.values()) options.add(o.name().toLowerCase(Locale.ROOT));
+                if (args.length == 4) options.add("here");
+            }
+            case "squad" -> {
+                if (args.length == 2) options = List.of("create", "delete", "rename", "add", "remove", "formation", "patrol", "select");
+            }
+            case "trade" -> {
+                if (args.length == 2) options = List.of("sell", "buy");
+                if (args.length == 3 && c != null) options.addAll(c.storage.contents().keySet());
+            }
+            case "storage" -> {
+                if (args.length == 2) options = List.of("target", "clear");
+                if (args.length == 3 && c != null) options.addAll(c.storage.contents().keySet());
+            }
+            case "building" -> {
+                if (args.length == 2) options = List.of("info", "register", "crop", "herd", "recipe", "name", "remove");
+                if (args.length == 3 && args[1].equalsIgnoreCase("register")) for (BuildingType t : BuildingType.values()) options.add(t.name().toLowerCase(Locale.ROOT));
+                else if (args.length == 3 && c != null) for (Building b : c.buildings.values()) options.add(String.valueOf(b.id));
+            }
+            case "book" -> {
+                if (args.length == 2) for (BuildingType t : BuildingType.values()) options.add(t.name().toLowerCase(Locale.ROOT));
+            }
+            case "upgrade", "validate" -> {
+                if (c != null && args.length == 2) for (Building b : c.buildings.values()) options.add(String.valueOf(b.id));
+            }
+            case "construction" -> {
+                if (args.length == 2) options = List.of("order", "pause", "resume", "cancel", "first");
+                if (args.length == 3 && args[1].equalsIgnoreCase("order")) for (BuildingType t : BuildingType.values()) if (Blueprint.of(t) != null) options.add(t.name().toLowerCase(Locale.ROOT));
+            }
+            case "diplomacy" -> {
+                if (args.length == 2) options = List.of("list", "offers", "accept", "decline", "ally", "treaty", "cancel", "gift", "trade", "contract", "calltoarms");
+                else for (Colony o : plugin.colonies().list()) options.add(o.name);
+            }
+            case "prison" -> {
+                if (args.length == 2) options = List.of("release", "ransom", "exchange");
+                else if (c != null) for (Citizen ct : plugin.prison().prisoners(c)) options.add(ct.name);
+            }
+            case "policies" -> {
+                if (args.length == 2) options = List.of("set");
+                if (args.length == 3) options = PoliciesMenu.NAMES;
+            }
+            case "promote", "demote", "kick", "invite" -> {
+                for (Player o : Bukkit.getOnlinePlayers()) options.add(o.getName());
+                if (args.length == 3) for (Role r : Role.values()) if (r.member) options.add(r.name().toLowerCase(Locale.ROOT));
+            }
+            case "traveller", "traveler" -> options = List.of("recruit", "dismiss");
+            case "resources" -> {
+                for (Category cat : Category.values()) options.add(cat.name().toLowerCase(Locale.ROOT));
+            }
+            case "help" -> options = List.of("colony", "citizens", "buildings", "economy", "military", "diplomacy", "prisoners", "admin");
+            default -> {
             }
         }
-        if (sub.equals("admin") && args.length == 4 && args[1].equalsIgnoreCase("give")) {
-            for (Player p : Bukkit.getOnlinePlayers()) if (p.getName().toLowerCase(Locale.ROOT).startsWith(last)) out.add(p.getName());
-        }
-        return out;
-    }
-
-    private static List<String> filter(List<String> all, String prefix) {
-        List<String> out = new ArrayList<>();
-        for (String s : all) if (s.startsWith(prefix)) out.add(s);
+        for (String o : options) if (o.toLowerCase(Locale.ROOT).startsWith(last)) out.add(o);
         return out;
     }
 }

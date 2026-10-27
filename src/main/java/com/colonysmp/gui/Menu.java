@@ -92,6 +92,20 @@ public abstract class Menu implements InventoryHolder {
         if (a != null) a.accept(c);
     }
 
+    /** A click on the viewer's own inventory below the menu (storage menus take items this way). */
+    protected void bottom(Click c, int slot) {
+    }
+
+    /** A row of page arrows on the last row; returns the first index to show. */
+    protected int pager(int page, int total, int perPage, java.util.function.IntConsumer turn) {
+        int pages = Math.max(1, (total + perPage - 1) / perPage);
+        int p = Math.max(0, Math.min(page, pages - 1));
+        int last = getInventory().getSize() - 9;
+        if (p > 0) button(last, Material.ARROW, "<white>Previous page", List.of("<gray>Page " + p + " of " + pages), c -> turn.accept(p - 1));
+        if (p < pages - 1) button(last + 8, Material.ARROW, "<white>Next page", List.of("<gray>Page " + (p + 2) + " of " + pages), c -> turn.accept(p + 1));
+        return p * perPage;
+    }
+
     /** Called when the viewer closes the menu. */
     protected void closed() {
     }

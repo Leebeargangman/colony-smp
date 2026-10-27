@@ -3,18 +3,19 @@ version: '${version}'
 main: com.colonysmp.ColonySMP
 api-version: '1.21'
 author: ModdedRealms
-description: Communist colonies for SMP servers - claims, citizen AI, a shared State economy, prisoners, forced labour and colony warfare.
+description: Colonies of simulated citizens for SMP servers - territory, buildings, jobs and production chains, an economy, diplomacy and warfare, all simulated even while nobody is there.
+softdepend: [Vault]
 
 commands:
   colony:
-    description: The colony command hub
+    description: Everything about colonies
     usage: /colony help
-    aliases: [col, commune]
+    aliases: [col, colonies]
 
 permissions:
   colonysmp.play:
-    description: Found, join and run colonies
+    description: Create, join and run colonies
     default: true
   colonysmp.admin:
-    description: Admin commands, claim bypass and item spawning
+    description: Admin tools, the protection bypass and item spawning
     default: op

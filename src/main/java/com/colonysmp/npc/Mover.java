@@ -1,7 +1,8 @@
 package com.colonysmp.npc;
 
-import com.colonysmp.colony.RoomScanner;
+import com.colonysmp.building.RoomScanner;
 import com.destroystokyo.paper.entity.Pathfinder;
+import io.papermc.paper.entity.TeleportFlag;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
@@ -21,7 +22,7 @@ import java.util.List;
 
 /**
  * Walks an NPC body along a path. The body has no brain of its own (it is "unaware"), so it never wanders off:
- * it goes exactly where the State sends it. Paths come from Paper's villager pathfinder, with a block-grid
+ * it goes exactly where its routine sends it. Paths come from Paper's villager pathfinder, with a block-grid
  * search as the fallback for ladders, iron doors and fresh tunnels. Long trips are walked in legs. Only a
  * citizen that has been stuck for a long time is moved straight to its destination, and only while no player
  * is watching (or after a much longer wait).
@@ -32,6 +33,8 @@ public final class Mover {
     private static final int GRID_NODES = 3000;
 
     private final Mob body;
+    /** The horse it rides, if any: the horse is what walks. */
+    private Mob vehicle;
     private Location dest;
     private double speed, arrive;
     private List<Location> path;
@@ -49,6 +52,16 @@ public final class Mover {
 
     public Mover(Mob body) {
         this.body = body;
+    }
+
+    /** Mounted bodies move their horse, rider and all. */
+    public void setVehicle(Mob v) {
+        vehicle = v;
+        path = null;
+    }
+
+    private Mob walker() {
+        return vehicle != null && vehicle.isValid() ? vehicle : body;
     }
 
     /** Wardens and guards carry the keys: they open iron doors too. */
@@ -117,7 +130,7 @@ public final class Mover {
 
     /** True if within the given distance of a point (horizontally, and not far above or below). */
     public boolean near(Location l, double dist) {
-        Location c = body.getLocation();
+        Location c = walker().getLocation();
         if (l == null || c.getWorld() != l.getWorld()) return false;
         double dx = c.getX() - l.getX(), dz = c.getZ() - l.getZ();
         return dx * dx + dz * dz <= dist * dist && Math.abs(c.getY() - l.getY()) < 3;
@@ -144,7 +157,7 @@ public final class Mover {
             stop();
             return;
         }
-        Location cur = body.getLocation();
+        Location cur = walker().getLocation();
         if (near(dest, arrive)) {
             arrived = true;
             stop();
@@ -189,7 +202,7 @@ public final class Mover {
     private List<Location> paperPath() {
         Pathfinder.PathResult r = null;
         try {
-            r = body.getPathfinder().findPath(dest);
+            r = walker().getPathfinder().findPath(dest);
         } catch (RuntimeException ignored) {
             // the pathfinder can throw for unloaded regions; treat as no path
         }
@@ -245,12 +258,11 @@ public final class Mover {
         if (dx * dx + dz * dz > 1e-4) {
             p.setYaw((float) Math.toDegrees(Math.atan2(-dx, dz)));
         } else {
-            p.setYaw(body.getLocation().getYaw());
+            p.setYaw(walker().getLocation().getYaw());
         }
         if (p.distanceSquared(before) > 1e-4) lastProgressAt = now;
         p.setPitch(0);
-        body.setVelocity(ZERO);
-        body.teleport(p);
+        move(p);
         pos = p;
         if (idx >= path.size()) {
             path = null;
@@ -280,14 +292,20 @@ public final class Mover {
             // truly stuck (walled in, or the destination has no way in): step straight there
             Location safe = safeSpot(dest);
             if (safe != null) {
-                safe.setYaw(body.getLocation().getYaw());
-                body.setVelocity(ZERO);
-                body.teleport(safe);
+                safe.setYaw(walker().getLocation().getYaw());
+                move(safe);
                 pos = safe;
                 arrived = true;
                 stop();
             }
         }
+    }
+
+    private void move(Location to) {
+        Mob w = walker();
+        w.setVelocity(ZERO);
+        if (w == body) body.teleport(to);
+        else w.teleport(to, TeleportFlag.EntityState.RETAIN_PASSENGERS);
     }
 
     /** Is a player close enough to see this citizen (or its destination)? */
@@ -421,6 +439,6 @@ public final class Mover {
     }
 
     public void sync() {
-        pos = body.getLocation();
+        pos = walker().getLocation();
     }
 }
