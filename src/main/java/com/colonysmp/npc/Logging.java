@@ -1,11 +1,10 @@
 package com.colonysmp.npc;
 
 import com.colonysmp.ColonySMP;
-import com.colonysmp.data.Building;
-import com.colonysmp.data.Colony;
-import com.colonysmp.data.Job;
+import com.colonysmp.core.Skill;
+import com.colonysmp.model.Building;
+import com.colonysmp.model.Colony;
 import com.colonysmp.util.BlockPos;
-import com.colonysmp.util.Region;
 import com.colonysmp.util.Tools;
 import org.bukkit.Bukkit;
 import org.bukkit.Effect;
@@ -31,12 +30,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
-/** Lumberjacks (and idle builders, and forced loggers) fell natural trees and replant them. */
+/**
+ * Foresters fell natural trees around their forestry hut (inside the colony's land and a margin around it),
+ * top down, replant a sapling, and gather the saplings, sticks and apples that fall as the leaves decay.
+ * Logs go into the hut's stock for the haulers.
+ */
 public final class Logging {
+
+    private static final int RADIUS = 32;
 
     private final ColonySMP plugin;
     private final NpcManager m;
-    /** Known tree trunks per colony. */
+    /** Known tree trunks per forestry hut. */
     private final Map<String, Set<BlockPos>> trees = new HashMap<>();
 
     Logging(ColonySMP plugin, NpcManager m) {
@@ -44,12 +49,12 @@ public final class Logging {
         this.m = m;
     }
 
-    public void think(Npc n, Colony col, long now, String label) {
+    void think(Npc n, Colony col, Building hut, long now) {
         World w = n.body.getWorld();
         if (!m.ensureTool(n, col, Tools.Kind.AXE, now)) return;
         Set<BlockPos> claimed = m.claimed.computeIfAbsent(col.id, k -> new HashSet<>());
         if (n.work != null) {
-            chop(n, col, w, now, claimed);
+            chop(n, col, hut, w, now, claimed);
             return;
         }
         if (n.target != null && !isLog(n.target.block(w))) {
@@ -57,10 +62,9 @@ public final class Logging {
             n.target = null;
         }
         if (n.target == null) {
-            BlockPos t = find(n, col, w, claimed);
+            BlockPos t = find(n, col, hut, w, claimed);
             if (t == null) {
-                Location core = col.coreLocation();
-                if (core != null) m.brain().wander(n, core, 14, now, "Looking for trees");
+                m.brain().wanderAt(n, col, hut, now, "Looking for trees to fell");
                 return;
             }
             n.target = t;
@@ -69,24 +73,25 @@ public final class Logging {
         Location bl = n.target.center(w);
         if (!n.mover.near(bl, 2.7)) {
             n.mover.moveTo(bl, plugin.settings().walkSpeed, 2.0);
-            n.activity = "Walking to a tree";
+            n.doing("Walking to a tree");
             return;
         }
         n.mover.stop();
         n.work = collect(w, n.target);
         n.workIdx = 0;
         n.jobKey = n.target.block(w).getType().name();
-        n.activity = label != null ? label : "Felling a tree";
+        n.doing("Felling a tree");
     }
 
-    private void chop(Npc n, Colony col, World w, long now, Set<BlockPos> claimed) {
+    private void chop(Npc n, Colony col, Building hut, World w, long now, Set<BlockPos> claimed) {
+        n.working = true;
         if (n.workIdx >= n.work.size()) {
             BlockPos base = n.target;
             if (base != null) {
-                replant(w, base, n.jobKey);
-                sweep(col, base.center(w));
+                replant(w, base, n.jobKey, col, hut);
+                sweep(col, hut, base.center(w));
                 claimed.remove(base);
-                Set<BlockPos> known = trees.get(col.id);
+                Set<BlockPos> known = trees.get(col.id + ":" + hut.id);
                 if (known != null) known.remove(base);
             }
             n.work = null;
@@ -96,15 +101,17 @@ public final class Logging {
         }
         if (now < n.actionAt) return;
         BlockPos lp = n.work.get(n.workIdx++);
+        if (!lp.loaded(w)) return;
         Block b = lp.block(w);
-        if (!lp.loaded(w) || !isLog(b)) return;
+        if (!isLog(b)) return;
         CitizenBrain.face(n, lp.center(w));
         List<ItemStack> drops = new ArrayList<>(b.getDrops(n.c.tool));
         w.playEffect(b.getLocation(), Effect.STEP_SOUND, b.getType());
         b.setType(Material.AIR);
-        m.deposit(col, drops);
+        m.deposit(col, hut, drops, n.loc());
         m.wearTool(n, col);
-        double eff = m.efficiency(col, n.c, Job.LUMBERJACK);
+        n.c.skills.gain(Skill.FORESTRY, 0.8 * n.c.trait.learning());
+        double eff = m.efficiency(col, n.c);
         n.actionAt = now + m.interval(plugin.settings().chopInterval, eff, n.c.tool);
     }
 
@@ -113,20 +120,22 @@ public final class Logging {
         return Tag.LOGS.isTagged(m) && m.name().endsWith("_LOG") && !m.name().startsWith("STRIPPED");
     }
 
-    /** Nearest known unclaimed trunk, discovering new ones by sampling columns around the claim. */
-    private BlockPos find(Npc n, Colony col, World w, Set<BlockPos> claimed) {
-        Set<BlockPos> known = trees.computeIfAbsent(col.id, k -> new HashSet<>());
-        Region area = col.region.grow(plugin.settings().workMargin);
+    /** Nearest known unclaimed trunk around the hut, discovering new ones by sampling columns. */
+    private BlockPos find(Npc n, Colony col, Building hut, World w, Set<BlockPos> claimed) {
+        Set<BlockPos> known = trees.computeIfAbsent(col.id + ":" + hut.id, k -> new HashSet<>());
+        BlockPos c = hut.anchor != null ? hut.anchor : col.core;
+        if (c == null) return null;
+        int margin = plugin.settings().workMargin;
         ThreadLocalRandom r = ThreadLocalRandom.current();
         for (int i = 0; i < 40 && known.size() < 64; i++) {
-            int x = r.nextInt(area.minX(), area.maxX() + 1), z = r.nextInt(area.minZ(), area.maxZ() + 1);
-            if (!w.isChunkLoaded(x >> 4, z >> 4)) continue;
-            Colony other = plugin.colonies().at(w.getName(), x, z);
+            int x = c.x() + r.nextInt(-RADIUS, RADIUS + 1), z = c.z() + r.nextInt(-RADIUS, RADIUS + 1);
+            if (!w.isChunkLoaded(x >> 4, z >> 4) || !col.territory.near(x, z, margin)) continue;
+            com.colonysmp.model.Colony other = plugin.colonies().at(w.getName(), x, z);
             if (other != null && other != col) continue;
             BlockPos base = sample(w, col, x, z);
             if (base != null) known.add(base);
         }
-        Location here = n.body.getLocation();
+        Location here = n.loc();
         BlockPos best = null;
         double bd = Double.MAX_VALUE;
         Iterator<BlockPos> it = known.iterator();
@@ -150,7 +159,6 @@ public final class Logging {
         int top = w.getHighestBlockYAt(x, z);
         Block b = w.getBlockAt(x, top, z);
         if (!Tag.LEAVES.isTagged(b.getType()) && !isLog(b)) return null;
-        // look for a trunk under or near this canopy
         for (int dy = 0; dy <= 10; dy++) {
             for (int dx = -2; dx <= 2; dx++) {
                 for (int dz = -2; dz <= 2; dz++) {
@@ -160,7 +168,7 @@ public final class Logging {
                     int guard = 0;
                     while (isLog(base.getRelative(BlockFace.DOWN)) && guard++ < 40) base = base.getRelative(BlockFace.DOWN);
                     Material ground = base.getRelative(BlockFace.DOWN).getType();
-                    if (!Tag.DIRT.isTagged(ground) && ground != Material.GRASS_BLOCK && ground != Material.MUD && ground != Material.MOSS_BLOCK) return null;
+                    if (!soil(ground)) return null;
                     if (!natural(c)) return null;
                     BlockPos bp = BlockPos.of(base);
                     for (Building bl : col.buildings.values()) if (bl.contains(bp)) return null;
@@ -171,7 +179,11 @@ public final class Logging {
         return null;
     }
 
-    /** A real tree has leaves that weren't placed by a player near its trunk. */
+    private static boolean soil(Material ground) {
+        return Tag.DIRT.isTagged(ground) || ground == Material.GRASS_BLOCK || ground == Material.MUD || ground == Material.MOSS_BLOCK;
+    }
+
+    /** A real tree has leaves near the top of its trunk that weren't placed by a player. */
     private static boolean natural(Block trunk) {
         Block top = trunk;
         int guard = 0;
@@ -214,28 +226,30 @@ public final class Logging {
         return out;
     }
 
-    private static void replant(World w, BlockPos base, String logType) {
+    /** A sapling of the same wood goes where the tree stood (from the hut's stock, or a fresh one from the tree). */
+    private void replant(World w, BlockPos base, String logType, Colony col, Building hut) {
         if (logType == null) return;
         Block b = base.block(w);
         if (!b.getType().isAir()) return;
-        Material ground = b.getRelative(BlockFace.DOWN).getType();
-        if (!Tag.DIRT.isTagged(ground) && ground != Material.GRASS_BLOCK && ground != Material.MUD && ground != Material.MOSS_BLOCK) return;
+        if (!soil(b.getRelative(BlockFace.DOWN).getType())) return;
         Material sapling = sapling(logType);
-        if (sapling != null) b.setType(sapling);
+        if (sapling == null) return;
+        String key = NpcManager.good(sapling);
+        // a sapling from the hut's stock (saplings fall as the leaves decay), else from storage
+        if (hut.stock.take(key, 1) == 1 || col.storage.take(key, 1) == 1) b.setType(sapling);
     }
 
     static Material sapling(String log) {
         String wood = log.replace("_LOG", "");
-        Material m = switch (wood) {
+        return switch (wood) {
             case "MANGROVE" -> Material.matchMaterial("MANGROVE_PROPAGULE");
             case "CRIMSON", "WARPED" -> null;
             default -> Material.matchMaterial(wood + "_SAPLING");
         };
-        return m;
     }
 
     /** Picks up saplings, sticks and apples that fall as the leaves decay. */
-    private void sweep(Colony col, Location around) {
+    private void sweep(Colony col, Building hut, Location around) {
         for (long delay : new long[]{600, 1800, 3600}) {
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
                 if (plugin.colonies().get(col.id) == null || around.getWorld() == null) return;
@@ -249,7 +263,8 @@ public final class Logging {
                         item.remove();
                     }
                 }
-                m.deposit(col, got);
+                Building still = col.building(hut.id);
+                m.deposit(col, still, got, around);
             }, delay);
         }
     }

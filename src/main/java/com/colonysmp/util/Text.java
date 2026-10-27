@@ -10,12 +10,13 @@ import org.bukkit.entity.Player;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /** MiniMessage helpers. Every player-facing string goes through here. */
 public final class Text {
 
     public static final MiniMessage MM = MiniMessage.miniMessage();
-    public static final String PREFIX = "<dark_red>[<red>☭</red>]</dark_red> <gray>";
+    public static final String PREFIX = "<dark_aqua>[<aqua>Colony</aqua>]</dark_aqua> <gray>";
 
     private Text() {}
 
@@ -28,16 +29,14 @@ public final class Text {
         return MM.deserialize(s).decorationIfAbsent(TextDecoration.ITALIC, TextDecoration.State.FALSE);
     }
 
-    public static List<Component> lore(String... lines) {
+    public static List<Component> lore(List<String> lines) {
         List<Component> out = new ArrayList<>();
         for (String l : lines) out.add(item(l));
         return out;
     }
 
-    public static List<Component> lore(List<String> lines) {
-        List<Component> out = new ArrayList<>();
-        for (String l : lines) out.add(item(l));
-        return out;
+    public static List<Component> lore(String... lines) {
+        return lore(List.of(lines));
     }
 
     public static void send(CommandSender to, String s) {
@@ -72,30 +71,44 @@ public final class Text {
         return sec + "s";
     }
 
+    /** In-game hours as "3.5 h" or "2 days". */
+    public static String gameHours(double hours) {
+        if (hours >= 48) return String.format(Locale.ROOT, "%.1f days", hours / 24);
+        return String.format(Locale.ROOT, "%.1f h", hours);
+    }
+
     public static String bar(double fraction, int width, String on, String off) {
         int n = (int) Math.round(Math.max(0, Math.min(1, fraction)) * width);
         return on + "|".repeat(n) + off + "|".repeat(width - n);
     }
 
-    public static String pct(double v) {
-        return Math.round(v) + "%";
+    /** A coloured 0-100 value with a little bar. */
+    public static String meter(double v) {
+        String c = v >= 60 ? "<green>" : v >= 30 ? "<yellow>" : "<red>";
+        return c + Math.round(v) + " " + bar(v / 100, 10, c, "<dark_gray>");
     }
 
-    public static String stabilityColor(double s) {
-        if (s >= 70) return "<green>";
-        if (s >= 50) return "<yellow>";
-        if (s >= 35) return "<gold>";
+    public static String color(double v) {
+        if (v >= 70) return "<green>";
+        if (v >= 50) return "<yellow>";
+        if (v >= 30) return "<gold>";
         return "<red>";
     }
 
+    public static String money(long amount, String currency) {
+        return String.format(Locale.ROOT, "%,d %s", amount, currency);
+    }
+
+    public static String signed(long v) {
+        return (v > 0 ? "<green>+" : v < 0 ? "<red>" : "<gray>") + String.format(Locale.ROOT, "%,d", v);
+    }
+
+    public static String num(double v) {
+        if (Math.abs(v - Math.rint(v)) < 0.05) return String.valueOf(Math.round(v));
+        return String.format(Locale.ROOT, "%.1f", v);
+    }
+
     public static String nice(String enumName) {
-        String[] parts = enumName.toLowerCase().split("_");
-        StringBuilder b = new StringBuilder();
-        for (String p : parts) {
-            if (p.isEmpty()) continue;
-            if (!b.isEmpty()) b.append(' ');
-            b.append(Character.toUpperCase(p.charAt(0))).append(p.substring(1));
-        }
-        return b.toString();
+        return com.colonysmp.core.Goods.nice(enumName);
     }
 }

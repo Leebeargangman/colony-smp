@@ -125,6 +125,22 @@ public final class Tools {
         return (double) d.getDamage() / max;
     }
 
+    /** Vanilla armour points of a piece of armour (0 for anything else). */
+    public static double armorPoints(Material m) {
+        String n = m.name();
+        int slot = n.endsWith("_HELMET") ? 0 : n.endsWith("_CHESTPLATE") ? 1 : n.endsWith("_LEGGINGS") ? 2 : n.endsWith("_BOOTS") ? 3 : -1;
+        if (slot < 0) return 0;
+        int[] p;
+        if (n.startsWith("LEATHER_")) p = new int[]{1, 3, 2, 1};
+        else if (n.startsWith("CHAINMAIL_")) p = new int[]{2, 5, 4, 1};
+        else if (n.startsWith("IRON_")) p = new int[]{2, 6, 5, 2};
+        else if (n.startsWith("GOLDEN_")) p = new int[]{2, 5, 3, 1};
+        else if (n.startsWith("DIAMOND_") || n.startsWith("NETHERITE_")) p = new int[]{3, 8, 6, 3};
+        else if (n.equals("TURTLE_HELMET")) p = new int[]{2, 0, 0, 0};
+        else return 0;
+        return p[slot];
+    }
+
     /** Speed multiplier for work with this tool tier (bare hands 0.4). */
     public static double speed(ItemStack it) {
         if (it == null || it.getType().isAir()) return 0.4;

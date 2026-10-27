@@ -23,24 +23,15 @@ import org.bukkit.plugin.Plugin;
 import java.util.List;
 import java.util.UUID;
 
-/** The plugin's custom items, their recipes, and a guard that keeps them out of vanilla recipes. */
+/** The plugin's own items, their recipes, and a guard that keeps them (and colony goods) out of vanilla recipes. */
 public final class Items implements Listener {
 
-    public static final String WAND = "wand", CORE = "core", BOOK = "book", ROPE = "rope",
-            SHACKLES = "shackles", WAR_BANNER = "war_banner";
+    public static final String WAND = "wand", CORE = "core", BOOK = "book", ROPE = "rope", BATON = "baton", WAR_BANNER = "war_banner";
 
     private final Plugin plugin;
-    private final Material chain;
 
     public Items(Plugin plugin) {
         this.plugin = plugin;
-        Material c = Material.matchMaterial("IRON_CHAIN");
-        if (c == null) c = Material.matchMaterial("CHAIN");
-        chain = c != null ? c : Material.IRON_BARS;
-    }
-
-    public Material chainMaterial() {
-        return chain;
     }
 
     // ───────────── identification ─────────────
@@ -75,24 +66,22 @@ public final class Items implements Listener {
     }
 
     public ItemStack wand() {
-        return make(Material.STICK, WAND, "<gold><bold>Colony Selection Wand", true, 1,
-                "<gray>Mark out the land of a new commune.",
+        return make(Material.STICK, WAND, "<gold><bold>Colony Wand", true, 1,
+                "<gray>Copies buildings as blueprints.",
                 "",
-                "<green>Left-Click</green> <gray>a block: <white>Position 1",
-                "<white>Right-Click</white> <gray>a block: <white>Position 2",
-                "<yellow>Shift + Right-Click</yellow><gray>: <white>Establish Colony",
-                "",
-                "<dark_gray>Claims must be 16x16 to 128x128.");
+                "<green>Left-Click</green> <gray>a block: <white>corner 1",
+                "<white>Right-Click</white> <gray>a block: <white>corner 2",
+                "<yellow>Shift + Right-Click</yellow><gray>: <white>copy as a blueprint");
     }
 
     public ItemStack core(String colonyId, String colonyName) {
-        ItemStack it = make(Material.LODESTONE, CORE, "<red><bold>☭ Town Hall Core", true, 1,
+        ItemStack it = make(Material.LODESTONE, CORE, "<aqua><bold>Town Hall Core", true, 1,
                 "<gray>The heart of <white>" + Text.esc(colonyName) + "</white>.",
                 "",
-                "<gray>Place it inside your claim to found the",
-                "<gray>colony. A <gold>Central State Chest</gold> will be",
-                "<gray>built next to it and your first two",
-                "<gray>comrades will arrive.");
+                "<gray>Place it where the colony should stand:",
+                "<gray>the land around it is claimed, a storage",
+                "<gray>chest appears beside it and your first",
+                "<gray>settlers arrive.");
         ItemMeta meta = it.getItemMeta();
         meta.getPersistentDataContainer().set(Keys.COLONY, PersistentDataType.STRING, colonyId);
         it.setItemMeta(meta);
@@ -100,44 +89,42 @@ public final class Items implements Listener {
     }
 
     public ItemStack book() {
-        return make(Material.BOOK, BOOK, "<yellow><bold>Colony Blueprint Book", true, 1,
-                "<gray>Plans approved by the Central Committee.",
+        return make(Material.BOOK, BOOK, "<yellow><bold>Blueprint Book", true, 1,
+                "<gray>Plans and registers colony buildings.",
                 "",
-                "<white>Hold</white> <gray>to preview a building outline",
-                "<white>Right-Click</white><gray>: next blueprint",
+                "<white>Hold</white> <gray>to preview the selected plan",
+                "<white>Right-Click</white><gray>: next plan (Shift: previous)",
                 "<yellow>Shift + Right-Click</yellow> <gray>a block: <white>register",
-                "<gray>  an existing building there",
-                "<gold>Shift + Left-Click</gold><gray>: <white>order the Builder",
-                "<gray>  to construct the blueprint");
+                "<gray>  the building you're standing in or at",
+                "<gold>Shift + Left-Click</gold><gray>: <white>order construction");
     }
 
     public ItemStack rope() {
         return make(Material.LEAD, ROPE, "<#c9a26b>Rope", false, 16,
-                "<gray>Right-click a <red>downed</red> person to bind them.",
-                "<gray>Lead them into a <white>Prison Cell</white>, or",
-                "<gray>Shift + Right-click them to hand them",
-                "<gray>to your Guards for escort.");
+                "<gray>Right-click a <red>downed</red> enemy to bind them.",
+                "<gray>Lead them into a <white>Prison</white>, or",
+                "<gray>Shift + Right-click to hand them to your Guards.");
     }
 
-    public ItemStack shackles() {
-        return make(chain, SHACKLES, "<gray><bold>Iron Shackles", false, 16,
-                "<gray>Fitted to a prisoner sentenced to",
-                "<white>Forced Labour</white><gray>. Set the policy from the",
-                "<gray>prison menu with these in your inventory",
-                "<gray>or in the Central State Chest.");
+    public ItemStack baton() {
+        return make(Material.BLAZE_ROD, BATON, "<red><bold>Command Baton", true, 1,
+                "<gray>Commands your colony's squads.",
+                "",
+                "<white>Right-Click</white> <gray>a block: <white>rally the selected squad there",
+                "<yellow>Shift + Right-Click</yellow><gray>: <white>next order",
+                "<white>Left-Click</white> <gray>an enemy: <white>focus target",
+                "<gold>Shift + Left-Click</gold><gray>: <white>select the next squad");
     }
 
     public ItemStack warBanner() {
         ItemStack it = make(Material.RED_BANNER, WAR_BANNER, "<dark_red><bold>War Banner", true, 1,
-                "<gray>A call to arms against another colony.",
+                "<gray>A declaration of war against another colony.",
                 "",
-                "<white>Right-Click</white> <gray>(or <white>/colony declare</white>) to declare war.",
-                "<white>Place</white> <gray>it outside the enemy's claim during the",
+                "<white>Right-Click</white> <gray>(or <white>/colony declarewar</white>) to open war options.",
+                "<white>Place</white> <gray>it outside the enemy's land during the",
                 "<gray>warm-up to raise your <red>War Camp</red>.");
         if (it.getItemMeta() instanceof BannerMeta bm) {
-            bm.setPatterns(List.of(
-                    new Pattern(DyeColor.YELLOW, PatternType.FLOWER),
-                    new Pattern(DyeColor.RED, PatternType.BORDER)));
+            bm.setPatterns(List.of(new Pattern(DyeColor.BLACK, PatternType.CROSS), new Pattern(DyeColor.RED, PatternType.BORDER)));
             bm.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
             it.setItemMeta(bm);
         }
@@ -149,7 +136,7 @@ public final class Items implements Listener {
             case WAND -> wand();
             case BOOK -> book();
             case ROPE -> rope();
-            case SHACKLES -> shackles();
+            case BATON -> baton();
             case WAR_BANNER -> warBanner();
             default -> null;
         };
@@ -157,7 +144,7 @@ public final class Items implements Listener {
 
     /** A menu icon. Each gets a unique tag so icons never stack or merge with real items. */
     public static ItemStack icon(Material m, String name, List<String> lore) {
-        ItemStack it = new ItemStack(m);
+        ItemStack it = new ItemStack(m.isItem() ? m : Material.PAPER);
         ItemMeta meta = it.getItemMeta();
         meta.displayName(Text.item(name));
         if (lore != null && !lore.isEmpty()) meta.lore(Text.lore(lore));
@@ -169,6 +156,13 @@ public final class Items implements Listener {
 
     public static ItemStack icon(Material m, String name, String... lore) {
         return icon(m, name, List.of(lore));
+    }
+
+    public static ItemStack glow(ItemStack it) {
+        ItemMeta meta = it.getItemMeta();
+        meta.setEnchantmentGlintOverride(true);
+        it.setItemMeta(meta);
+        return it;
     }
 
     // ───────────── recipes ─────────────
@@ -187,12 +181,6 @@ public final class Items implements Listener {
         rope.setIngredient('S', Material.STRING);
         add(rope);
 
-        ShapedRecipe shackles = new ShapedRecipe(Keys.RECIPE_SHACKLES, shackles());
-        shackles.shape("ICI");
-        shackles.setIngredient('I', Material.IRON_INGOT);
-        shackles.setIngredient('C', chain);
-        add(shackles);
-
         ShapelessRecipe banner = new ShapelessRecipe(Keys.RECIPE_BANNER, warBanner());
         banner.addIngredient(Material.RED_BANNER);
         banner.addIngredient(Material.IRON_SWORD);
@@ -204,6 +192,12 @@ public final class Items implements Listener {
         book.addIngredient(Material.GOLD_NUGGET);
         book.addIngredient(Material.PAPER);
         add(book);
+
+        ShapelessRecipe baton = new ShapelessRecipe(Keys.RECIPE_BATON, baton());
+        baton.addIngredient(Material.STICK);
+        baton.addIngredient(Material.GOLD_INGOT);
+        baton.addIngredient(Material.RED_DYE);
+        add(baton);
     }
 
     private void add(Recipe r) {
@@ -217,13 +211,11 @@ public final class Items implements Listener {
     }
 
     public void unregisterRecipes() {
-        for (var k : List.of(Keys.RECIPE_WAND, Keys.RECIPE_ROPE, Keys.RECIPE_SHACKLES, Keys.RECIPE_BANNER, Keys.RECIPE_BOOK)) {
-            Bukkit.removeRecipe(k);
-        }
+        for (var k : List.of(Keys.RECIPE_WAND, Keys.RECIPE_ROPE, Keys.RECIPE_BANNER, Keys.RECIPE_BOOK, Keys.RECIPE_BATON)) Bukkit.removeRecipe(k);
     }
 
     public void discover(Player p) {
-        p.discoverRecipes(List.of(Keys.RECIPE_WAND, Keys.RECIPE_ROPE, Keys.RECIPE_SHACKLES, Keys.RECIPE_BANNER, Keys.RECIPE_BOOK));
+        p.discoverRecipes(List.of(Keys.RECIPE_WAND, Keys.RECIPE_ROPE, Keys.RECIPE_BANNER, Keys.RECIPE_BOOK, Keys.RECIPE_BATON));
     }
 
     @EventHandler
@@ -231,14 +223,16 @@ public final class Items implements Listener {
         discover(e.getPlayer());
     }
 
-    /** Custom items can't be eaten by vanilla recipes (a wand is not a torch handle). */
+    /** Plugin items and colony goods can't be eaten by vanilla recipes (a wand is not a torch handle). */
     @EventHandler
     public void onPrepare(PrepareItemCraftEvent e) {
         Recipe r = e.getRecipe();
         if (r instanceof ShapedRecipe s && s.getKey().getNamespace().equals(Keys.RECIPE_WAND.getNamespace())) return;
         if (r instanceof ShapelessRecipe s && s.getKey().getNamespace().equals(Keys.RECIPE_WAND.getNamespace())) return;
         for (ItemStack it : e.getInventory().getMatrix()) {
-            if (id(it) != null) {
+            if (it == null || !it.hasItemMeta()) continue;
+            var pdc = it.getItemMeta().getPersistentDataContainer();
+            if (pdc.has(Keys.ITEM, PersistentDataType.STRING) || pdc.has(Keys.GOOD, PersistentDataType.STRING)) {
                 e.getInventory().setResult(null);
                 return;
             }
