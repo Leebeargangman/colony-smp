@@ -41,6 +41,19 @@ class EconomyTest {
     }
 
     @Test
+    void paymentsBookedToTheDayThatJustEndedCountForIt() {
+        Treasury t = new Treasury();
+        t.credit(100, TxnType.SALE, "", 0, 1);
+        t.credit(7, TxnType.SERVICES, "meals", 0, 2);
+        // wages for day 1, paid as day 2 begins
+        t.debit(10, TxnType.WAGES, "", 0, 1);
+        assertEquals(-10, t.yesterday(2).get(TxnType.WAGES));
+        assertEquals(100, t.yesterday(2).get(TxnType.SALE));
+        assertEquals(7, t.today(2).get(TxnType.SERVICES));
+        assertNull(t.today(2).get(TxnType.WAGES));
+    }
+
+    @Test
     void sellingFloodsTheMarketAndPricesRecover() {
         Market m = new Market();
         double before = m.sellPrice("wheat", 0);

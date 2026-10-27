@@ -66,9 +66,11 @@ public final class Finances {
         return false;
     }
 
-    void daily(Colony c, long day) {
+    void daily(Colony c, long newDay) {
         Settings s = plugin.settings();
         long now = System.currentTimeMillis();
+        // wages, upkeep and the market's takings belong to the day that just ended
+        long day = newDay - 1;
         // wages, with tax withheld (one entry in the books for the whole payroll)
         long gross = 0, paid = 0, tax = 0;
         int unpaid = 0, workers = 0;
@@ -99,7 +101,7 @@ public final class Finances {
         }
         if (paid > 0) c.treasury.debit(paid, TxnType.WAGES, workers + " workers paid (" + tax + " withheld in tax)", now, day);
         if (unpaid > 0) {
-            c.log(ColonyEvent.Type.ECONOMY, day, unpaid + " citizen" + (unpaid == 1 ? " was" : "s were") + " not paid: the treasury is empty. Unpaid workers lose heart, then stop working.");
+            c.log(ColonyEvent.Type.ECONOMY, newDay, unpaid + " citizen" + (unpaid == 1 ? " was" : "s were") + " not paid: the treasury is empty. Unpaid workers lose heart, then stop working.");
         }
         // upkeep
         long up = upkeep(c);
@@ -110,7 +112,7 @@ public final class Finances {
                     if (b.type == BuildingType.TOWN_HALL) continue;
                     b.condition = Math.max(0, b.condition - 3);
                 }
-                c.log(ColonyEvent.Type.ECONOMY, day, "Upkeep went unpaid (" + (up - got) + " short): buildings are falling into disrepair.");
+                c.log(ColonyEvent.Type.ECONOMY, newDay, "Upkeep went unpaid (" + (up - got) + " short): buildings are falling into disrepair.");
             }
         }
         // citizens spend at the market (money comes back to the treasury; a little luxury lifts mood)
@@ -131,7 +133,7 @@ public final class Finances {
             b.staffedHours = 0;
         }
         plugin.sim().logistics().resetDay(c);
-        warnLow(c, day, gross, paid);
+        warnLow(c, newDay, gross, paid);
     }
 
     private void warnLow(Colony c, long day, long gross, long paid) {

@@ -94,7 +94,11 @@ public final class Order {
 
     void daily(Colony c, long day) {
         Settings s = plugin.settings();
-        if (c.population() == 0) return;
+        if (c.population() == 0) {
+            // nobody left to protest
+            c.protest = false;
+            return;
+        }
         double cover = coverage(c);
         guardHours.remove(c.id);
         // stability drifts towards what the colony deserves
@@ -123,9 +127,11 @@ public final class Order {
             if (r.nextDouble() >= chance) continue;
             String what;
             long taken = 0;
+            boolean caught = r.nextDouble() < 0.15 + cover * 0.6;
             if (r.nextBoolean() && c.treasury.balance() > 20) {
                 taken = Math.max(1, Math.min(c.treasury.balance() / 20, 15 + r.nextInt(20)));
-                c.treasury.debit(taken, TxnType.THEFT, ct.name + " stole from the treasury", System.currentTimeMillis(), day);
+                c.treasury.debit(taken, TxnType.THEFT, caught ? ct.name + " stole from the treasury" : "Stolen from the treasury (thief unknown)",
+                        System.currentTimeMillis(), day);
                 ct.wallet += taken;
                 what = Text.money(taken, s.currency) + " from the treasury";
             } else {
@@ -146,7 +152,6 @@ public final class Order {
                 what = taken + " " + Goods.get(best).name() + " from storage";
             }
             ct.crimes++;
-            boolean caught = r.nextDouble() < 0.15 + cover * 0.6;
             if (!caught) {
                 c.log(ColonyEvent.Type.CRIME, day, "A thief took " + what + ". Nobody saw who." + (cover < 0.3 ? " More guards would help." : ""));
                 continue;

@@ -117,7 +117,7 @@ public final class CitizenSim {
         double hours = GameTime.hours(ticks);
         c.ageDays += hours / 24;
         if (c.downed()) return;
-        if (!c.status.free()) {
+        if (c.status.confined()) {
             // prisoners and captives: fed by wardens once a day (see the prison)
             c.needs.decay(hours, false, false, false, p);
             c.needs.heal(hours, false, 0, p);

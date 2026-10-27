@@ -410,6 +410,8 @@ public final class CitizenBrain {
 
     private void riot(Npc n, Colony col, long now) {
         if (n.sleeping) wake(n);
+        // even rioters eat (they help themselves)
+        if (n.c.needs.satiety < 15 && life.meal(n, col, now, true)) return;
         Location target = m.storagePoint(col, n.loc());
         if (target == null) target = col.coreLocation();
         if (target == null) return;

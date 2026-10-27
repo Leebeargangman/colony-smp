@@ -34,6 +34,9 @@ public final class SimulationEngine {
     private final Housing housing;
     private final Jobs jobs;
     private int cursor;
+    /** While an admin fast-forwards a colony: the simulated day, so everything logged in the run agrees. */
+    private Colony forwarding;
+    private long forwardDay;
     /** Performance: totals for the admin view. */
     private long steps, stepNanos, worstNanos;
 
@@ -104,6 +107,7 @@ public final class SimulationEngine {
     }
 
     public long day(Colony c) {
+        if (c == forwarding) return forwardDay;
         return GameTime.day(gameTime(c));
     }
 
@@ -236,13 +240,11 @@ public final class SimulationEngine {
             pop++;
         }
         mood = pop == 0 ? 0 : mood / pop;
-        // the day just ended, plus the wages and upkeep booked at its close
+        // the day just ended (its wages and upkeep are booked to it)
         long income = 0, expenses = 0;
-        for (var totals : List.of(c.treasury.yesterday(day), c.treasury.today(day))) {
-            for (var e : totals.entrySet()) {
-                if (e.getValue() > 0) income += e.getValue();
-                else expenses -= e.getValue();
-            }
+        for (var e : c.treasury.yesterday(day).entrySet()) {
+            if (e.getValue() > 0) income += e.getValue();
+            else expenses -= e.getValue();
         }
         c.addStats(new Colony.DayStats(day, pop, food, c.treasury.balance(), mood, c.stability, c.producedToday, income, expenses));
         reports.daily(c, day, food, mood, income, expenses);
@@ -255,12 +257,17 @@ public final class SimulationEngine {
         long ticks = (long) (hours * GameTime.TICKS_PER_HOUR);
         long dt = dayTime(c);
         long done = 0;
-        long label = day(c);
-        while (done < ticks) {
-            long chunk = Math.min(GameTime.TICKS_PER_DAY - Math.floorMod(dt + done, GameTime.TICKS_PER_DAY), ticks - done);
-            simulate(c, chunk, Math.floorMod(dt + done, GameTime.TICKS_PER_DAY));
-            done += chunk;
-            if (Math.floorMod(dt + done, GameTime.TICKS_PER_DAY) == 0) daily(c, ++label);
+        forwardDay = day(c);
+        forwarding = c;
+        try {
+            while (done < ticks) {
+                long chunk = Math.min(GameTime.TICKS_PER_DAY - Math.floorMod(dt + done, GameTime.TICKS_PER_DAY), ticks - done);
+                simulate(c, chunk, Math.floorMod(dt + done, GameTime.TICKS_PER_DAY));
+                done += chunk;
+                if (Math.floorMod(dt + done, GameTime.TICKS_PER_DAY) == 0) daily(c, ++forwardDay);
+            }
+        } finally {
+            forwarding = null;
         }
     }
 

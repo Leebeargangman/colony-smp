@@ -68,8 +68,11 @@ public final class Treasury {
         recent.addFirst(t);
         while (recent.size() > KEEP_RECENT) recent.removeLast();
         unsaved.add(t);
-        roll(day);
-        today.merge(type, amount, Long::sum);
+        if (day == statsDay - 1) yesterday.merge(type, amount, Long::sum); // booked to the day that just ended
+        else if (day >= statsDay) {
+            roll(day);
+            today.merge(type, amount, Long::sum);
+        }
         return t;
     }
 

@@ -42,8 +42,12 @@ public final class Reports {
     /** The colony's most pressing problems, worst first. */
     public List<String> problems(Colony c, double foodDays) {
         List<String> out = new ArrayList<>();
-        if (c.population() > 0 && foodDays < 1) out.add("almost out of food");
-        else if (c.population() > 0 && foodDays < 3) out.add("food is running low");
+        if (c.population() == 0) {
+            out.add("nobody lives here any more: recruit settlers from the Town Hall");
+            return out;
+        }
+        if (foodDays < 1) out.add("almost out of food");
+        else if (foodDays < 3) out.add("food is running low");
         int homeless = plugin.sim().housing().homeless(c);
         if (homeless > 0) out.add(homeless + " without a bed");
         int unpaid = 0, idle = 0, waiting = 0;
