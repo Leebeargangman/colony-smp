@@ -160,7 +160,7 @@ public final class CitizenSim {
         if (c.trait.social() == 0) c.needs.social = Math.max(c.needs.social, 60);
         c.grief = Math.max(0, c.grief - hours / 24 * 4);
         c.needs.driftMood(mood(col, c, ctx).target(), hours);
-        if (workH > 0) {
+        if (workH > 0 && plugin.settings().backgroundProduction) {
             double units = workH * efficiency(col, c, ctx);
             c.hoursToday += workH;
             plugin.sim().production().contribute(col, c, units, workH);

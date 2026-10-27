@@ -129,7 +129,7 @@ public final class TownHallListener implements Listener {
     }
 
     /** The core is down: claim the land, build the storage chest, register the Town Hall, welcome the settlers. */
-    private void raise(Player p, Colony c, Block block) {
+    public void raise(Player p, Colony c, Block block) {
         if (c.core != null || plugin.colonies().get(c.id) == null || block.getType() != Material.LODESTONE) return;
         Block chestBlock = chestSpot(block);
         if (chestBlock == null) {
@@ -160,9 +160,11 @@ public final class TownHallListener implements Listener {
         Fx.particle(at, Particle.TOTEM_OF_UNDYING, 60, 0.6);
         Fx.sound(at, "minecraft:block.beacon.activate", 1.2f, 0.9f);
         for (Player m : c.onlineMembers()) Text.title(m, "<aqua>Town Hall Raised", "<gold>" + Text.esc(c.name) + "</gold> <gray>is founded", 10, 60, 20);
-        Text.send(p, "The <aqua>Town Hall</aqua> stands. Its land (" + c.territory.size() + " chunks) is yours, and the <gold>storage chest</gold> beside it holds the colony's goods. "
-                + "Right-click the core for the Town Hall menu.");
-        c.log(ColonyEvent.Type.COLONY, day, p.getName() + " founded " + c.name + ".");
+        if (p != null) {
+            Text.send(p, "The <aqua>Town Hall</aqua> stands. Its land (" + c.territory.size() + " chunks) is yours, and the <gold>storage chest</gold> beside it holds the colony's goods. "
+                    + "Right-click the core for the Town Hall menu.");
+        }
+        c.log(ColonyEvent.Type.COLONY, day, (p == null ? "The colony of " + c.name + " was founded" : p.getName() + " founded " + c.name) + ".");
         if (!c.founded) {
             c.founded = true;
             plugin.sim().population().settlers(c);
@@ -173,6 +175,10 @@ public final class TownHallListener implements Listener {
 
     private void refund(Player p, Colony c, Block block, String why) {
         block.setType(Material.AIR);
+        if (p == null) {
+            plugin.getLogger().warning("Couldn't found " + c.name + ": " + why);
+            return;
+        }
         com.colonysmp.command.ColonyCommand.give(p, plugin.items().core(c.id, c.name));
         Text.send(p, "<red>" + why);
     }

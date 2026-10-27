@@ -184,11 +184,15 @@ public final class ColonyManager {
 
     /** A new colony with no land yet: it is founded where its Town Hall Core is placed. */
     public Colony create(Player owner, String name) {
+        return create(owner.getUniqueId(), name, owner.getWorld().getName());
+    }
+
+    public Colony create(UUID owner, String name, String world) {
         Colony c = new Colony(newId(name));
         c.name = name.trim();
-        c.owner = owner.getUniqueId();
-        c.members.put(owner.getUniqueId(), Role.OWNER);
-        c.world = owner.getWorld().getName();
+        c.owner = owner;
+        c.members.put(owner, Role.OWNER);
+        c.world = world;
         c.createdAt = System.currentTimeMillis();
         c.shieldUntil = c.createdAt + (long) (plugin.settings().shieldNewHours * 3600_000L);
         c.reputation = plugin.settings().reputationStart;

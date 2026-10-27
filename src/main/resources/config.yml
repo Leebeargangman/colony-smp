@@ -1,210 +1,267 @@
-# ─────────────────────────────────────────────────────────────
-#  ColonySMP - communist colonies for Paper
-#  Every value here can be changed and applied with /colony admin reload
-# ─────────────────────────────────────────────────────────────
+# ColonySMP 2 configuration.
+# Times are real minutes/seconds unless they say "days" or "hours", which are Minecraft days (20 real minutes)
+# and Minecraft hours (50 real seconds). Reload with /colony admin reload.
 
-claims:
-  # Colony regions are rectangles selected with the Colony Selection Wand
-  min-size: 16
-  max-size: 128
-  # Blocks of empty space required between two colonies
-  min-gap: 4
-  # Players can't hurt each other inside a claim unless their colonies are at war
-  block-pvp: true
-  # Creeper / TNT / fireball block damage is cancelled inside claims (except during a siege)
-  protect-explosions: true
-  # Fire can't burn blocks inside claims
-  protect-fire: true
-  # Farmland inside claims is never trampled into dirt (by anyone) and doesn't dry out
-  protect-farmland: true
-  # How many colonies one player may belong to (founder or member)
-  max-colonies-per-player: 1
-  # Show "Entering the People's Commune of ..." on the action bar
-  enter-messages: true
-  # Worlds where colonies can be founded (empty = every world)
+general:
+  autosave-minutes: 5
+  # Database backups kept in plugins/ColonySMP/backups (one is made at every start).
+  backups-to-keep: 5
+  # Name of the money colonies use.
+  currency: crowns
+
+colonies:
+  # How many colonies one player may belong to.
+  max-per-player: 1
+  # Chunks claimed around the Town Hall Core when a colony is founded (1 = a 3x3 square).
+  starting-radius: 1
+  # Free chunks required between two colonies.
+  chunk-gap: 2
+  # Most chunks a colony may hold: base + per settlement level above 1, up to the maximum.
+  base-chunks: 12
+  chunks-per-level: 10
+  max-chunks: 120
+  # Claiming a chunk costs this, plus the step for every chunk already held.
+  claim-cost: 25
+  claim-cost-step: 5
+  # Worlds colonies may be founded in (empty: all).
   worlds: []
 
-shield:
-  # Peace Shield given to every new colony (real-time hours)
-  new-colony-hours: 72
-  # Shield given to the loser of a war, so it can't be raided again straight away
-  after-defeat-hours: 24
+protection:
+  # Players can't fight each other on colony land unless their colonies are at war.
+  block-pvp: true
+  protect-explosions: true
+  protect-fire: true
+  protect-farmland: true
+  enter-messages: true
+  # Peace shields: no war can be declared on a colony while it has one.
+  new-colony-shield-hours: 72
+  after-defeat-shield-hours: 24
 
 citizens:
-  # Jobs of the workers spawned when the Town Hall Core is placed
-  starting-jobs: [FARMER, BUILDER]
-  max-population: 40
+  # The first settlers of a new colony, by job.
+  starting-jobs: [FARMER, BUILDER, FORESTER, UNEMPLOYED]
+  # Most citizens one colony may have.
+  max-population: 150
+  # Citizens walking around as villagers at once (the rest are simulated without a body).
+  max-bodies-per-colony: 60
+  max-bodies-total: 300
   health: 20
-  # Movement speeds in blocks per tick (0.2 = 4 blocks a second)
   walk-speed: 0.13
   run-speed: 0.21
-  # How far outside the claim lumberjacks may look for trees (never inside another claim)
+  # How far (blocks) beyond the colony's land citizens go for trees.
   work-margin: 24
-  # Seconds between work actions at 100% efficiency (lower = faster)
+  # Seconds per action for the world jobs (at normal efficiency).
   farm-interval: 1.5
   chop-interval: 2.0
   mine-interval: 2.5
   build-interval: 1.2
-  fish-interval: 12.0
-  cook-interval: 2.5
-  smith-interval: 4.0
-  # A Herder keeps this many animals of each kind and culls the rest for meat
-  herd-size: 8
-  # Citizens only step straight to their destination (teleport) as a last resort: after being stuck
-  # this many seconds with no player within 32 blocks to see it...
+  fish-interval: 12
+  station-interval: 2.0
+  # A citizen stuck this long is moved to where it was going (sooner if no player is watching).
   stuck-teleport-seconds: 20
-  # ...or after this long even if someone is watching
   stuck-force-seconds: 60
 
-day:
-  # World time (0-24000) of each part of the citizens' routine
-  work-start: 0
-  evening: 11500
-  ration-time: 12300
-  night: 13000
-
-rations:
-  # Hunger points every adult citizen eats each sunset (bread = 5, steak = 8)
-  meal-points: 6
-  child-factor: 0.5
-  slave-factor: 0.5
-  # Stability gained when every citizen is fully fed
-  stability-full: 4
-  # Most stability lost when rations are short but at least half were served
-  stability-partial-max-loss: 6
-  # Stability lost when there is no food at all
-  stability-none: 10
-  # Stability below this counts as a "low" day
-  low-threshold: 35
-  # Consecutive low days before the workers go on strike
-  strike-days: 3
-  # Stability needed to end a strike
-  strike-recover: 50
-  # Work speed while on strike (0 = no work at all)
-  strike-efficiency: 0.0
-  # Food that citizens will never eat out of the State Chest
-  never-eat: [GOLDEN_APPLE, ENCHANTED_GOLDEN_APPLE, GOLDEN_CARROT, ROTTEN_FLESH, SPIDER_EYE, POISONOUS_POTATO, PUFFERFISH, SUSPICIOUS_STEW, CHORUS_FRUIT]
+life:
+  # Ages in Minecraft days.
+  adult-age-days: 5
+  elder-age-days: 60
+  max-age-days: 90
+  # Daily chance a couple with a home has a child (if the colony has room, food and is content).
+  birth-chance: 0.25
+  birth-food-reserve-days: 3
+  birth-min-mood: 45
+  # Friendship needed before two citizens become partners.
+  partner-affinity: 60
 
 needs:
-  # Rest (0-100) lost per in-game hour awake; a night in bed refills it
-  rest-loss: 5
-  # Below this a citizen is tired: slower, and naps when they can
+  # Satiety (0-100) lost per hour awake / asleep.
+  hunger-awake: 3.5
+  hunger-asleep: 1.5
+  # Citizens eat when satiety falls below eat-below, until eat-until.
+  eat-below: 55
+  eat-until: 92
+  # Satiety gained per hunger point of food (bread is 5 points).
+  satiety-per-point: 6
+  # Energy (0-100) lost per hour awake, gained per hour asleep in a bed / without one.
+  energy-awake: 5
+  energy-bed: 12
+  energy-no-bed: 6
   tired: 30
-  # Citizens whose happiness stays below this for emigrate-nights nights in a row may leave
-  emigrate-below: 15
-  emigrate-nights: 3
-  emigrate-chance: 0.5
+  exhausted: 12
+  # Health lost per hour while starving; healed per hour when fed / sleeping in a bed.
+  starve-damage: 1.5
+  heal-fed: 0.4
+  heal-bed: 1.5
+  social-decay: 2
+  social-gain: 8
+  # Heavy work (mining, building, fighting) uses this much more food and energy.
+  heavy-work-factor: 1.3
+  # Food citizens never eat.
+  never-eat: [ROTTEN_FLESH, SPIDER_EYE, POISONOUS_POTATO, PUFFERFISH, CHORUS_FRUIT, SUSPICIOUS_STEW]
+  # Time of day citizens go to bed (ticks; 13500 is dusk).
+  bedtime: 13500
 
 education:
-  # Education gained per lesson (every 30 seconds) by a student in a school with a teacher present
+  # Education points per lesson (every 30 seconds in a school with a teacher).
   per-lesson: 1.5
-  # Children learn faster
-  child-multiplier: 2.0
-  # Books in the State Chest make lessons better; each school uses one book a day
+  child-multiplier: 2
+  # A book in the school that day makes lessons better.
   book-multiplier: 1.5
-  # Students per school
-  school-capacity: 10
-  # Education of the first colonists and recruits (random between the two)
+  # Education of adult newcomers.
   starting-min: 10
-  starting-max: 50
+  starting-max: 45
 
-blueprints:
-  # Largest structure the wand can copy (each side) and most blocks in it
-  max-size: 48
-  max-blocks: 20000
-  max-per-colony: 10
+economy:
+  # Money a new colony starts with.
+  starting-treasury: 150
+  # Recruiting a settler from the Town Hall (more as the colony grows).
+  recruit-cost: 30
+  wage-multiplier: 1
+  upkeep-multiplier: 1
+  # Market: the gap between buying and selling prices, and how fast prices return to normal.
+  market-spread: 0.25
+  market-recovery-per-hour: 0.02
+  meal-price-multiplier: 1
+  # Players pay this much over market price at a colony's Market.
+  shop-markup: 1.2
+  # Without Vault, players pay into and withdraw from treasuries with this item, worth this much each.
+  deposit-item: EMERALD
+  deposit-value: 10
+  use-vault: true
+  # Base values of goods (anything not listed gets a value from its kind).
+  prices:
+    wheat: 1
+    bread: 4
+    iron_ingot: 9
+    gold_ingot: 18
+    diamond: 60
+    emerald: 10
 
-reproduction:
-  # Days of food that must be in the State Chest for a child to be born
-  reserve-days: 3
-  # In-game days before a child grows into an adult worker
-  maturity-days: 3
-  min-stability: 30
+storage:
+  # Central storage: slots from the Town Hall level, plus warehouse containers.
+  town-hall-slots-per-level: 27
+  slots-per-container: 27
+  # Granaries hold food only, at this many times the slots.
+  granary-factor: 1.5
+  # Extra capacity per building level above 1.
+  level-bonus: 0.25
+  # The armoury (tools, arms and armour as items).
+  equipment-base-slots: 54
+  armoury-slots-per-container: 27
+
+simulation:
+  # How often each colony's background simulation steps, and the time it may use per second (all colonies).
+  step-seconds: 30
+  step-budget-ms: 15
+  # Most game hours caught up in one go (after a lag spike or a big jump in time).
+  max-catch-up-hours: 48
+  background-production: true
+  # Days a building may fail its inspection before it's unregistered.
+  invalid-building-grace-days: 2
+
+health:
+  # Daily chance a citizen falls ill (more when hungry, homeless or crowded).
+  illness-chance: 0.01
+  # Below this share of health a citizen counts as injured (no heavy work).
+  injury-threshold: 0.4
+  # Health a treatment with medicine restores.
+  medicine-heal: 6
+
+order:
+  # Daily chance an unhappy, poor or idle citizen steals (less where guards watch).
+  theft-chance: 0.04
+  # Stability below which citizens protest (after protest-days) and riot.
+  protest-below: 35
+  riot-below: 15
+  protest-days: 3
+  # Citizens this miserable for this many days may leave.
+  emigrate-below: 15
+  emigrate-days: 3
+  emigrate-chance: 0.5
+
+military:
+  # Soldiers a colony can keep without barracks (each barracks bed adds one).
+  soldiers-without-barracks: 4
+  # Training gained per hour of drill (1.0 is fully trained).
+  training-per-hour: 0.02
+  upkeep-multiplier: 1
+  # Cost of enlisting a citizen.
+  recruit-cost: 20
+  mobilize-minutes: 10
+  mobilize-cooldown-minutes: 20
+  mobilize-stability-cost: 5
 
 prisoners:
-  # Chance a human NPC is downed instead of killed in combat
-  downed-chance: 0.20
-  # Chance for wandering travelers (they surrender easily)
+  # Chance a citizen (or traveller) goes down instead of dying in a fight.
+  downed-chance: 0.3
   traveler-downed-chance: 1.0
   downed-seconds: 60
-  # Starting Resistance of a new prisoner (random between the two)
+  # A prisoner's resistance to joining (wardens wear it down each day).
   resistance-min: 45
   resistance-max: 100
-  # Resistance a warden's daily visit removes (random between the two, scaled by stability)
-  indoctrination-min: 12
-  indoctrination-max: 25
-  # Resistance a prisoner regains on a day nobody visits
-  unvisited-gain: 4
-  # Days without food before a prisoner starves to death
+  persuasion-min: 8
+  persuasion-max: 18
+  # Days without food before a prisoner starves.
   starve-days: 5
-  # A guard must be this close to every working slave
-  slave-guard-radius: 20
-  # Seconds a slave can be left unguarded before an uprising
-  slave-grace-seconds: 30
-  # Slaves rise up whenever stability is below this
-  uprising-stability: 40
-  # Rebels that survive this long escape for good
-  rebel-escape-minutes: 5
+  ransom-base: 40
 
 travelers:
   enabled: true
-  # Chance each in-game day that a traveler visits a colony (scaled by reputation)
+  # Daily chance a traveller visits (more with a good reputation).
   chance-per-day: 0.6
   wait-minutes: 6
   reputation-start: 50
   attack-penalty: 5
   capture-penalty: 15
   recruit-bonus: 5
+  # Paid to the treasury when a traveller stays at a staffed inn.
+  lodging-fee: 6
 
 war:
+  # Minutes between the declaration and the fighting.
   warmup-minutes: 20
   siege-minutes: 45
-  # The War Camp must be placed outside every claim, between these distances from the enemy border
+  raid-minutes: 20
+  # Where a siege's War Camp may stand, in blocks from the defender's land.
   camp-min-distance: 8
   camp-max-distance: 64
-  # Every N seconds the defenders' access to their State Chest is checked; if cut, stability drops
+  # In a siege, how often the defenders' supply lines are checked and what being cut off costs.
   supply-check-seconds: 30
   supply-cut-stability: 5
-  # Share of the loser's raw resources taken by the winner
-  spoils-fraction: 0.5
-  # Minutes before a colony can declare another war
+  # Share of the loser's goods (and half that of their money) taken as spoils.
+  spoils-fraction: 0.3
+  # Share of a good raiders carry off every few seconds while standing at the defenders' storage.
+  raid-loot-fraction: 0.05
   cooldown-minutes: 60
-  # Defender members that must be online for a declaration (0 = allow offline raids)
+  # Members of the defending colony who must be online to declare a war.
   require-online-defenders: 1
-  # Put back every block attackers broke or placed after the war ends
+  allow-offline-raids: false
+  # Put back the blocks broken in a war once it's over.
   restore-blocks: true
   restore-delay-seconds: 120
-  # Attackers respawn at their War Camp during a siege
   respawn-at-camp: true
+  declare-cost: 50
 
-mobilization:
-  minutes: 10
-  cooldown-minutes: 20
-  stability-cost: 5
+diplomacy:
+  # How long offers wait for an answer.
+  proposal-minutes: 30
+  truce-days: 3
+  # Caravans between colonies take this long per chunk of distance.
+  caravan-seconds-per-chunk: 2
 
-storage:
-  # Pages of 45 slots in the Central State Chest
-  pages: 3
-
-quests:
-  # Deposited into the State Chest when the starter quests are finished
-  reward:
-    - STONE_HOE:2
-    - IRON_HOE:1
-    - STONE_AXE:1
-    - STONE_PICKAXE:1
-    - WHEAT_SEEDS:32
-    - CARROT:8
-    - POTATO:8
-    - BEETROOT_SEEDS:16
-    - BONE_MEAL:16
-    - BREAD:16
+blueprints:
+  # Copies made with the wand.
+  max-size: 48
+  max-blocks: 20000
+  max-per-colony: 10
 
 mines:
-  # Miners dig a staircase down to this Y level, then branch mine
+  # Miners dig a staircase down to this depth, then a branch mine.
   target-y: 12
   tunnel-length: 32
   branch-length: 16
   max-per-colony: 3
 
-autosave-minutes: 5
+quests:
+  # Sent to storage when a colony finishes its first steps.
+  reward: ["IRON_HOE:2", "IRON_AXE:1", "IRON_PICKAXE:1", "WHEAT_SEEDS:32", "CARROT:16", "BREAD:32", "OAK_LOG:32"]

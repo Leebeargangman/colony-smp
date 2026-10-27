@@ -219,7 +219,7 @@ public enum BuildingType {
         return this;
     }
 
-    private BuildingType upkeep(int perLevel) {
+    private BuildingType upkeepPerLevel(int perLevel) {
         upkeep = perLevel;
         return this;
     }
@@ -230,59 +230,60 @@ public enum BuildingType {
     }
 
     static {
-        TOWN_HALL.job(Job.ADMINISTRATOR, 1, 1, 2, 2, 3).job(Job.TREASURER, 0, 1, 1, 1, 2)
+        // the colony's first builder works from the Town Hall until there's a builder's hut
+        TOWN_HALL.job(Job.ADMINISTRATOR, 1, 1, 2, 2, 3).job(Job.TREASURER, 0, 1, 1, 1, 2).job(Job.BUILDER, 1, 1, 1, 1, 1)
                 .cost(250, "stone_bricks", 64, "#planks", 64, "iron_ingot", 8, "glass", 16).stock(0);
         HOUSE.lv(9, Feature.BED, 1, Feature.DOOR, 1).lv(20, Feature.BED, 1, Feature.DOOR, 1, Feature.CONTAINER, 1)
                 .lv(30, Feature.BED, 1, Feature.DOOR, 1, Feature.CONTAINER, 1, Feature.BOOKSHELF, 1).cost(30, "#planks", 24);
         INN.lv(16, Feature.BED, 2, Feature.DOOR, 1, Feature.BARREL, 1).lv(30, Feature.BED, 4, Feature.DOOR, 1, Feature.BARREL, 1)
-                .lv(45, Feature.BED, 6, Feature.DOOR, 1, Feature.BARREL, 2).job(Job.INNKEEPER, 1, 1, 2).cost(60, "#planks", 32).upkeep(1).stock(4);
+                .lv(45, Feature.BED, 6, Feature.DOOR, 1, Feature.BARREL, 2).job(Job.INNKEEPER, 1, 1, 2).cost(60, "#planks", 32).upkeepPerLevel(1).stock(4);
         WAREHOUSE.lv(9, Feature.DOOR, 1, Feature.CONTAINER, 2).lv(16, Feature.DOOR, 1, Feature.CONTAINER, 4).lv(25, Feature.DOOR, 1, Feature.CONTAINER, 6)
-                .job(Job.WAREHOUSE_WORKER, 1, 2, 3).cost(60, "#planks", 32, "cobblestone", 32).upkeep(1);
+                .job(Job.WAREHOUSE_WORKER, 1, 2, 3).cost(60, "#planks", 32, "cobblestone", 32).upkeepPerLevel(1);
         GRANARY.lv(9, Feature.DOOR, 1, Feature.CONTAINER, 2).lv(16, Feature.DOOR, 1, Feature.CONTAINER, 4).lv(25, Feature.DOOR, 1, Feature.CONTAINER, 6)
-                .job(Job.FOOD_DISTRIBUTOR, 1, 1, 2).cost(50, "#planks", 32).upkeep(1);
+                .job(Job.FOOD_DISTRIBUTOR, 1, 1, 2).cost(50, "#planks", 32).upkeepPerLevel(1);
         FARM.lv(9).lv(9, Feature.COMPOSTER, 1).lv(9, Feature.COMPOSTER, 2).job(Job.FARMER, 1, 2, 4).cost(30, "bone_meal", 16).stock(6);
         ANIMAL_PEN.lv(9).lv(25, Feature.HAY, 1).lv(40, Feature.HAY, 2).job(Job.ANIMAL_KEEPER, 1, 1, 2).cost(40, "wheat", 32).stock(6);
-        STABLES.lv(16, Feature.HAY, 1).lv(30, Feature.HAY, 2).lv(45, Feature.HAY, 3).job(Job.ANIMAL_KEEPER, 0, 1, 1).cost(80, "wheat", 64).upkeep(1).stock(4);
+        STABLES.lv(16, Feature.HAY, 1).lv(30, Feature.HAY, 2).lv(45, Feature.HAY, 3).job(Job.ANIMAL_KEEPER, 0, 1, 1).cost(80, "wheat", 64).upkeepPerLevel(1).stock(4);
         FISHERY.lv(4, Feature.DOOR, 1, Feature.BARREL, 1).lv(9, Feature.DOOR, 1, Feature.BARREL, 1).lv(16, Feature.DOOR, 1, Feature.BARREL, 2)
                 .job(Job.FISHER, 1, 2, 3).cost(30, "string", 8).stock(6);
         FORESTRY.lv(4, Feature.DOOR, 1, Feature.CONTAINER, 1).lv(9, Feature.DOOR, 1, Feature.CONTAINER, 1).lv(16, Feature.DOOR, 1, Feature.CONTAINER, 2)
                 .job(Job.FORESTER, 1, 2, 3).cost(30, "#planks", 16).stock(9);
-        MINE.lv(0).lv(0).lv(0).job(Job.MINER, 1, 2, 3).cost(50, "torch", 32, "#planks", 16).upkeep(1).stock(9);
-        MILL.lv(9, Feature.DOOR, 1, Feature.GRINDSTONE, 1).lv(16, Feature.DOOR, 1, Feature.GRINDSTONE, 2).job(Job.MILLER, 1, 2).cost(40, "#planks", 32).upkeep(1).stock(6);
+        MINE.lv(0).lv(0).lv(0).job(Job.MINER, 1, 2, 3).cost(50, "torch", 32, "#planks", 16).upkeepPerLevel(1).stock(9);
+        MILL.lv(9, Feature.DOOR, 1, Feature.GRINDSTONE, 1).lv(16, Feature.DOOR, 1, Feature.GRINDSTONE, 2).job(Job.MILLER, 1, 2).cost(40, "#planks", 32).upkeepPerLevel(1).stock(6);
         BAKERY.lv(9, Feature.DOOR, 1, Feature.COOKER, 1).lv(16, Feature.DOOR, 1, Feature.COOKER, 2, Feature.CONTAINER, 1).lv(25, Feature.DOOR, 1, Feature.COOKER, 3, Feature.CONTAINER, 1)
-                .job(Job.BAKER, 1, 2, 2).cost(40, "#planks", 32, "cobblestone", 16).upkeep(1).stock(6);
+                .job(Job.BAKER, 1, 2, 2).cost(40, "#planks", 32, "cobblestone", 16).upkeepPerLevel(1).stock(6);
         BUTCHER.lv(9, Feature.DOOR, 1, Feature.SMOKER, 1).lv(16, Feature.DOOR, 1, Feature.SMOKER, 2).lv(25, Feature.DOOR, 1, Feature.SMOKER, 3)
-                .job(Job.BUTCHER, 1, 2, 2).cost(40, "#planks", 32).upkeep(1).stock(6);
+                .job(Job.BUTCHER, 1, 2, 2).cost(40, "#planks", 32).upkeepPerLevel(1).stock(6);
         KITCHEN.lv(9, Feature.DOOR, 1, Feature.COOKER, 1).lv(16, Feature.DOOR, 1, Feature.COOKER, 2, Feature.CRAFTING_TABLE, 1)
-                .lv(25, Feature.DOOR, 1, Feature.COOKER, 3, Feature.CRAFTING_TABLE, 1).job(Job.COOK, 1, 2, 3).cost(40, "#planks", 32).upkeep(1).stock(6);
+                .lv(25, Feature.DOOR, 1, Feature.COOKER, 3, Feature.CRAFTING_TABLE, 1).job(Job.COOK, 1, 2, 3).cost(40, "#planks", 32).upkeepPerLevel(1).stock(6);
         RESTAURANT.lv(12, Feature.DOOR, 1, Feature.SEAT, 2, Feature.BARREL, 1).lv(20, Feature.DOOR, 1, Feature.SEAT, 4, Feature.BARREL, 1)
-                .lv(35, Feature.DOOR, 1, Feature.SEAT, 8, Feature.BARREL, 2).job(Job.RESTAURANT_WORKER, 1, 2, 3).cost(60, "#planks", 32, "glass", 8).upkeep(2).stock(6);
+                .lv(35, Feature.DOOR, 1, Feature.SEAT, 8, Feature.BARREL, 2).job(Job.RESTAURANT_WORKER, 1, 2, 3).cost(60, "#planks", 32, "glass", 8).upkeepPerLevel(2).stock(6);
         BLACKSMITH.lv(9, Feature.DOOR, 1, Feature.ANVIL, 1, Feature.FURNACE, 1).lv(16, Feature.DOOR, 1, Feature.ANVIL, 1, Feature.FURNACE, 1, Feature.SMITHING_TABLE, 1)
-                .lv(25, Feature.DOOR, 1, Feature.ANVIL, 1, Feature.FURNACE, 2, Feature.SMITHING_TABLE, 1).job(Job.BLACKSMITH, 1, 1, 2).cost(60, "cobblestone", 32, "iron_ingot", 4).upkeep(2).stock(6);
-        CARPENTRY.lv(9, Feature.DOOR, 1, Feature.CRAFTING_TABLE, 1).lv(16, Feature.DOOR, 1, Feature.CRAFTING_TABLE, 2).job(Job.CARPENTER, 1, 2).cost(30, "#planks", 32).upkeep(1).stock(6);
+                .lv(25, Feature.DOOR, 1, Feature.ANVIL, 1, Feature.FURNACE, 2, Feature.SMITHING_TABLE, 1).job(Job.BLACKSMITH, 1, 1, 2).cost(60, "cobblestone", 32, "iron_ingot", 4).upkeepPerLevel(2).stock(6);
+        CARPENTRY.lv(9, Feature.DOOR, 1, Feature.CRAFTING_TABLE, 1).lv(16, Feature.DOOR, 1, Feature.CRAFTING_TABLE, 2).job(Job.CARPENTER, 1, 2).cost(30, "#planks", 32).upkeepPerLevel(1).stock(6);
         MASONRY.lv(9, Feature.DOOR, 1, Feature.STONECUTTER, 1, Feature.FURNACE, 1).lv(16, Feature.DOOR, 1, Feature.STONECUTTER, 1, Feature.FURNACE, 2).job(Job.MASON, 1, 2)
-                .cost(40, "cobblestone", 48).upkeep(1).stock(6);
+                .cost(40, "cobblestone", 48).upkeepPerLevel(1).stock(6);
         WORKSHOP.lv(9, Feature.DOOR, 1, Feature.FLETCHING_TABLE, 1).lv(16, Feature.DOOR, 1, Feature.FLETCHING_TABLE, 1, Feature.LOOM, 1).job(Job.CRAFTSWORKER, 1, 2)
-                .cost(40, "#planks", 32).upkeep(1).stock(6);
+                .cost(40, "#planks", 32).upkeepPerLevel(1).stock(6);
         MARKET.lv(12, Feature.DOOR, 1, Feature.BARREL, 2).lv(20, Feature.DOOR, 1, Feature.BARREL, 4).lv(30, Feature.DOOR, 1, Feature.BARREL, 6)
-                .job(Job.SHOPKEEPER, 1, 2, 3).cost(60, "#planks", 32).upkeep(2).stock(9);
+                .job(Job.SHOPKEEPER, 1, 2, 3).cost(60, "#planks", 32).upkeepPerLevel(2).stock(9);
         TRADING_POST.lv(9, Feature.DOOR, 1, Feature.CARTOGRAPHY_TABLE, 1, Feature.CONTAINER, 1).lv(16, Feature.DOOR, 1, Feature.CARTOGRAPHY_TABLE, 1, Feature.CONTAINER, 2)
-                .job(Job.MERCHANT, 1, 2).cost(80, "#planks", 32, "emerald", 2).upkeep(2);
+                .job(Job.MERCHANT, 1, 2).cost(80, "#planks", 32, "emerald", 2).upkeepPerLevel(2);
         SCHOOL.lv(9, Feature.DOOR, 1, Feature.LECTERN, 1).lv(16, Feature.DOOR, 1, Feature.LECTERN, 1, Feature.BOOKSHELF, 4).lv(30, Feature.DOOR, 1, Feature.LECTERN, 2, Feature.BOOKSHELF, 10)
-                .job(Job.TEACHER, 1, 2, 2).cost(60, "book", 4).upkeep(2).stock(2);
+                .job(Job.TEACHER, 1, 2, 2).cost(60, "book", 4).upkeepPerLevel(2).stock(2);
         CLINIC.lv(9, Feature.DOOR, 1, Feature.BED, 1, Feature.BREWING_STAND, 1).lv(20, Feature.DOOR, 1, Feature.BED, 3, Feature.BREWING_STAND, 1)
-                .lv(35, Feature.DOOR, 1, Feature.BED, 6, Feature.BREWING_STAND, 2).job(Job.DOCTOR, 1, 2, 3).cost(70, "glass_bottle", 8).upkeep(2).stock(4);
+                .lv(35, Feature.DOOR, 1, Feature.BED, 6, Feature.BREWING_STAND, 2).job(Job.DOCTOR, 1, 2, 3).cost(70, "glass_bottle", 8).upkeepPerLevel(2).stock(4);
         BUILDERS_HUT.lv(9, Feature.DOOR, 1, Feature.CRAFTING_TABLE, 1).lv(16, Feature.DOOR, 1, Feature.CRAFTING_TABLE, 1, Feature.CONTAINER, 1)
-                .lv(25, Feature.DOOR, 1, Feature.CRAFTING_TABLE, 1, Feature.CONTAINER, 2).job(Job.BUILDER, 1, 2, 3).cost(30, "#planks", 32).upkeep(1);
+                .lv(25, Feature.DOOR, 1, Feature.CRAFTING_TABLE, 1, Feature.CONTAINER, 2).job(Job.BUILDER, 1, 2, 3).cost(30, "#planks", 32).upkeepPerLevel(1);
         BARRACKS.lv(12, Feature.DOOR, 1, Feature.BED, 2).lv(25, Feature.DOOR, 1, Feature.BED, 6).lv(45, Feature.DOOR, 1, Feature.BED, 12)
-                .cost(80, "cobblestone", 64, "#planks", 32).upkeep(2);
-        TRAINING_GROUND.lv(25, Feature.HAY, 2).lv(49, Feature.HAY, 4).cost(50, "#planks", 32).upkeep(1);
-        ARCHERY_RANGE.lv(25, Feature.TARGET, 3).lv(49, Feature.TARGET, 6).cost(50, "#planks", 32).upkeep(1);
-        ARMOURY.lv(9, Feature.DOOR, 1, Feature.ARMOR_HOLDER, 2).lv(16, Feature.DOOR, 1, Feature.ARMOR_HOLDER, 4).cost(60, "iron_ingot", 4).upkeep(1);
+                .cost(80, "cobblestone", 64, "#planks", 32).upkeepPerLevel(2);
+        TRAINING_GROUND.lv(25, Feature.HAY, 2).lv(49, Feature.HAY, 4).cost(50, "#planks", 32).upkeepPerLevel(1);
+        ARCHERY_RANGE.lv(25, Feature.TARGET, 3).lv(49, Feature.TARGET, 6).cost(50, "#planks", 32).upkeepPerLevel(1);
+        ARMOURY.lv(9, Feature.DOOR, 1, Feature.ARMOR_HOLDER, 2).lv(16, Feature.DOOR, 1, Feature.ARMOR_HOLDER, 4).cost(60, "iron_ingot", 4).upkeepPerLevel(1);
         WATCHTOWER.lv(0).job(Job.GUARD, 2);
-        PRISON.lv(4, Feature.IRON_DOOR, 1, Feature.BED, 1).lv(9, Feature.IRON_DOOR, 1, Feature.BED, 2).job(Job.WARDEN, 1, 1).cost(50, "iron_bars", 8).upkeep(1);
+        PRISON.lv(4, Feature.IRON_DOOR, 1, Feature.BED, 1).lv(9, Feature.IRON_DOOR, 1, Feature.BED, 2).job(Job.WARDEN, 1, 1).cost(50, "iron_bars", 8).upkeepPerLevel(1);
         ENGINEERING_WORKSHOP.lv(9, Feature.DOOR, 1, Feature.SMITHING_TABLE, 1, Feature.CRAFTING_TABLE, 1).lv(16, Feature.DOOR, 1, Feature.SMITHING_TABLE, 1, Feature.CRAFTING_TABLE, 2)
-                .job(Job.ENGINEER, 1, 2).cost(80, "iron_ingot", 8).upkeep(2).stock(6);
+                .job(Job.ENGINEER, 1, 2).cost(80, "iron_ingot", 8).upkeepPerLevel(2).stock(6);
         for (BuildingType t : values()) {
             if (t.levels.isEmpty()) t.lv(0);
             if (t.stockSlots == 0 && t.workplace() && t != TOWN_HALL && t != WATCHTOWER && t != BUILDERS_HUT && t != TRADING_POST && t != WAREHOUSE && t != GRANARY) t.stock(4);
