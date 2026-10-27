@@ -542,7 +542,7 @@ public final class WarManager implements Listener {
         List<String> what = new ArrayList<>();
         for (Map.Entry<String, Long> e : new ArrayList<>(def.storage.contents().entrySet())) {
             if (!raw(e.getKey())) continue;
-            long take = (long) Math.floor(def.storage.available(e.getKey()) * frac);
+            long take = (long) Math.ceil(def.storage.available(e.getKey()) * frac);
             if (take <= 0) continue;
             long room = atk.storage.room(e.getKey());
             take = def.storage.take(e.getKey(), Math.min(take, Math.max(0, room)));

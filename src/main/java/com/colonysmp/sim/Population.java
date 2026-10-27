@@ -16,9 +16,11 @@ import com.colonysmp.model.Modifier;
 import com.colonysmp.model.Policies;
 import com.colonysmp.model.Status;
 import com.colonysmp.model.Trait;
+import com.colonysmp.util.ItemGoods;
 import com.colonysmp.util.Names;
 import com.colonysmp.util.Text;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -74,6 +76,12 @@ public final class Population {
             Citizen c = create(col, j, false);
             c.remember(plugin.sim().day(col), "Arrived as one of the first settlers");
         }
+        // the provisions they bring, to last until the first harvest
+        for (ItemStack it : plugin.settings().startingGoods) {
+            String good = ItemGoods.goodOf(it);
+            if (good != null) col.storage.force(good, it.getAmount());
+            else col.equipment.force(it);
+        }
         plugin.sim().housing().assign(col);
         plugin.sim().jobs().refreshWorkplaces(col);
         col.log(ColonyEvent.Type.POPULATION, plugin.sim().day(col), col.citizens.size() + " settlers arrived to found the colony.");
@@ -117,7 +125,7 @@ public final class Population {
         c.remember(day, "Recruited by " + by.getName());
         plugin.sim().housing().assign(col);
         plugin.sim().jobs().autoAssign(col, c);
-        col.log(ColonyEvent.Type.POPULATION, day, by.getName() + " recruited " + c.name + " (" + c.trait.display + ", now a " + c.job.display + ").");
+        col.log(ColonyEvent.Type.POPULATION, day, by.getName() + " recruited " + c.name + " (" + c.trait.display + ", now " + Text.a(c.job.display) + ").");
         plugin.requestSave();
         return null;
     }
@@ -142,7 +150,7 @@ public final class Population {
                 Job old = c.job;
                 plugin.sim().jobs().assign(col, c, Job.UNEMPLOYED, null);
                 plugin.sim().jobs().autoAssign(col, c);
-                col.log(ColonyEvent.Type.POPULATION, day, c.name + " is getting old and gave up work as a " + old.display + (c.job != Job.UNEMPLOYED ? " for lighter work as a " + c.job.display : "") + ".");
+                col.log(ColonyEvent.Type.POPULATION, day, c.name + " is getting old and gave up work as " + Text.a(old.display) + (c.job != Job.UNEMPLOYED ? " for lighter work as " + Text.a(c.job.display) : "") + ".");
             }
             // old age
             if (c.ageDays > s.maxAge && r.nextDouble() < 0.15 + (c.ageDays - s.maxAge) * 0.05) {

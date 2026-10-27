@@ -296,7 +296,7 @@ public final class TravelerManager implements Listener {
         Npc n = col.active ? plugin.npcs().spawn(col, c, at) : null;
         if (n != null) n.body.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, at.clone().add(0, 1, 0), 20, 0.4, 0.6, 0.4, 0);
         for (Player p : col.onlineMembers()) {
-            Text.send(p, "<green>" + Text.esc(c.name) + " has settled in " + Text.esc(col.name) + " as a <white>" + c.job.display + "</white>.");
+            Text.send(p, "<green>" + Text.esc(c.name) + " has settled in " + Text.esc(col.name) + " as " + Text.a("<white>" + c.job.display) + "</white>.");
         }
         plugin.requestSave();
         return null;
@@ -310,7 +310,7 @@ public final class TravelerManager implements Listener {
         c.skills.set(skill, xp);
         plugin.sim().housing().assign(col);
         plugin.sim().jobs().autoAssign(col, c);
-        col.log(ColonyEvent.Type.POPULATION, plugin.sim().day(col), name + " (" + trait.display + ", " + skill.display + ") settled in the colony as a " + c.job.display + ".");
+        col.log(ColonyEvent.Type.POPULATION, plugin.sim().day(col), name + " (" + trait.display + ", " + skill.display + ") settled in the colony as " + Text.a(c.job.display) + ".");
         return c;
     }
 

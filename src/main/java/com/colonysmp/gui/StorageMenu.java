@@ -52,7 +52,9 @@ public final class StorageMenu extends Menu {
                 lore.add("<gray>" + g.category().display + " · <white>" + have + "</white> in storage" + (reserved > 0 ? " <dark_gray>(" + reserved + " set aside)" : ""));
                 int[] t = c.target(k);
                 if (t != null) lore.add("<gray>Target: keep " + t[0] + (t[1] > 0 ? ", up to " + t[1] : ""));
-                lore.add("<gray>Worth about " + Math.round(plugin.economy().market().mid(k)) + " " + plugin.settings().currency + " each");
+                double worth = plugin.economy().market().mid(k);
+                lore.add("<gray>Worth about " + (worth < 1 ? Text.money(Math.round(worth * 64), plugin.settings().currency) + " a stack"
+                        : Text.money(Math.round(worth), plugin.settings().currency) + " each"));
                 lore.add("<dark_gray>Left: a stack · Right: one · Shift: as much as fits");
                 ItemStack icon = Items.icon(ItemGoods.icon(k), "<white>" + g.name(), lore);
                 icon.setAmount((int) Math.max(1, Math.min(64, have)));

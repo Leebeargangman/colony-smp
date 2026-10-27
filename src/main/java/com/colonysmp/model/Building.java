@@ -39,6 +39,11 @@ public final class Building {
     public int floor;
     public final Map<Feature, Integer> features = new EnumMap<>(Feature.class);
 
+    /** More people than beds, or under three floor tiles each. */
+    public boolean crowded(int occupants) {
+        return occupants > Math.max(1, beds.size()) || floor < occupants * 3;
+    }
+
     // validation
     public boolean valid = true;
     public String problem;

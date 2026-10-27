@@ -623,10 +623,10 @@ public final class Construction {
             }
             for (Player p : col.onlineMembers()) {
                 if (r.error() != null) {
-                    Text.send(p, "<yellow>The builders finished a <white>" + job.label() + "</white>, but it couldn't be registered: <red>"
+                    Text.send(p, "<yellow>The builders finished " + Text.a("<white>" + job.label()) + "</white>, but it couldn't be registered: <red>"
                             + r.error() + "</red> Fix it and register it with the Blueprint Book.");
                 } else {
-                    Text.send(p, "<green>The builders finished a <white>" + job.label() + "</white>! Registered as <white>" + r.building().label() + "</white>.");
+                    Text.send(p, "<green>The builders finished " + Text.a("<white>" + job.label()) + "</white>! Registered as <white>" + r.building().label() + "</white>.");
                     Fx.sound(p, "minecraft:entity.villager.celebrate", 1f, 1f);
                 }
             }

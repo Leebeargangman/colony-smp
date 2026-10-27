@@ -5,6 +5,7 @@ import com.colonysmp.model.Building;
 import com.colonysmp.model.BuildingType;
 import com.colonysmp.model.Colony;
 import com.colonysmp.util.Fx;
+import com.colonysmp.util.Text;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -130,6 +131,6 @@ public final class Guarding {
     public static String label(LivingEntity e) {
         if (e instanceof Player p) return p.getName();
         if (e.customName() != null) return PlainTextComponentSerializer.plainText().serialize(e.customName());
-        return "a " + e.getType().name().toLowerCase().replace('_', ' ');
+        return Text.a(e.getType().name().toLowerCase().replace('_', ' '));
     }
 }

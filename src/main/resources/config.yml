@@ -40,6 +40,8 @@ protection:
 citizens:
   # The first settlers of a new colony, by job.
   starting-jobs: [FARMER, BUILDER, FORESTER, UNEMPLOYED]
+  # The provisions they bring to colony storage, to last until the first harvest.
+  starting-goods: ["BREAD:40", "WHEAT_SEEDS:16", "OAK_SAPLING:4"]
   # Most citizens one colony may have.
   max-population: 150
   # Citizens walking around as villagers at once (the rest are simulated without a body).

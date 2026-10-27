@@ -12,7 +12,7 @@ public final class Mood {
     /** Everything that moves mood. Fractions are 0-1; levels and counts are plain numbers. */
     public static final class Inputs {
         public double satiety = 70, energy = 70, health = 1, social = 50, mealQuality = 1;
-        /** 0 homeless, 1-3 house comfort; overcrowded when more people than beds. */
+        /** 0 homeless, 1-3 house comfort; overcrowded when more people than beds or too little floor. */
         public int housing = 1;
         public boolean overcrowded;
         public boolean ill;

@@ -108,6 +108,12 @@ public final class Text {
         return String.format(Locale.ROOT, "%.1f", v);
     }
 
+    /** "a" or "an" before a word (which may start with MiniMessage tags). */
+    public static String a(String word) {
+        String bare = word.replaceAll("<[^>]*>", "");
+        return (!bare.isEmpty() && "AEIOUaeiou".indexOf(bare.charAt(0)) >= 0 ? "an " : "a ") + word;
+    }
+
     public static String nice(String enumName) {
         return com.colonysmp.core.Goods.nice(enumName);
     }

@@ -165,6 +165,14 @@ public final class CitizenSim {
             c.hoursToday += workH;
             plugin.sim().production().contribute(col, c, units, workH);
         }
+        // what they're up to now, for the menus (a body reports its own)
+        long end = Math.floorMod(dayTime + ticks, GameTime.TICKS_PER_DAY);
+        String doing = GameTime.within(end, bedtime, workStart) ? (bed ? "Asleep at home" : "Sleeping rough")
+                : GameTime.within(end, workStart, workEnd) && able && stage != LifeStage.CHILD && c.job.employed() ? "At work" : "Off work";
+        if (!doing.equals(c.activity)) {
+            c.activity = doing;
+            c.activitySince = System.currentTimeMillis();
+        }
     }
 
     /** Healthy enough to work at all (illness and injuries slow or stop work). */
@@ -297,7 +305,7 @@ public final class CitizenSim {
         else in.housing = 1;
         if (home != null && home.type == BuildingType.HOUSE) {
             int occ = ctx.occupants.getOrDefault(home.id, 1);
-            in.overcrowded = home.floor / (double) Math.max(1, occ) < 5;
+            in.overcrowded = home.crowded(occ);
         }
         in.ill = c.ill();
         in.danger = ctx.danger;

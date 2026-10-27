@@ -102,6 +102,8 @@ public final class Settings {
     public final int mineTargetY, mineTunnelLength, mineBranchLength, maxMines;
 
     public final List<ItemStack> questReward;
+    /** Provisions the first settlers bring. */
+    public final List<ItemStack> startingGoods;
 
     public Settings(FileConfiguration c, Logger log) {
         autosaveMinutes = Math.max(1, c.getInt("general.autosave-minutes", 5));
@@ -275,12 +277,18 @@ public final class Settings {
         mineBranchLength = Math.max(2, c.getInt("mines.branch-length", 16));
         maxMines = Math.max(1, c.getInt("mines.max-per-colony", 3));
 
-        List<ItemStack> reward = new ArrayList<>();
-        for (String s : c.getStringList("quests.reward")) {
+        questReward = items(c, "quests.reward", log);
+        startingGoods = items(c, "citizens.starting-goods", log);
+    }
+
+    /** A list of "MATERIAL:amount" entries. */
+    private static List<ItemStack> items(FileConfiguration c, String path, Logger log) {
+        List<ItemStack> out = new ArrayList<>();
+        for (String s : c.getStringList(path)) {
             String[] p = s.split(":");
             Material m = Material.matchMaterial(p[0].trim());
             if (m == null || !m.isItem()) {
-                log.warning("quests.reward: unknown item " + s);
+                log.warning(path + ": unknown item " + s);
                 continue;
             }
             int n = 1;
@@ -288,12 +296,12 @@ public final class Settings {
                 try {
                     n = Integer.parseInt(p[1].trim());
                 } catch (NumberFormatException e) {
-                    log.warning("quests.reward: bad amount in " + s);
+                    log.warning(path + ": bad amount in " + s);
                 }
             }
-            reward.add(new ItemStack(m, Math.max(1, n)));
+            out.add(new ItemStack(m, Math.max(1, n)));
         }
-        questReward = List.copyOf(reward);
+        return List.copyOf(out);
     }
 
     public boolean worldAllowed(String world) {

@@ -11,6 +11,7 @@ import com.colonysmp.model.LifeStage;
 import com.colonysmp.model.Policies;
 import com.colonysmp.model.Status;
 import com.colonysmp.util.BlockPos;
+import com.colonysmp.util.Text;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.World;
@@ -76,6 +77,8 @@ public final class CitizenBrain {
         m.rename(n);
         life.tick(n, col, plugin.sim().gameTime(col));
         n.working = false;
+        // what the background simulation was waiting for no longer applies to a body; behaviours set their own
+        n.c.waiting = null;
         if (n.c.downed()) {
             n.mover.stop();
             n.doing("Downed");
@@ -147,7 +150,7 @@ public final class CitizenBrain {
         Building b = col.building(c.workplace);
         if (c.job.needsWorkplace()) {
             if (b == null) {
-                String where = c.job.workplaces().isEmpty() ? "" : " (a " + c.job.workplaces().get(0).display + ")";
+                String where = c.job.workplaces().isEmpty() ? "" : " (" + Text.a(c.job.workplaces().get(0).display) + ")";
                 idle(n, col, now, "No workplace" + where + " with a free place");
                 return;
             }

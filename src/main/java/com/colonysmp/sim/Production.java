@@ -22,6 +22,7 @@ import com.colonysmp.npc.Fishing;
 import com.colonysmp.util.Tools;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
@@ -99,17 +100,26 @@ public final class Production {
         World w = col.world();
         for (Building b : col.buildings.values()) {
             if (!b.valid || b.type != BuildingType.FARM) continue;
-            // crops only grow (in this model) while the field isn't loaded; when it is, the world grows them
-            if (w != null && b.anchor != null && b.anchor.loaded(w)) continue;
+            // crops only grow (in this model) while the world isn't growing them itself
+            if (worldGrows(w, b)) continue;
             b.growth = Math.min(1.5, b.growth + hours / 24 * (1 + 0.1 * (b.level - 1)));
         }
     }
 
     // ───────────── farms, pens and fisheries ─────────────
 
+    /** Vanilla only grows crops in loaded chunks with a player within 128 blocks. */
+    private static boolean worldGrows(World w, Building b) {
+        if (w == null || b.anchor == null || !b.anchor.loaded(w)) return false;
+        for (Player p : w.getPlayers()) {
+            double dx = p.getLocation().getX() - b.anchor.x(), dz = p.getLocation().getZ() - b.anchor.z();
+            if (dx * dx + dz * dz < 128 * 128) return true;
+        }
+        return false;
+    }
+
     private void farm(Colony col, Building b, Citizen c, double units) {
-        World w = col.world();
-        if (w != null && b.anchor != null && b.anchor.loaded(w)) {
+        if (worldGrows(col.world(), b)) {
             c.waiting = "Waiting to work the fields in person";
             return;
         }
@@ -180,11 +190,6 @@ public final class Production {
     }
 
     private void pen(Colony col, Building b, Citizen c, double hours, double units) {
-        World w = col.world();
-        if (w != null && b.anchor != null && b.anchor.loaded(w)) {
-            c.waiting = "Waiting to tend the animals in person";
-            return;
-        }
         int animals = 0;
         for (int n : b.counts.values()) animals += n;
         if (animals == 0) {

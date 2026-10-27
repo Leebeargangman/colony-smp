@@ -162,7 +162,20 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
                 give(p, plugin.items().core(c.id, c.name));
                 Text.send(p, "Here is the <aqua>Town Hall Core</aqua> of " + Text.esc(c.name) + ". Place it where the colony should stand.");
             }
-            case "book", "wand", "rope", "baton", "banner" -> items(p, c, sub);
+            case "book" -> {
+                // /colony book <type>: turns the book to a building type (and hands one over if needed)
+                if (a.length > 0) {
+                    BuildingType t = BuildingType.parse(String.join("_", a));
+                    if (t == null) {
+                        Text.send(p, "<red>No building type called " + Text.esc(String.join(" ", a)) + ". Try /colony help buildings.");
+                        return;
+                    }
+                    plugin.blueprints().select(p, t);
+                    if (!p.getInventory().contains(plugin.items().book().getType())) items(p, c, sub);
+                    Text.send(p, "<yellow>Plan:</yellow> <white>" + t.display + "</white>. Shift + right-click inside it to register it.");
+                } else items(p, c, sub);
+            }
+            case "wand", "rope", "baton", "banner" -> items(p, c, sub);
             case "disband" -> disband(p, c);
             case "quests" -> quests(p, c, a);
             case "citizens" -> {
@@ -278,6 +291,18 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
             if (partial == null && ct.name.toLowerCase(Locale.ROOT).startsWith(name.toLowerCase(Locale.ROOT))) partial = ct;
         }
         return partial;
+    }
+
+    /** A citizen named by the words from a[from] on (names have spaces), and how many words the name took. */
+    private record Named(Citizen citizen, int words) {
+    }
+
+    private Named leading(Colony c, String[] a, int from) {
+        for (int n = a.length - from; n >= 1; n--) {
+            String name = String.join(" ", Arrays.copyOfRange(a, from, from + n));
+            for (Citizen ct : c.citizens.values()) if (ct.name.equalsIgnoreCase(name)) return new Named(ct, n);
+        }
+        return new Named(from < a.length ? findCitizen(c, a[from]) : null, 1);
     }
 
     private Building findBuilding(Colony c, String s) {
@@ -585,8 +610,10 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
             Text.send(p, "Usage: <white>/colony assign <citizen> <job> [building id]");
             return;
         }
-        Citizen ct = findCitizen(c, a[0]);
-        Job j = Job.parse(a[1]);
+        Named who = leading(c, a, 0);
+        Citizen ct = who.citizen();
+        int at0 = who.words();
+        Job j = at0 < a.length ? Job.parse(a[at0]) : null;
         if (ct == null || j == null) {
             Text.send(p, "<red>" + (ct == null ? "No citizen called that." : "No such job. Jobs: " + Arrays.toString(Job.values()).toLowerCase(Locale.ROOT)));
             return;
@@ -595,30 +622,35 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
             Text.send(p, "Use <white>/colony recruit " + ct.name + " <class></white> to make someone a soldier.");
             return;
         }
-        Building b = a.length > 2 ? findBuilding(c, a[2]) : null;
+        Building b = a.length > at0 + 1 ? findBuilding(c, a[at0 + 1]) : null;
+        if (a.length > at0 + 1 && b == null) {
+            Text.send(p, "<red>No building with that id (see /colony buildings).");
+            return;
+        }
         String err = plugin.sim().jobs().assign(c, ct, j, b);
         if (err != null) Text.send(p, "<red>" + err);
         else {
             Building at = c.building(ct.workplace);
-            Text.send(p, "<white>" + Text.esc(ct.name) + "</white> is now a <white>" + j.display + "</white>" + (at != null ? " at " + Text.esc(at.label()) : "")
+            Text.send(p, "<white>" + Text.esc(ct.name) + "</white> is now " + Text.a("<white>" + j.display) + "</white>" + (at != null ? " at " + Text.esc(at.label()) : "")
                     + (j.needsWorkplace() && at == null ? " <yellow>(no free place yet: they'll start when there is one)" : "") + ".");
         }
     }
 
     private void home(Player p, Colony c, String[] a) {
         if (need(p, c)) return;
-        Citizen ct = a.length == 0 ? null : findCitizen(c, a[0]);
+        Named who = leading(c, a, 0);
+        Citizen ct = who.citizen();
         if (ct == null) {
             Text.send(p, "Usage: <white>/colony home <citizen> [house id]");
             return;
         }
-        if (a.length < 2) {
+        if (a.length <= who.words()) {
             Building h = c.building(ct.home);
             Text.send(p, Text.esc(ct.name) + (h == null ? " has no home." : " lives in " + Text.esc(h.label()) + (ct.bed != null ? " (bed at " + ct.bed + ")" : "") + "."));
             return;
         }
         if (!plugin.access().check(p, c, Perm.MANAGE_CITIZENS)) return;
-        Building h = findBuilding(c, a[1]);
+        Building h = findBuilding(c, a[who.words()]);
         if (h == null || h.type != BuildingType.HOUSE && h.type != BuildingType.BARRACKS || !h.valid) {
             Text.send(p, "<red>That isn't a working house.");
             return;
@@ -706,10 +738,22 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
     private void building(Player p, Colony c, String[] a) {
         if (need(p, c)) return;
         if (a.length == 0) {
-            Text.send(p, "Usage: <white>/colony building <id> | info <id> | crop <id> <crop|auto> | herd <id> <size> | recipe <id> <recipe> on|off | name <id> <name> | remove <id>");
+            Text.send(p, "Usage: <white>/colony building <id> | info <id> | register <type> | crop <id> <crop|auto> | herd <id> <size> | recipe <id> <recipe> on|off | name <id> <name> | remove <id>");
             return;
         }
         String op = a[0].toLowerCase(Locale.ROOT);
+        if (op.equals("register")) {
+            // the Blueprint Book's Shift + Right-Click as a command: the room you stand in, or the block you look at
+            BuildingType t = a.length > 1 ? BuildingType.parse(String.join("_", Arrays.copyOfRange(a, 1, a.length))) : plugin.blueprints().type(p);
+            if (t == null) {
+                Text.send(p, "<red>Usage: /colony building register <type> (stand inside it, or look at it).");
+                return;
+            }
+            plugin.blueprints().select(p, t);
+            org.bukkit.block.Block look = p.getTargetBlockExact(6);
+            plugin.blueprints().register(p, look != null ? look : p.getLocation().getBlock().getRelative(org.bukkit.block.BlockFace.DOWN), org.bukkit.block.BlockFace.UP);
+            return;
+        }
         if (!List.of("info", "crop", "herd", "recipe", "name", "remove").contains(op)) {
             a = new String[]{"info", a[0]};
             op = "info";
@@ -953,14 +997,15 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
             }
             return;
         }
-        Citizen ct = findCitizen(c, a[0]);
-        MilitaryClass k = MilitaryClass.parse(join(a, 1));
+        Named who = leading(c, a, 0);
+        Citizen ct = who.citizen();
+        MilitaryClass k = who.words() < a.length ? MilitaryClass.parse(join(a, who.words())) : null;
         if (ct == null || k == null) {
             Text.send(p, "<red>" + (ct == null ? "No citizen called that." : "No such class (see /colony recruit)."));
             return;
         }
         String r = plugin.military().recruit(p, c, ct, k);
-        if (r == null) Text.send(p, "<green>" + Text.esc(ct.name) + " is now a " + k.display + ".");
+        if (r == null) Text.send(p, "<green>" + Text.esc(ct.name) + " is now " + Text.a(k.display) + ".");
         else Text.send(p, r.startsWith("!") ? "<yellow>" + r.substring(1) : "<red>" + r);
     }
 
@@ -1125,8 +1170,13 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
             }
             case "accept", "decline" -> {
                 Proposal x = a.length > 1 ? dip.proposal(a[1]) : null;
+                if (x == null && a.length > 1) {
+                    // by colony name: their latest offer to us
+                    Colony from = plugin.colonies().byName(join(a, 1));
+                    for (Proposal y : dip.incoming(c)) if (from != null && y.from.equals(from.id) && (x == null || y.expires > x.expires)) x = y;
+                }
                 if (x == null) {
-                    Text.send(p, "<red>That offer is no longer there.");
+                    Text.send(p, "<red>That offer is no longer there (see /colony diplomacy offers).");
                     return;
                 }
                 err = op.equals("accept") ? dip.accept(p, x) : dip.decline(p, x);
@@ -1285,7 +1335,8 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
         }
         if (a.length >= 2 && a[0].equalsIgnoreCase("ransom")) {
             if (!plugin.access().check(p, c, Perm.DIPLOMACY)) return;
-            Citizen ct = findCitizen(c, a[1]);
+            Named who = leading(c, a, 1);
+            Citizen ct = who.citizen();
             if (ct == null || ct.status != Status.PRISONER || ct.origin == null || plugin.colonies().get(ct.origin) == null) {
                 Text.send(p, "<red>No prisoner from another colony called that.");
                 return;
@@ -1293,7 +1344,8 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
             Colony home = plugin.colonies().get(ct.origin);
             Proposal x = plugin.diplomacy().newProposal(Proposal.Type.RANSOM, c, home);
             x.release.add(ct.id);
-            x.money = -(a.length > 2 ? Math.max(0, number(a[2], 0)) : plugin.prison().ransom(ct));
+            int amountAt = 1 + who.words();
+            x.money = -(a.length > amountAt ? Math.max(0, number(a[amountAt], 0)) : plugin.prison().ransom(ct));
             String err = plugin.diplomacy().propose(p, c, home, x);
             if (err != null) Text.send(p, "<red>" + err);
             else Text.send(p, "Ransom of " + Text.money(-x.money, plugin.settings().currency) + " asked of " + Text.esc(home.name) + " for " + Text.esc(ct.name) + ".");
@@ -1301,15 +1353,16 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
         }
         if (a.length >= 3 && a[0].equalsIgnoreCase("exchange")) {
             if (!plugin.access().check(p, c, Perm.DIPLOMACY)) return;
-            Citizen ours = findCitizen(c, a[1]);
+            Named first = leading(c, a, 1);
+            Citizen ours = first.citizen();
             if (ours == null || ours.status != Status.PRISONER || ours.origin == null || plugin.colonies().get(ours.origin) == null) {
                 Text.send(p, "<red>No prisoner from another colony called " + Text.esc(a[1]) + ".");
                 return;
             }
             Colony home = plugin.colonies().get(ours.origin);
-            Citizen theirs = findCitizen(home, a[2]);
+            Citizen theirs = leading(home, a, 1 + first.words()).citizen();
             if (theirs == null || theirs.status != Status.PRISONER || !c.id.equals(theirs.origin)) {
-                Text.send(p, "<red>" + Text.esc(home.name) + " holds no prisoner of yours called " + Text.esc(a[2]) + ".");
+                Text.send(p, "<red>" + Text.esc(home.name) + " holds no prisoner of yours called " + Text.esc(join(a, 1 + first.words())) + ".");
                 return;
             }
             Proposal x = plugin.diplomacy().newProposal(Proposal.Type.PRISONER_EXCHANGE, c, home);
@@ -1376,9 +1429,10 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
             case "citizens" -> List.of("citizens · citizen <name> · jobs · assign <citizen> <job> [building] · home <citizen> [house] · needs [citizen]",
                     "settler (recruit from the region) · traveller recruit|dismiss · exile <citizen>",
                     "Right-click a citizen for their menu. Children study; adults work; an Administrator fills empty jobs.");
-            case "buildings" -> List.of("buildings · building <id> · building crop|herd|recipe|name|remove ... · validate [id|all] · upgrade <id> · construction",
+            case "buildings" -> List.of("buildings · building <id> · building register <type> · building crop|herd|recipe|name|remove ... · validate [id|all] · upgrade <id> · construction",
                     "Build rooms and fields by hand, then Shift + Right-Click inside with the Blueprint Book to register them,",
-                    "or pick a plan in the book and Shift + Right-Click the ground to order your builders to build it.");
+                    "or pick a plan in the book and Shift + Right-Click the ground to order your builders to build it.",
+                    "Right-click with the book to turn its pages, or jump to a plan with /colony book <type>.");
             case "economy" -> List.of("resources [category] · storage [target <good> <min> [max]] · economy · production · policies",
                     "trade [sell|buy <good> <qty>] (needs a staffed Trading Post) · deposit|withdraw <amount> · shop [colony]");
             case "military" -> List.of("military · recruit <citizen> <class> · army · squad create|add|formation|patrol ... · orders <squad> <order> [here]",
@@ -1389,7 +1443,7 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
                     "prison · prison release <name> · prison ransom <name> [price] · prison exchange <ours> <theirs>");
             case "admin" -> List.of("admin reload|save|bypass|give|delete|tp|inspect|citizen|building|reservations|production|sim|perf|db|stuck|events",
                     "admin simulate <colony> <hours> · setstock <colony> <good> <qty> · treasury <colony> set|add <n> · addcitizen <colony> [job] · endwar · shield · traveller · repair");
-            default -> List.of("create <name> · info [colony] · list · map · claim · unclaim · menu · core · book · wand · baton · disband · quests",
+            default -> List.of("create <name> · info [colony] · list · map · claim · unclaim · menu · core · book [type] · wand · baton · disband · quests",
                     "invite <player> · join <colony> · leave · kick <player> · members · promote|demote <player> [role] · rename <name> · settings",
                     "events [type] [page] · stats · and the topics above.");
         };
@@ -1443,8 +1497,12 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
                 if (args.length == 3 && c != null) options.addAll(c.storage.contents().keySet());
             }
             case "building" -> {
-                if (args.length == 2) options = List.of("info", "crop", "herd", "recipe", "name", "remove");
-                if (args.length == 3 && c != null) for (Building b : c.buildings.values()) options.add(String.valueOf(b.id));
+                if (args.length == 2) options = List.of("info", "register", "crop", "herd", "recipe", "name", "remove");
+                if (args.length == 3 && args[1].equalsIgnoreCase("register")) for (BuildingType t : BuildingType.values()) options.add(t.name().toLowerCase(Locale.ROOT));
+                else if (args.length == 3 && c != null) for (Building b : c.buildings.values()) options.add(String.valueOf(b.id));
+            }
+            case "book" -> {
+                if (args.length == 2) for (BuildingType t : BuildingType.values()) options.add(t.name().toLowerCase(Locale.ROOT));
             }
             case "upgrade", "validate" -> {
                 if (c != null && args.length == 2) for (Building b : c.buildings.values()) options.add(String.valueOf(b.id));

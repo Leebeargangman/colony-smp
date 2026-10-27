@@ -119,7 +119,7 @@ public final class MilitaryManager implements Listener {
         List<String> out = new ArrayList<>();
         if (k.training != null) {
             BuildingType t = BuildingType.parse(k.training);
-            if (t != null && c.valid(t).isEmpty()) out.add("a " + t.display);
+            if (t != null && c.valid(t).isEmpty()) out.add(Text.a(t.display));
         }
         for (MilitaryClass.Arms a : k.arms) if (!available(c, a)) out.add(a.display);
         return out.isEmpty() ? null : String.join(", ", out);
@@ -159,7 +159,7 @@ public final class MilitaryManager implements Listener {
             String why = plugin.sim().jobs().canTake(c, ct, Job.SOLDIER, null);
             if (why != null) return why;
             long cost = plugin.settings().recruitSoldierCost;
-            if (cost > 0 && c.treasury.debit(cost, TxnType.MILITARY, "Recruited " + ct.name + " as a " + k.display, System.currentTimeMillis(), day) == null) {
+            if (cost > 0 && c.treasury.debit(cost, TxnType.MILITARY, "Recruited " + ct.name + " as " + Text.a(k.display), System.currentTimeMillis(), day) == null) {
                 return "Recruiting costs " + Text.money(cost, plugin.settings().currency) + ".";
             }
             plugin.sim().jobs().assign(c, ct, Job.SOLDIER, null);
@@ -171,9 +171,9 @@ public final class MilitaryManager implements Listener {
         ct.morale = Morale.baseline(k, ct.training, ct.needs.mood, true);
         equip(c, ct, true);
         plugin.npcs().jobChanged(ct);
-        c.log(ColonyEvent.Type.MILITARY, day, ct.name + " is now a " + k.display + (missing != null ? " (still missing " + missing + ")" : "") + ".");
+        c.log(ColonyEvent.Type.MILITARY, day, ct.name + " is now " + Text.a(k.display) + (missing != null ? " (still missing " + missing + ")" : "") + ".");
         plugin.requestSave();
-        return missing == null ? null : "!" + ct.name + " joined as a " + k.display + ", but the armoury is missing " + missing + ".";
+        return missing == null ? null : "!" + ct.name + " joined as " + Text.a(k.display) + ", but the armoury is missing " + missing + ".";
     }
 
     /** Leaving the army (or the watch): arms go back to the armoury and the horse to the stables. */

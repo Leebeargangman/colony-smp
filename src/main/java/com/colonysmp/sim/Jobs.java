@@ -11,6 +11,7 @@ import com.colonysmp.model.Job;
 import com.colonysmp.model.LifeStage;
 import com.colonysmp.model.Policies;
 import com.colonysmp.model.Trait;
+import com.colonysmp.util.Text;
 import com.colonysmp.util.Tools;
 import org.bukkit.inventory.ItemStack;
 
@@ -161,7 +162,7 @@ public final class Jobs {
                 ct.squad = 0;
                 ct.training = 0;
             }
-            ct.remember(plugin.sim().day(c), "Became a " + j.display + (old != Job.UNEMPLOYED ? " (was a " + old.display + ")" : ""));
+            ct.remember(plugin.sim().day(c), "Became " + Text.a(j.display) + (old != Job.UNEMPLOYED ? " (was " + Text.a(old.display) + ")" : ""));
         }
         ct.waiting = null;
         ct.workplace = b != null ? b.id : 0;

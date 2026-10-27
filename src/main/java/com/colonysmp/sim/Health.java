@@ -101,7 +101,7 @@ public final class Health {
             if (home != null && home.type == BuildingType.HOUSE) {
                 int occ = 0;
                 for (Citizen o : people) if (o.home == home.id) occ++;
-                if (home.floor / (double) Math.max(1, occ) < 5) chance *= 1.5;
+                if (home.crowded(occ)) chance *= 1.5;
             }
             if (!ct.status.free()) chance *= 1.5;
             if (r.nextDouble() >= chance) continue;

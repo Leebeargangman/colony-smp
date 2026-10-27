@@ -681,7 +681,7 @@ public final class PrisonManager implements Listener {
             n.body.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, n.loc().add(0, 1, 0), 30, 0.4, 0.6, 0.4, 0.2);
         }
         Colony old = from == null ? null : plugin.colonies().get(from);
-        col.log(ColonyEvent.Type.POPULATION, day, p.name + (old != null ? ", once of " + old.name + "," : "") + " has joined the colony as a " + p.job.display + ".");
+        col.log(ColonyEvent.Type.POPULATION, day, p.name + (old != null ? ", once of " + old.name + "," : "") + " has joined the colony as " + Text.a(p.job.display) + ".");
         for (Player m : col.onlineMembers()) {
             Text.title(m, "<gold>A New Citizen", "<white>" + Text.esc(p.name) + "</white> <gray>has joined " + Text.esc(col.name), 10, 60, 20);
         }

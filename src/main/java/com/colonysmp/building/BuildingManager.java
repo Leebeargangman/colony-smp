@@ -390,7 +390,7 @@ public final class BuildingManager {
         World w = at.getWorld();
         Building b = existing(c, type, s);
         if (b != null && b.type != type) {
-            return Result.fail("That's already registered as " + b.label() + ". Remove it first to use it as a " + type.display + ".");
+            return Result.fail("That's already registered as " + b.label() + ". Remove it first to use it as " + Text.a(type.display) + ".");
         }
         int level = b == null ? 1 : b.level;
         String req = requirements(type, level, s, w);

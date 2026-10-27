@@ -236,10 +236,13 @@ public final class SimulationEngine {
             pop++;
         }
         mood = pop == 0 ? 0 : mood / pop;
+        // the day just ended, plus the wages and upkeep booked at its close
         long income = 0, expenses = 0;
-        for (var e : c.treasury.yesterday(day).entrySet()) {
-            if (e.getValue() > 0) income += e.getValue();
-            else expenses -= e.getValue();
+        for (var totals : List.of(c.treasury.yesterday(day), c.treasury.today(day))) {
+            for (var e : totals.entrySet()) {
+                if (e.getValue() > 0) income += e.getValue();
+                else expenses -= e.getValue();
+            }
         }
         c.addStats(new Colony.DayStats(day, pop, food, c.treasury.balance(), mood, c.stability, c.producedToday, income, expenses));
         reports.daily(c, day, food, mood, income, expenses);
