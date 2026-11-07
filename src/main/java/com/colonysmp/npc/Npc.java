@@ -57,6 +57,8 @@ public final class Npc {
     public BlockPos seat;
     public Entity seatEntity;
     public boolean keepSeat;
+    /** A thought bubble showing over their head, if any. */
+    public Entity bubble;
 
     // combat
     public LivingEntity enemy;

@@ -110,6 +110,10 @@ A building is inspected straight away and every day after that. A building
 that fails inspection stops working and tells you why (`/colony validate`). If it keeps failing for 2 days
 it is unregistered.
 
+Builders carry plain blocks from storage (oak planks first, then cobblestone or logs; never polished or
+decorative stone), put up scaffolding to reach high parts and take it down when they're done. When they run
+out of something they tell you exactly what will do and how many they still need.
+
 Six types have **standard plans** your builders can build for you: House, Farm, Warehouse, School, Prison
 and Watchtower. Choose one in the book, look at the ground and **Shift + Left-Click**, or use
 `/colony construction order <type>`. The builders carry every block from storage. The **Copy Wand** copies
@@ -168,6 +172,10 @@ from storage or a restaurant. Tired ones go to bed, the exhausted nap wherever t
 lose health. Mood follows the needs, plus food variety, wages and taxes, the work they do, illness,
 crowding, grief and the colony's policies. Unhappy citizens work slower, and very unhappy ones riot or
 leave.
+
+**Thought bubbles:** now and then a citizen near you shows what's on their mind above their head (Hungry,
+Tired, Needs a home, Wants work, Happy, or what's making them unhappy), so you can read the colony at a
+glance.
 
 **A day:** work hours (set by policy), leisure, and sleep from dusk. When work is over, sociable citizens
 meet at the **Tavern**: they walk over, take a free chair and sit together until bedtime (a staffed

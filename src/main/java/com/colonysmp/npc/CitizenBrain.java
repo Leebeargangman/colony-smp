@@ -45,6 +45,7 @@ public final class CitizenBrain {
     public final StationWork stations;
     public final Hauling hauling;
     final Taverns taverns;
+    private final Thoughts thoughts;
 
     CitizenBrain(ColonySMP plugin, NpcManager m) {
         this.plugin = plugin;
@@ -62,6 +63,7 @@ public final class CitizenBrain {
         this.stations = new StationWork(plugin, m);
         this.hauling = new Hauling(plugin, m);
         this.taverns = new Taverns(plugin, m);
+        this.thoughts = new Thoughts(plugin);
     }
 
     /** Cached plans that depend on a colony's buildings are dropped. */
@@ -95,6 +97,7 @@ public final class CitizenBrain {
         }
         // up from the chair for anything but an evening at the tavern
         if (n.seat != null && !n.keepSeat) m.stand(n);
+        if (n.c.status == Status.CITIZEN) thoughts.think(n, col);
         // off the scaffolding when not building
         if (!n.working && n.c.job == Job.BUILDER && Construction.onScaffold(n) && !n.mover.moving()) Construction.climbDown(n);
         m.showHand(n);

@@ -655,6 +655,8 @@ public final class NpcManager implements Listener {
         if (n.mount != null && n.mount.isValid()) n.mount.remove();
         n.mount = null;
         stand(n);
+        if (n.bubble != null && n.bubble.isValid()) n.bubble.remove();
+        n.bubble = null;
     }
 
     // ───────────── chairs ─────────────
