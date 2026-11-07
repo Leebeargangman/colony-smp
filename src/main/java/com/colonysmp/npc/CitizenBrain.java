@@ -95,6 +95,8 @@ public final class CitizenBrain {
         }
         // up from the chair for anything but an evening at the tavern
         if (n.seat != null && !n.keepSeat) m.stand(n);
+        // off the scaffolding when not building
+        if (!n.working && n.c.job == Job.BUILDER && Construction.onScaffold(n) && !n.mover.moving()) Construction.climbDown(n);
         m.showHand(n);
     }
 

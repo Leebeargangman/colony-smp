@@ -907,7 +907,10 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
             switch (a[0].toLowerCase(Locale.ROOT)) {
                 case "pause" -> o.state = BuildOrder.State.PAUSED;
                 case "resume" -> o.state = o.step > 0 ? BuildOrder.State.UNDER_CONSTRUCTION : BuildOrder.State.PLANNED;
-                case "cancel" -> c.buildQueue.remove(o);
+                case "cancel" -> {
+                    c.buildQueue.remove(o);
+                    com.colonysmp.npc.Construction.removeScaffold(c.world(), o);
+                }
                 case "first", "top" -> {
                     c.buildQueue.remove(o);
                     c.buildQueue.add(0, o);

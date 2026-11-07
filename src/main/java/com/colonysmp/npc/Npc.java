@@ -47,6 +47,12 @@ public final class Npc {
     public long napUntil;
     public Location idleSpot;
     public long idleUntil;
+    /** Where a builder has been trying to walk, and since when (they climb over if it takes too long). */
+    public Location walkGoal;
+    public long walkSince;
+    public double walkBest;
+    /** Since when someone has been standing where the next block goes (0: nobody). */
+    public long blockedSince;
     /** The chair they sit on (a tavern evening), the invisible seat they ride, and whether this think kept them there. */
     public BlockPos seat;
     public Entity seatEntity;

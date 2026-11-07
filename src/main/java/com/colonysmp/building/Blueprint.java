@@ -34,12 +34,14 @@ import java.util.WeakHashMap;
 public final class Blueprint {
 
     public enum Spec {
-        AIR("open space", false), WOOD_WALL("wall blocks", false), STONE_WALL("stone wall blocks", false),
-        ROOF("roof blocks", false), WINDOW("windows", false), DOOR("wooden door", false), IRON_DOOR("iron door", false),
-        BED("bed", false), LADDER("ladder", false), TORCH("torch", true), FENCE("wooden fence", false),
-        BARS("iron bars", false), BUTTON("button", true), FOUNDATION("foundation blocks", false),
+        AIR("open space", false), WOOD_WALL("wall blocks (planks, cobblestone or logs)", false),
+        STONE_WALL("stone wall blocks (cobblestone, stone or bricks; planks will do)", false),
+        ROOF("roof blocks (planks, cobblestone or logs)", false), WINDOW("windows (glass panes or glass; any wall block will do)", false),
+        DOOR("wooden door", false), IRON_DOOR("iron door", false), BED("bed (any colour)", false), LADDER("ladder", false),
+        TORCH("torch", true), FENCE("wooden fence (any wood)", false), BARS("iron bars (or glass)", false),
+        BUTTON("button (any wood or stone)", true), FOUNDATION("foundation blocks (cobblestone or dirt)", false),
         FARMLAND("farmland", false), WATER("water bucket", false), LECTERN("lectern", false), BOOKSHELF("bookshelves", true),
-        CHEST("chest", false),
+        CHEST("chest or barrel", false),
         /** A copied structure's block, exactly as it was. */
         EXACT("block", false);
 
@@ -494,21 +496,28 @@ public final class Blueprint {
     // ───────────── materials ─────────────
 
     private static final Map<Spec, List<Material>> CANDIDATES = new EnumMap<>(Spec.class);
+    /** The plain stone blocks builders may use. */
+    public static final Set<Material> STONE = new java.util.HashSet<>();
 
     static {
+        // plain, common blocks only: builders never use up polished or decorative stone
         List<Material> planks = new ArrayList<>(Tag.PLANKS.getValues());
+        planks.sort(java.util.Comparator.comparingInt((Material m) -> m == Material.OAK_PLANKS ? 0 : m == Material.SPRUCE_PLANKS ? 1 : m == Material.BIRCH_PLANKS ? 2 : 3)
+                .thenComparing(Material::name));
         List<Material> logs = new ArrayList<>();
         for (Material m : Tag.LOGS.getValues()) if (m.name().endsWith("_LOG") && !m.name().startsWith("STRIPPED")) logs.add(m);
+        logs.sort(java.util.Comparator.comparingInt((Material m) -> m == Material.OAK_LOG ? 0 : 1).thenComparing(Material::name));
         List<Material> stone = new ArrayList<>();
-        for (String n : new String[]{"COBBLESTONE", "STONE_BRICKS", "STONE", "COBBLED_DEEPSLATE", "DEEPSLATE_BRICKS", "BRICKS",
-                "MUD_BRICKS", "ANDESITE", "DIORITE", "GRANITE", "TUFF", "POLISHED_ANDESITE", "POLISHED_DIORITE", "POLISHED_GRANITE",
-                "SANDSTONE", "RED_SANDSTONE", "MOSSY_COBBLESTONE", "BLACKSTONE", "POLISHED_BLACKSTONE_BRICKS", "DEEPSLATE_TILES"}) {
+        for (String n : new String[]{"COBBLESTONE", "STONE", "COBBLED_DEEPSLATE", "STONE_BRICKS", "BRICKS", "MOSSY_COBBLESTONE",
+                "ANDESITE", "DIORITE", "GRANITE", "TUFF", "SANDSTONE", "RED_SANDSTONE", "MUD_BRICKS", "BLACKSTONE"}) {
             Material m = Material.matchMaterial(n);
             if (m != null) stone.add(m);
         }
+        STONE.addAll(stone);
         List<Material> wood = new ArrayList<>(planks);
+        if (!stone.isEmpty()) wood.add(stone.get(0));
         wood.addAll(logs);
-        wood.addAll(stone);
+        for (Material m : stone) if (!wood.contains(m)) wood.add(m);
         List<Material> stoneFirst = new ArrayList<>(stone);
         stoneFirst.addAll(planks);
         stoneFirst.addAll(logs);

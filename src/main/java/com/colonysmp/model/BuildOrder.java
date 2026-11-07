@@ -32,6 +32,8 @@ public final class BuildOrder {
     public final long created;
     /** What the builders are waiting for (display only). */
     public transient String waitingFor;
+    /** Scaffolding the builders put up for this order, taken down when it's finished or cancelled. */
+    public final java.util.List<BlockPos> scaffold = new java.util.ArrayList<>();
     public transient long lastWarn;
 
     public BuildOrder(int id, BuildingType type, String custom, BlockPos origin, BlockFace facing, long created) {
@@ -55,6 +57,9 @@ public final class BuildOrder {
         s.set("step", step);
         s.set("state", state.name());
         s.set("created", created);
+        java.util.List<String> sc = new java.util.ArrayList<>();
+        for (BlockPos p : scaffold) sc.add(p.toString());
+        s.set("scaffold", sc);
     }
 
     public static BuildOrder load(int id, ConfigurationSection s) {
@@ -70,6 +75,10 @@ public final class BuildOrder {
         }
         BuildOrder j = new BuildOrder(id, custom != null ? null : t, custom, o, f, s.getLong("created"));
         j.step = s.getInt("step");
+        for (String p : s.getStringList("scaffold")) {
+            BlockPos bp = BlockPos.parse(p);
+            if (bp != null) j.scaffold.add(bp);
+        }
         try {
             j.state = State.valueOf(s.getString("state", "PLANNED"));
         } catch (IllegalArgumentException e) {

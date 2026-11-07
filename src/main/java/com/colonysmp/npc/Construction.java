@@ -42,13 +42,19 @@ import java.util.Set;
 
 /**
  * Builders construct what players order with the Blueprint Book: the standard plans and structures copied with
- * the wand. They carry the materials from storage a batch at a time, clear what's in the way (into storage),
- * and register the building when it's done.
+ * the wand. They carry the materials from storage a batch at a time (the plainest blocks the colony has most
+ * of), clear what's in the way (into storage), put up scaffolding to reach high parts, and register the
+ * building when it's done. A builder never stays stuck: one who can't find a way to the site climbs over, and
+ * anyone standing where a block goes is moved aside.
  */
 public final class Construction {
 
     private static final BlockFace[] SIDES = {BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST};
     private static final int LOOKAHEAD = 400;
+    /** Ticks a builder keeps trying to walk somewhere before climbing over to it. */
+    private static final long STUCK_TICKS = 500;
+    /** Ticks someone may stand where a block goes before they're moved aside. */
+    private static final long IN_THE_WAY_TICKS = 100;
 
     /** What a step needs from storage: any of these items, best first. */
     private record Need(String key, String label, List<Material> items, boolean optional) {
@@ -105,11 +111,18 @@ public final class Construction {
                     job.step++;
                     return true;
                 }
-                waiting(n, col, job, need.label);
+                waiting(n, col, job, bp, w, step, need.label);
+                if (onScaffold(n)) climbDown(n);
                 m.returnCarried(n, col);
                 return true;
             }
-            if (!m.goToStorage(n, col, "Fetching " + need.label + " for the " + job.label())) return true;
+            if (onScaffold(n)) climbDown(n);
+            Location store = m.storagePoint(col, n.loc());
+            if (!m.goToStorage(n, col, "Fetching " + need.label + " for the " + job.label())) {
+                unstick(n, store, now);
+                return true;
+            }
+            n.walkGoal = null;
             load(n, col, job, bp, w, need);
             return true;
         }
@@ -118,8 +131,10 @@ public final class Construction {
         if (spot != null && !n.mover.near(spot, 1.6)) {
             n.mover.moveTo(spot, plugin.settings().walkSpeed, 1.2);
             n.doing("Walking to the " + job.label() + " site");
+            unstick(n, spot, now);
             return true;
         }
+        n.walkGoal = null;
         n.mover.stop();
         n.working = true;
         CitizenBrain.face(n, target);
@@ -207,6 +222,15 @@ public final class Construction {
             for (Need nd : needs.values()) if (nd.accepts(e.getKey())) used = true;
             if (!used) col.storage.force(e.getKey(), n.c.carried.take(e.getKey(), e.getValue()));
         }
+        // the step at hand comes first: make room for it if the satchel is full of later things
+        Material firstPick = chestChoice(col, first);
+        if (firstPick != null && n.c.carried.room(NpcManager.good(firstPick)) <= 0) {
+            for (Map.Entry<String, Long> e : n.c.carried.snapshot().entrySet()) {
+                if (first.accepts(e.getKey())) continue;
+                col.storage.force(e.getKey(), n.c.carried.take(e.getKey(), e.getValue()));
+                if (n.c.carried.room(NpcManager.good(firstPick)) > 0) break;
+            }
+        }
         for (Need nd : needs.values()) {
             Material pick = carriedChoice(n, nd);
             if (pick == null || col.storage.available(NpcManager.good(pick)) <= 0) pick = chestChoice(col, nd);
@@ -231,9 +255,44 @@ public final class Construction {
         return null;
     }
 
+    /**
+     * What to take from storage for a need: the first kind it has (planks before stone, panes before glass...),
+     * and of that kind the block storage has most of, so a wall comes out of one plain material.
+     */
     private static Material chestChoice(Colony col, Need nd) {
-        for (Material mat : nd.items) if (col.storage.available(NpcManager.good(mat)) > 0) return mat;
-        return null;
+        Material first = null;
+        for (Material mat : nd.items) {
+            if (col.storage.available(NpcManager.good(mat)) > 0) {
+                first = mat;
+                break;
+            }
+        }
+        if (first == null) return null;
+        Material best = first;
+        long most = col.storage.available(NpcManager.good(first));
+        for (Material mat : nd.items) {
+            if (mat == first || kind(mat) != kind(first) || kind(mat) == 0) continue;
+            long have = col.storage.available(NpcManager.good(mat));
+            if (have > most) {
+                most = have;
+                best = mat;
+            }
+        }
+        return best;
+    }
+
+    /** Blocks that are interchangeable in a plan: any planks, any logs, any plain stone, any bed... (0: only itself). */
+    private static int kind(Material m) {
+        if (Tag.PLANKS.isTagged(m)) return 1;
+        if (Tag.LOGS.isTagged(m)) return 2;
+        if (Blueprint.STONE.contains(m)) return 3;
+        if (Tag.BEDS.isTagged(m)) return 4;
+        if (Tag.WOODEN_DOORS.isTagged(m)) return 5;
+        if (Tag.WOODEN_FENCES.isTagged(m)) return 6;
+        if (m.name().endsWith("GLASS_PANE")) return 7;
+        if (m.name().endsWith("GLASS")) return 8;
+        if (Tag.BUTTONS.isTagged(m)) return 9;
+        return 0;
     }
 
     /** Takes one of the need's items out of the satchel; returns which, or null. */
@@ -308,7 +367,7 @@ public final class Construction {
             job.step++;
             return;
         }
-        if (s.spec() != Blueprint.Spec.TORCH && s.spec() != Blueprint.Spec.BUTTON && s.spec() != Blueprint.Spec.LADDER && occupied(b, n)) {
+        if (s.spec() != Blueprint.Spec.TORCH && s.spec() != Blueprint.Spec.BUTTON && s.spec() != Blueprint.Spec.LADDER && occupied(b, n, job, bp)) {
             n.doing("Waiting for someone to move out of the way");
             return;
         }
@@ -372,7 +431,7 @@ public final class Construction {
             return;
         }
         boolean passable = !wm.isSolid() || Tag.DOORS.isTagged(wm) || Tag.TRAPDOORS.isTagged(wm) || Tag.FENCE_GATES.isTagged(wm);
-        if (!passable && occupied(b, n)) {
+        if (!passable && occupied(b, n, job, bp)) {
             n.doing("Waiting for someone to move out of the way");
             return;
         }
@@ -431,6 +490,13 @@ public final class Construction {
     private Location workSpot(Npc n, BuildOrder job, Blueprint bp, World w, BlockPos at) {
         Location here = n.loc();
         if (reach(here, at) && free(job, bp, here) && !inColumn(here, at)) return here;
+        // down from the scaffolding before walking anywhere else
+        if (onScaffold(n)) {
+            Location sc = scaffold(n, job, bp, w, at, false);
+            if (sc != null) return sc;
+            climbDown(n);
+            here = n.loc();
+        }
         Location cur = n.idleSpot;
         if (cur != null && cur.getWorld() == w && reach(cur, at) && free(job, bp, cur) && !inColumn(cur, at)) return cur;
         Location best = null;
@@ -455,7 +521,152 @@ public final class Construction {
             n.idleSpot = best;
             return best;
         }
+        // too high to reach from the ground: scaffolding
+        Location sc = scaffold(n, job, bp, w, at, true);
+        if (sc != null) return sc;
         return outsideSpot(job, w, at, bp.bounds(job.origin, job.facing));
+    }
+
+    // ───────────── scaffolding ─────────────
+
+    /**
+     * A scaffolding column beside the plan to stand on for a block out of reach from the ground. Returns where
+     * to go: the foot of the column (walking there), or its top once the builder has put it up and climbed it.
+     * With {@code build} false, only a column already standing under the builder counts. Null if there's no
+     * room for one.
+     */
+    private Location scaffold(Npc n, BuildOrder job, Blueprint bp, World w, BlockPos at, boolean build) {
+        int standY = at.y() - 2;
+        Location best = null;
+        int bestGround = 0;
+        double bd = Double.MAX_VALUE;
+        for (int dx = -3; dx <= 3; dx++) {
+            for (int dz = -3; dz <= 3; dz++) {
+                int x = at.x() + dx, z = at.z() + dz;
+                if (!w.isChunkLoaded(x >> 4, z >> 4)) continue;
+                Integer ground = groundBelow(w, x, standY, z);
+                if (ground == null || ground >= standY) continue;
+                Location top = new Location(w, x + 0.5, standY, z + 0.5);
+                if (!reach(top, at)) continue;
+                boolean ok = true;
+                for (int y = ground; y <= standY + 1 && ok; y++) {
+                    Block b = w.getBlockAt(x, y, z);
+                    Material mt = b.getType();
+                    if (!(mt.isAir() || mt == Material.SCAFFOLDING || b.isReplaceable() && !b.isLiquid())) ok = false;
+                    else if (!free(job, bp, new Location(w, x + 0.5, y, z + 0.5))) ok = false;
+                }
+                if (!ok) continue;
+                double d = dx * dx + dz * dz + (standY - ground) * 0.5;
+                if (d < bd) {
+                    bd = d;
+                    best = top;
+                    bestGround = ground;
+                }
+            }
+        }
+        if (best == null) return null;
+        Location here = n.loc();
+        if (here.getWorld() == w && Math.abs(here.getX() - best.getX()) < 0.8 && Math.abs(here.getZ() - best.getZ()) < 0.8 && Math.abs(here.getY() - standY) < 0.6) return best;
+        if (!build) return null;
+        Location foot = Mover.safeSpot(new Location(w, best.getX(), bestGround, best.getZ()));
+        if (foot == null) foot = new Location(w, best.getX(), bestGround, best.getZ());
+        if (!n.mover.near(foot, 2.2)) return foot;
+        // put the column up and climb it
+        for (int y = bestGround; y < standY; y++) {
+            Block b = w.getBlockAt(best.getBlockX(), y, best.getBlockZ());
+            if (b.getType() == Material.SCAFFOLDING) continue;
+            BlockData d = Material.SCAFFOLDING.createBlockData();
+            if (d instanceof org.bukkit.block.data.type.Scaffolding sd) {
+                sd.setDistance(0);
+                sd.setBottom(false);
+            }
+            b.setBlockData(d, false);
+            BlockPos p = BlockPos.of(b);
+            if (!job.scaffold.contains(p)) job.scaffold.add(p);
+        }
+        Fx.sound(foot, "minecraft:block.scaffolding.place", 0.9f, 1f);
+        n.mover.stop();
+        n.body.teleport(best);
+        n.mover.sync();
+        n.doing("Climbing the scaffolding at the " + job.label());
+        return best;
+    }
+
+    /** The feet level of the first solid ground under a height, or null if there's none close. */
+    private static Integer groundBelow(World w, int x, int fromY, int z) {
+        for (int y = fromY; y > fromY - 24 && y > w.getMinHeight(); y--) {
+            Block b = w.getBlockAt(x, y - 1, z);
+            if (b.getType() == Material.SCAFFOLDING) continue;
+            if (b.isLiquid()) return null;
+            if (b.getType().isSolid()) return y;
+        }
+        return null;
+    }
+
+    /** Standing on (or in) scaffolding. */
+    static boolean onScaffold(Npc n) {
+        Block feet = n.loc().getBlock();
+        return feet.getType() == Material.SCAFFOLDING || feet.getRelative(BlockFace.DOWN).getType() == Material.SCAFFOLDING;
+    }
+
+    /** Climbs down the scaffolding column under the builder to the ground beside it. */
+    static void climbDown(Npc n) {
+        Block b = n.loc().getBlock();
+        while (b.getRelative(BlockFace.DOWN).getType() == Material.SCAFFOLDING && b.getY() > b.getWorld().getMinHeight()) b = b.getRelative(BlockFace.DOWN);
+        Location down = null;
+        for (BlockFace f : SIDES) {
+            Block s = b.getRelative(f);
+            if (RoomScanner.standable(s.getWorld(), s.getX(), s.getY(), s.getZ())) {
+                down = s.getLocation().add(0.5, 0, 0.5);
+                break;
+            }
+        }
+        if (down == null) down = Mover.safeSpot(b.getLocation().add(0.5, 0, 0.5));
+        if (down == null) return;
+        n.mover.stop();
+        n.body.teleport(down);
+        n.mover.sync();
+        n.idleSpot = null;
+    }
+
+    /** Takes down an order's scaffolding (it's the builders' own: nothing goes to storage). */
+    public static void removeScaffold(World w, BuildOrder job) {
+        if (w == null) return;
+        for (int i = job.scaffold.size() - 1; i >= 0; i--) {
+            BlockPos p = job.scaffold.get(i);
+            if (p.loaded(w) && p.block(w).getType() == Material.SCAFFOLDING) p.block(w).setType(Material.AIR, false);
+        }
+        job.scaffold.clear();
+    }
+
+    // ───────────── never stuck ─────────────
+
+    /**
+     * Keeps a walking builder from being stuck for good: if they've got no closer to where they're going for too
+     * long (no way through, a gap, a fence), they climb over to it.
+     */
+    private void unstick(Npc n, Location goal, long now) {
+        if (goal == null || goal.getWorld() != n.loc().getWorld()) return;
+        double dist = n.loc().distance(goal);
+        if (n.walkGoal == null || n.walkGoal.getWorld() != goal.getWorld() || n.walkGoal.distanceSquared(goal) > 4) {
+            n.walkGoal = goal.clone();
+            n.walkSince = now;
+            n.walkBest = dist;
+            return;
+        }
+        if (dist < n.walkBest - 1) {
+            n.walkBest = dist;
+            n.walkSince = now;
+            return;
+        }
+        if (now - n.walkSince < STUCK_TICKS && !(n.mover.blocked() && now - n.walkSince > STUCK_TICKS / 3)) return;
+        Location to = Mover.safeSpot(goal);
+        if (to == null) to = goal;
+        n.mover.stop();
+        n.body.teleport(to);
+        n.mover.sync();
+        n.walkGoal = null;
+        Fx.sound(to, "minecraft:entity.villager.ambient", 0.6f, 1f);
     }
 
     private static boolean reach(Location from, BlockPos at) {
@@ -516,15 +727,36 @@ public final class Construction {
         return x >= bb[0].x() && x <= bb[1].x() && z >= bb[0].z() && z <= bb[1].z() && y >= bb[0].y() - 1 && y <= bb[1].y() + 1;
     }
 
-    /** Someone is standing where the block would go: wait rather than bury them (the builder steps aside). */
-    private static boolean occupied(Block b, Npc self) {
+    /**
+     * Someone is standing where the block would go: wait rather than bury them. The builder steps aside
+     * themselves; animals and other citizens still in the way after a few seconds are moved out of the plan,
+     * and a player is asked to step aside.
+     */
+    private boolean occupied(Block b, Npc self, BuildOrder job, Blueprint bp) {
         var in = b.getWorld().getNearbyEntities(b.getBoundingBox().expand(-0.05), e -> e instanceof org.bukkit.entity.LivingEntity);
-        if (in.isEmpty()) return false;
+        if (in.isEmpty()) {
+            self.blockedSince = 0;
+            return false;
+        }
         if (in.size() == 1 && in.iterator().next().equals(self.body)) {
             self.idleSpot = null;
             Location away = Mover.safeSpot(b.getLocation().add(2.5, 0, 0.5));
             if (away != null) self.mover.moveTo(away, 0.2, 0.8);
+            return true;
         }
+        long now = plugin.tick();
+        if (self.blockedSince == 0) self.blockedSince = now;
+        if (now - self.blockedSince < IN_THE_WAY_TICKS) return true;
+        Location out = outsideSpot(job, b.getWorld(), BlockPos.of(b), bp.bounds(job.origin, job.facing));
+        for (org.bukkit.entity.Entity e : in) {
+            if (e.equals(self.body)) continue;
+            if (e instanceof Player p) {
+                Text.bar(p, "<yellow>Step aside: " + Text.esc(self.c.name) + " needs to build where you're standing.");
+                continue;
+            }
+            if (out != null) e.teleport(out);
+        }
+        self.blockedSince = 0;
         return true;
     }
 
@@ -561,14 +793,25 @@ public final class Construction {
         b.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, b.getLocation().add(0.5, 0.5, 0.5), 2, 0.3, 0.3, 0.3, 0);
     }
 
-    private void waiting(Npc n, Colony col, BuildOrder job, String what) {
+    private void waiting(Npc n, Colony col, BuildOrder job, Blueprint bp, World w, Blueprint.Step step, String what) {
         job.waitingFor = what;
         n.doing("Waiting for " + what + " in storage");
         long now = System.currentTimeMillis();
         if (now - job.lastWarn > 180_000) {
             job.lastWarn = now;
+            // how many of them the rest of the plan takes
+            int more = 0;
+            for (int i = job.step; i < bp.steps.size(); i++) {
+                Blueprint.Step s = bp.steps.get(i);
+                boolean same = step.spec() == Blueprint.Spec.EXACT ? s.spec() == Blueprint.Spec.EXACT && s.data().getMaterial() == step.data().getMaterial() : s.spec() == step.spec();
+                if (!same) continue;
+                BlockPos p = bp.pos(job.origin, job.facing, s);
+                if (!p.loaded(w) || !done(s, p.block(w))) more++;
+            }
+            String count = more > 1 ? "about <white>" + more + "</white> " : "";
             for (Player p : col.onlineMembers()) {
-                Text.send(p, "<yellow>The builders need <white>" + what + "</white> in storage to continue the " + Text.esc(job.label()) + ".");
+                Text.send(p, "<yellow>The builders need " + count + "<white>" + what + "</white> in storage to finish the " + Text.esc(job.label())
+                        + ". Put them in the storage chest beside the Town Hall.");
             }
         }
     }
@@ -601,6 +844,7 @@ public final class Construction {
 
     private void complete(Colony col, BuildOrder job, Blueprint bp, World w) {
         col.buildQueue.remove(job);
+        removeScaffold(w, job);
         planned.remove(job.id + "@" + job.origin);
         long day = plugin.sim().day(col);
         if (job.custom != null) {
