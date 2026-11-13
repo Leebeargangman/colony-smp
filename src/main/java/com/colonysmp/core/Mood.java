@@ -29,6 +29,8 @@ public final class Mood {
         public double events;
         /** Imprisoned, captive or rioting. */
         public boolean confined;
+        /** A bard plays at the colony's tavern. */
+        public boolean entertained;
     }
 
     public record Result(double target, Map<String, Double> factors) {
@@ -75,6 +77,7 @@ public final class Mood {
         put(f, "Colony stability", (in.stability - 50) / 5);
         put(f, "Taxes", -in.taxRate * 25);
         put(f, "Services", Math.min(10, in.services * 2.0));
+        if (in.entertained) put(f, "Music at the tavern", 4);
         put(f, "Recent events", in.events);
         if (in.confined) put(f, "Confined", -20);
         double t = 50;

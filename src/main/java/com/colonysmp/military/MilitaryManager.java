@@ -57,6 +57,9 @@ public final class MilitaryManager implements Listener {
     private final SoldierBrain brain;
     /** Colony id -> until (ms): something hostile was seen. */
     private final Map<String, Long> alarm = new HashMap<>();
+    /** Where someone last called for the watch (attacked or chased there), and until when the call stands (ms). */
+    private final Map<String, Location> callAt = new HashMap<>();
+    private final Map<String, Long> callUntil = new HashMap<>();
     /** Player -> selected squad id (for the baton). */
     private final Map<UUID, Integer> selected = new HashMap<>();
 
@@ -100,6 +103,22 @@ public final class MilitaryManager implements Listener {
     /** Something hostile was seen near the colony. */
     public void markThreat(Colony c) {
         alarm.put(c.id, System.currentTimeMillis() + 30_000);
+    }
+
+    /**
+     * A shout for the watch: something hostile is at this spot. Guards come running, but the colony isn't put
+     * on alert for it (one zombie in the night is the guards' business, not everyone's).
+     */
+    public void callWatch(Colony c, Location at) {
+        if (at == null || at.getWorld() == null) return;
+        callAt.put(c.id, at.clone());
+        callUntil.put(c.id, System.currentTimeMillis() + 15_000);
+    }
+
+    /** Where the watch was last called to, while the call stands; null when all is quiet. */
+    public Location alarmPoint(Colony c) {
+        Long until = callUntil.get(c.id);
+        return until != null && until > System.currentTimeMillis() ? callAt.get(c.id) : null;
     }
 
     public boolean threatened(Colony c) {
@@ -303,7 +322,7 @@ public final class MilitaryManager implements Listener {
     /** Drill: training rises (faster at the class's training building). */
     public void train(Colony c, Citizen ct, double hours) {
         MilitaryClass k = ct.militaryClass;
-        double rate = plugin.settings().trainingPerHour * ct.trait.learning();
+        double rate = plugin.settings().trainingPerHour * ct.trait.learning() * (1 + c.bonus(com.colonysmp.core.Research.Effect.TRAINING));
         if (k != null && k.training != null) {
             BuildingType t = BuildingType.parse(k.training);
             if (t == null || c.valid(t).isEmpty()) rate *= 0.3;

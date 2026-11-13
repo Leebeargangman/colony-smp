@@ -31,6 +31,10 @@ public enum Feature {
     COMPOSTER("composter", m -> m == Material.COMPOSTER),
     LOOM("loom", m -> m == Material.LOOM),
     BELL("bell", m -> m == Material.BELL),
+    ENCHANTING_TABLE("enchanting table", m -> m == Material.ENCHANTING_TABLE),
+    MUSIC("note block or jukebox", m -> m == Material.NOTE_BLOCK || m == Material.JUKEBOX),
+    BEEHIVE("beehive or bee nest", m -> m == Material.BEEHIVE || m == Material.BEE_NEST),
+    STANDING_STONE("mossy stone (mossy cobblestone or mossy stone bricks)", m -> m == Material.MOSSY_COBBLESTONE || m == Material.MOSSY_STONE_BRICKS),
     ARMOR_HOLDER("chest, barrel or smithing table", m -> m == Material.CHEST || m == Material.BARREL || m == Material.SMITHING_TABLE);
 
     public final String display;
@@ -49,7 +53,8 @@ public enum Feature {
     public boolean station() {
         return switch (this) {
             case FURNACE, SMOKER, COOKER, ANVIL, GRINDSTONE, CRAFTING_TABLE, STONECUTTER, FLETCHING_TABLE, SMITHING_TABLE,
-                 CARTOGRAPHY_TABLE, LECTERN, BREWING_STAND, BARREL, CONTAINER, TARGET, HAY, BELL, LOOM, COMPOSTER -> true;
+                 CARTOGRAPHY_TABLE, LECTERN, BREWING_STAND, BARREL, CONTAINER, TARGET, HAY, BELL, LOOM, COMPOSTER,
+                 ENCHANTING_TABLE, MUSIC, BEEHIVE, STANDING_STONE -> true;
             default -> false;
         };
     }

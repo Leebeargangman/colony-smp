@@ -20,7 +20,9 @@ public enum Skill {
     ARCHERY("Archery"),
     HORSEMANSHIP("Horsemanship"),
     LEADERSHIP("Leadership"),
-    ENGINEERING("Engineering");
+    ENGINEERING("Engineering"),
+    SCHOLARSHIP("Scholarship"),
+    PERFORMANCE("Performance");
 
     public final String display;
 

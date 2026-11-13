@@ -81,6 +81,15 @@ public final class Production {
                 xp(c, hours);
                 if (!plugin.sim().health().patients(col)) work(col, b, c, units);
             }
+            // (citizens in body gain their skill as they work; here it comes with the hours)
+            case RESEARCH -> {
+                if (plugin.sim().academy().work(col, c, units)) xp(c, hours);
+            }
+            case ENTERTAIN, GROW -> xp(c, hours);
+            case ENCHANT -> {
+                if (plugin.sim().trades().enchant(col, b, c, units)) xp(c, hours);
+            }
+            case BEES -> plugin.sim().trades().bees(col, b, c, hours, units);
             case GUARD -> plugin.sim().order().guardHours(col, hours);
             case TRAIN -> plugin.military().train(col, c, hours);
             case NONE -> {
@@ -92,17 +101,21 @@ public final class Production {
     private void xp(Citizen c, double hours) {
         if (c.job.skill == null) return;
         int lvl = c.skills.gain(c.job.skill, hours * 10 * c.trait.learning());
-        if (lvl > 0) c.remember(0, "Reached " + c.job.skill.display + " level " + lvl);
+        if (lvl > 0) {
+            Colony col = plugin.colonies().colonyOf(c);
+            c.remember(col == null ? 0 : plugin.sim().day(col), "Reached " + c.job.skill.display + " level " + lvl);
+        }
     }
 
     /** Background models that move with time rather than with work. */
     void background(Colony col, double hours, long ticks, long dayTime) {
         World w = col.world();
+        double tended = 1 + plugin.sim().trades().growthBonus(col, plugin.sim().day(col));
         for (Building b : col.buildings.values()) {
             if (!b.valid || b.type != BuildingType.FARM) continue;
             // crops only grow (in this model) while the world isn't growing them itself
             if (worldGrows(w, b)) continue;
-            b.growth = Math.min(1.5, b.growth + hours / 24 * (1 + 0.1 * (b.level - 1)));
+            b.growth = Math.min(1.5, b.growth + hours / 24 * (1 + 0.1 * (b.level - 1)) * tended);
         }
     }
 
@@ -133,7 +146,7 @@ public final class Production {
             return;
         }
         Map<String, Double> mix = cropMix(b);
-        double bonus = 1 + 0.02 * c.level(Skill.FARMING);
+        double bonus = (1 + 0.02 * c.level(Skill.FARMING)) * (1 + plugin.sim().trades().yieldBonus(col, plugin.sim().day(col)));
         Map<String, Long> out = new LinkedHashMap<>();
         for (Map.Entry<String, Double> e : mix.entrySet()) {
             double n = harvested * e.getValue();
@@ -419,6 +432,8 @@ public final class Production {
         if (g.category() == Category.SEED) return 128;
         if (g.category() == Category.AMMO) return 64 + 32L * plugin.military().soldiers(col);
         if (g.category() == Category.MEDICAL) return Math.max(8, pop / 2);
+        // crushed stone is a by-product: a little on hand is plenty
+        if (key.equals("gravel") || key.equals("sand") || key.equals("flint")) return 64;
         return 256;
     }
 
@@ -540,6 +555,16 @@ public final class Production {
             case CLINIC -> {
                 if (b.stock.get(Goods.MEDICINE) < 4 && col.storage.available(Goods.MEDICINE) > 0) out.put(Goods.MEDICINE, 4 - b.stock.get(Goods.MEDICINE));
             }
+            case ENCHANTERS_TOWER -> {
+                long want = Math.min(12 - b.stock.get(Trades.LAPIS), col.storage.available(Trades.LAPIS));
+                if (want > 0) out.put(Trades.LAPIS, want);
+                return out;
+            }
+            case APIARY -> {
+                long want = Math.min(8 - b.stock.get(Trades.BOTTLE), col.storage.available(Trades.BOTTLE));
+                if (want > 0) out.put(Trades.BOTTLE, want);
+                return out;
+            }
             default -> {
             }
         }
@@ -579,6 +604,12 @@ public final class Production {
             }
             case CLINIC -> {
                 if (key.equals(Goods.MEDICINE)) return 8;
+            }
+            case ENCHANTERS_TOWER -> {
+                return key.equals(Trades.LAPIS) ? 16 : 0;
+            }
+            case APIARY -> {
+                return key.equals(Trades.BOTTLE) ? 16 : 0;
             }
             default -> {
             }

@@ -129,7 +129,7 @@ public final class StationWork {
     }
 
     /** The station this worker uses (each worker their own, if there are enough). */
-    private BlockPos station(Npc n, Building b) {
+    BlockPos station(Npc n, Building b) {
         if (b.stations.isEmpty()) return null;
         int idx = Math.max(0, b.workers.indexOf(n.c.id));
         return b.stations.get(idx % b.stations.size());

@@ -52,6 +52,7 @@ public final class Finances {
         boolean engineer = hasWorking(c, Job.ENGINEER);
         for (Building b : c.buildings.values()) total += b.type.upkeep(b.level);
         total *= plugin.settings().upkeepMultiplier * (engineer ? 0.75 : 1) * (hasWorking(c, Job.TREASURER) ? 0.9 : 1);
+        total *= Math.max(0.2, 1 - c.bonus(com.colonysmp.core.Research.Effect.UPKEEP));
         if (c.policies.economy == Policies.Economy.COMMUNAL) {
             // without wages, soldiers still cost their keep
             for (Citizen ct : c.citizens.values()) {

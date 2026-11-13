@@ -84,13 +84,41 @@ public final class Fighting {
             if (!(e instanceof LivingEntity le) || !valid(n, col, le, anywhere)) continue;
             double d = le.getLocation().distanceSquared(here);
             if (d > 16 && !n.body.hasLineOfSight(le)) continue;
-            if (d < bd) {
-                bd = d;
+            // not simply the nearest: whoever is at a citizen's throat, the leader, the nearly beaten
+            double s = com.colonysmp.core.CombatMath.urgency(d, attackingOurs(col, le), le.isGlowing() && com.colonysmp.raid.RaidManager.isRaider(le), healthFraction(le));
+            if (s < bd) {
+                bd = s;
                 best = le;
             }
         }
         n.enemy = best;
         return best;
+    }
+
+    /** Is this enemy going for one of the colony's people or members right now? */
+    private boolean attackingOurs(Colony col, LivingEntity e) {
+        if (!(e instanceof org.bukkit.entity.Mob mob)) return false;
+        LivingEntity t = mob.getTarget();
+        if (t == null) return false;
+        if (t instanceof Player p) return col.isMember(p.getUniqueId());
+        Npc o = m.npc(t);
+        return o != null && col.id.equals(o.c.colonyId);
+    }
+
+    private static double healthFraction(LivingEntity e) {
+        var max = e.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH);
+        double m = max == null ? 20 : max.getValue();
+        return m <= 0 ? 1 : e.getHealth() / m;
+    }
+
+    /** Standing in a formation that mustn't be broken (hold, walls, volleys)? */
+    private static boolean holding(Colony col, Citizen c) {
+        var q = col.squad(c.squad);
+        if (q == null || c.job != com.colonysmp.model.Job.SOLDIER) return false;
+        return switch (q.order) {
+            case HOLD, SHIELD_WALL, SPEAR_WALL, HOLD_FIRE, VOLLEY -> true;
+            default -> false;
+        };
     }
 
     private boolean valid(Npc n, Colony col, LivingEntity e, boolean anywhere) {
@@ -121,6 +149,24 @@ public final class Fighting {
             m.showHand(n);
             return;
         }
+        // an archer with nothing to hit back with doesn't wait to be cut down: back off and keep shooting
+        if (canShoot && d <= 4.5 && c.weapon == null && n.mount == null && !holding(col, c)) {
+            Vector away = me.toVector().subtract(them.toVector()).setY(0);
+            if (away.lengthSquared() > 0.01) {
+                Location to = Mover.safeSpot(me.clone().add(away.normalize().multiply(7)));
+                if (to != null && to.distanceSquared(them) > d * d + 4) {
+                    n.mover.moveTo(to, plugin.settings().runSpeed, 1.2);
+                    n.doing("Falling back from " + Guarding.label(t));
+                    int reload = k != null && k.reloadTicks > 0 ? k.reloadTicks : 30;
+                    if (d > 2.2 && now - n.lastShot >= reload && n.body.hasLineOfSight(t)) {
+                        n.lastShot = now;
+                        shoot(n, t, k);
+                    }
+                    m.showHand(n);
+                    return;
+                }
+            }
+        }
         double reach = k != null && k.reach > 0 ? k.reach : 2.3;
         double speed = plugin.settings().runSpeed * (k != null ? k.speed : 1) * (n.mount != null ? 1.5 : 1);
         if (d > reach) {
@@ -144,7 +190,7 @@ public final class Fighting {
 
     private void hit(Npc n, Colony col, LivingEntity t) {
         Citizen c = n.c;
-        double dmg = Tools.meleeDamage(c.weapon) * strength(c);
+        double dmg = Tools.meleeDamage(c.weapon) * strength(c) * (1 + col.bonus(com.colonysmp.core.Research.Effect.DAMAGE));
         n.body.swingMainHand();
         t.damage(dmg, n.body);
         Fx.sound(n.loc(), "minecraft:entity.player.attack.strong", 0.7f, 1f);
@@ -166,7 +212,8 @@ public final class Fighting {
         ThreadLocalRandom r = ThreadLocalRandom.current();
         double spread = 0.05 * (1.2 - Math.min(1, c.training) * 0.6);
         dir.add(new Vector(r.nextGaussian() * spread, r.nextGaussian() * spread * 0.5, r.nextGaussian() * spread)).normalize();
-        double base = (k != null && k.ranged > 0 ? k.ranged : 2.5) * strength(c);
+        Colony col = plugin.colonies().colonyOf(c);
+        double base = (k != null && k.ranged > 0 ? k.ranged : 2.5) * strength(c) * (1 + (col == null ? 0 : col.bonus(com.colonysmp.core.Research.Effect.DAMAGE)));
         Projectile p;
         if (k == MilitaryClass.JAVELINEER) {
             Trident tr = n.body.launchProjectile(Trident.class, dir.multiply(1.8));

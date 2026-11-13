@@ -149,7 +149,8 @@ public final class TravelerManager implements Listener {
                 long t = w.getTime();
                 if (col.lastTravelerDay >= day || t < 1000 || t > 9000) continue;
                 col.lastTravelerDay = day;
-                double chance = col.reputation < 15 ? 0 : s.travelerChance * Math.min(1.6, col.reputation / 50.0);
+                double chance = col.reputation < 15 ? 0 : s.travelerChance * Math.min(1.6, col.reputation / 50.0)
+                        * (1 + col.bonus(com.colonysmp.core.Research.Effect.VISITORS));
                 if (ThreadLocalRandom.current().nextDouble() < chance) spawn(col);
             }
         }

@@ -266,6 +266,16 @@ public final class Farming {
                 b.setType(Material.AIR);
             }
         }
+        // irrigation and good growing weather: the same share more as a field worked in the background
+        double more = plugin.sim().trades().yieldBonus(col, plugin.sim().day(col));
+        if (more > 0) {
+            for (ItemStack it : drops) {
+                double extra = it.getAmount() * more;
+                int add = (int) extra;
+                if (java.util.concurrent.ThreadLocalRandom.current().nextDouble() < extra - add) add++;
+                it.setAmount(it.getAmount() + add);
+            }
+        }
         m.deposit(col, farm, drops, b.getLocation().add(0.5, 0.5, 0.5));
         m.wearTool(n, col);
         n.doing("Harvesting " + Text.nice(type.name()).toLowerCase() + " at " + farm.label());

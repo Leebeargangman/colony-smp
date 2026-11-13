@@ -6,6 +6,10 @@ trade, and go to war. Buildings are built by hand (or by your builders from a pl
 they pass inspection. Every good in the colony is real: harvested, made, carried and stored by its people.
 Nothing appears from nothing.
 
+There is always something going on. Citizens ask you for things, researchers work through a research tree,
+merchants' caravans and refugees turn up at the gates, festivals light the sky, and once the colony is worth
+robbing, barbarians and the walking dead come for it at nightfall.
+
 Colonies keep going when nobody is around. Citizens near players walk around as villagers. The rest of
 the colony runs as a background simulation at the same pace, so a colony on the far side of the map
 still farms, cooks, pays wages and grows.
@@ -23,11 +27,18 @@ New to it? Read [TUTORIAL.txt](TUTORIAL.txt) for a walk-through of a player's fi
 
 ## Install
 
-1. Put `ColonySMP-2.0.0.jar` in `plugins/`.
+1. Put `ColonySMP-2.2.0.jar` in `plugins/`.
 2. Start the server. `plugins/ColonySMP/config.yml` and `plugins/ColonySMP/colonies.db` are created.
 3. Optional: change the config, then run `/colony admin reload`.
 
 Build it yourself with `./gradlew build`. The jar lands in `build/libs/`.
+
+### Upgrading from 2.0 or 2.1
+
+Drop the new jar in. Colonies, citizens and buildings load as they are; the new settings (`raids`, `requests`,
+`events`, `milestones`, `christmas`, `citizens.chatter-seconds`) use their defaults until you add them to `config.yml` (delete the file to have a fresh
+one written with every comment). Established colonies are awarded the milestones they have already reached on
+their first day, and their masons start keeping a little gravel, sand and flint.
 
 ### Upgrading from 1.x
 
@@ -74,7 +85,7 @@ trade, military, diplomacy, members, roles, territory and settings.
 ### The Town Hall
 Right-click the core (or `/colony menu`) for the **Town Hall menu**: citizens, jobs, buildings,
 storage, economy, policies, military, diplomacy, construction, history, statistics, members,
-recruitment, and the Town Hall upgrade. The Town Hall level is the **settlement level** (1 to 5). No
+recruitment, the Town Hall upgrade, and research, requests, raids, today's happenings and milestones. The Town Hall level is the **settlement level** (1 to 5). No
 building can be a higher level than the Town Hall.
 
 ### Storage
@@ -148,6 +159,15 @@ high enough). Upgrades cost money and goods.
 | Watchtower | tower 5+ blocks tall | | Guard |
 | Prison | room | 4 floor, iron door, bed | Warden |
 | Engineering Workshop | room | 9 floor, door, smithing table, crafting table | Engineer |
+| University | room | 16 floor, door, lectern, 8 bookshelves | Researcher |
+| Library | room | 12 floor, door, 6 bookshelves, 2 stairs (seats) | |
+| Tavern | room | 16 floor, door, 4 stairs (seats), barrel, note block or jukebox | Bard |
+| Enchanter's Tower | room | 9 floor, door, enchanting table, 4 bookshelves | Enchanter |
+| Druid's Grove | fenced area with a gate | 9 floor, 2 mossy stones (mossy cobblestone or mossy stone bricks) | Druid |
+| Apiary | fenced area with a gate | 9 floor, 2 beehives or bee nests | Beekeeper |
+
+A room of bookshelves with a lectern could be a School or a University, so the marker asks which. A
+University's level decides which research it can do; a bigger Enchanter's Tower lays stronger enchantments.
 
 Higher levels need more floor and more of the same things. The book's hover text and
 `/colony building <id>` show exactly what the next level needs.
@@ -168,6 +188,21 @@ leave.
 shelter, flee, or fight (the emergency policy decides which). A citizen's brain checks its priorities in
 order: danger, starving, injured, exhausted, then the time of day.
 
+**They use their heads.** A citizen chased by a monster shouts for the watch and runs somewhere safer, not
+just away: behind the nearest guard or soldier, home, or to the Town Hall, whichever doesn't mean running past
+the danger. Guards answer the shout at a run, go first for whatever is attacking a citizen, then for a raid's
+leader, then for the nearly beaten, and fall back when badly hurt instead of dying where they stand. Archers
+with no blade keep their distance and go on shooting. Guards and doctors run to a downed citizen and get them
+on their feet. Off the alarm, guards eat, see the doctor and sleep when they're tired, at any hour, and wake
+if the alarm goes. A soldier left on a standing order still falls out to eat before starving. The unemployed
+carry goods instead of standing about, and a worker with two stacks waiting takes them to storage without
+waiting for the shelves to fill.
+
+**They talk.** Citizens speak to members who walk past, about whatever is most on their mind: what is stopping
+their work ("I'm stuck: waiting for 6 flour"), that they are starving, unpaid, homeless or ill, the raid
+expected tonight, the thing they asked you for, or just the time of day. One remark every 45 seconds or so
+(`citizens.chatter-seconds`, 0 for off); `/colony chatter off` silences them for you alone.
+
 **Families:** adults who get on become partners and, with a home, enough food and a good mood, have
 children. Children grow up in 5 days (by default), go to school if there is one, and get a job when they
 come of age. Elders retire from heavy work, and everyone dies of old age in the end.
@@ -180,14 +215,30 @@ Doctor 40.
 bad food, spread through shared homes and workplaces, and are cured by doctors with medicine. Quarantine
 slows an outbreak but keeps the ill off work.
 
-**Jobs** (30 of them): Farmer, Animal Keeper, Miller, Forester, Fisher, Butcher, Cook, Baker, Restaurant
+**Jobs** (35 of them): Farmer, Animal Keeper, Miller, Forester, Fisher, Butcher, Cook, Baker, Restaurant
 Worker, Food Distributor, Miner, Blacksmith, Carpenter, Mason, Craftsworker, Engineer, Builder, Merchant,
-Shopkeeper, Warehouse Worker, Administrator, Treasurer, Teacher, Doctor, Innkeeper, Warden, Guard,
-Soldier, Student, Unemployed. Assign them with `/colony assign <citizen> <job> [building]`, the citizen
+Shopkeeper, Warehouse Worker, Administrator, Treasurer, Teacher, Doctor, Innkeeper, Warden, Researcher,
+Bard, Druid, Enchanter, Beekeeper, Guard, Soldier, Student, Unemployed. Assign them with `/colony assign <citizen> <job> [building]`, the citizen
 menu, or let an **Administrator** fill empty places with the unemployed every day.
 
+**The rarer trades:**
+
+- A **Researcher** (education 50) works on the colony's research at a University.
+- A **Bard** plays at a Tavern through the working day and the evening. Everyone is happier for the music
+  (+4 mood), and the tavern is where the colony gathers after work.
+- A **Druid** (education 20) walks the fields from their grove and coaxes the crops on. Fields far from any
+  player grow a quarter faster with one druid, a little more with each one after.
+- An **Enchanter** (education 45) enchants the colony's gear: the weapons, tools and armour its people carry
+  first, then the spares in the armoury. Each enchantment takes about four hours' work and two lapis lazuli
+  a level. Tools get Efficiency, swords and good axes Sharpness, bows Power, armour Protection, the rest
+  Unbreaking. A level 2 tower lays level 2 enchantments; the Arcane Studies research adds one more.
+- A **Beekeeper** collects from the hives of an Apiary when they are full: three honeycomb, or a bottle of
+  honey if the apiary has glass bottles. The bees are yours to bring (a merchant sometimes sells them).
+- A **Library** needs no staff. Adults read there in the evening and slowly educate themselves (up to 70).
+
 **New citizens:** recruit settlers from the Town Hall (`/colony settler`), take in **travellers** who stop
-by (`/colony traveller recruit`), have children, or win prisoners over. Every newcomer needs a free bed
+by (`/colony traveller recruit`), shelter **refugees** when they come to the gates, have children, or win
+prisoners over. Every newcomer needs a free bed
 and a day's food.
 
 ## Production and food
@@ -196,7 +247,8 @@ Farms grow wheat, carrots, potatoes or beetroots (`/colony building crop <id> <c
 raise the animals inside them for eggs, wool, milk and meat. Fisheries fish, foresters fell and replant,
 miners dig a staircase down and branch out for ore. Workshops turn inputs into outputs by **recipe**:
 flour, bread, cooked meat, meals, planks, tools, weapons, armour, glass, bricks, arrows, books, medicine,
-siege charges. `/colony building recipe <id> <recipe> on|off` turns a recipe off.
+siege charges. Masons also crush cobblestone to gravel, gravel to sand, and sift gravel for flint, keeping a
+small stock of each. `/colony building recipe <id> <recipe> on|off` turns a recipe off.
 
 Workers carry what they need from storage and bring what they make back. Warehouse workers and food
 distributors do the hauling for everyone else once the colony has them. Crops only grow in the world
@@ -205,6 +257,112 @@ workshops in the background from the same inputs. Jobs that need the world (fore
 construction) wait until someone is near.
 
 `/colony production` shows what was made and what's waiting, and `/colony resources` shows the stores.
+
+## Research
+
+Build a **University**, give it a **Researcher**, and choose a project with `/colony research` (or the Town
+Hall). Each project costs money and goods to begin, takes researcher hours to finish, and then changes the
+colony for good. One project at a time; some need an earlier one, and the later ones need a bigger University.
+Research carries on while nobody is near.
+
+| Branch | Project | Needs | What it does |
+|---|---|---|---|
+| Farming | Crop Rotation | | Farmers, animal keepers, fishers, beekeepers and druids work 15% faster |
+| Farming | Irrigation | Crop Rotation, University 2 | Fields yield 20% more and grow 20% faster while nobody is near |
+| Industry | Improved Tools | | Miners, foresters and builders work 15% faster |
+| Industry | Guilds | Improved Tools, University 2 | Everyone who works a recipe works 15% faster |
+| Industry | Storehouses | Improved Tools, University 2 | Storage and granaries hold 25% more |
+| Industry | Bookkeeping | | Building upkeep costs 15% less |
+| Society | Herbal Medicine | | Wounds heal faster; illness is 40% rarer |
+| Society | Hardy Folk | Herbal Medicine, University 2 | Every citizen has 4 more health |
+| Society | Pedagogy | | Schools and libraries teach 30% faster |
+| Society | Arts and Festivals | Pedagogy, University 2 | +3 mood for everyone; festivals come more often |
+| Society | Hospitality | | Travellers and merchant caravans visit half again as often |
+| Knowledge | Scholarship | Pedagogy, University 2 | Researchers work 25% faster |
+| Knowledge | Arcane Studies | Scholarship, University 3 | Enchanters lay enchantments one level stronger |
+| Defence | Drill | | Soldiers train 50% faster |
+| Defence | Weaponcraft | Drill, University 2 | Guards and soldiers hit and shoot 20% harder |
+| Defence | Watch System | Drill, University 2 | Raids are a quarter smaller |
+
+`/colony research list` shows what each costs. Most want paper or books, which a Workshop makes from sugar
+cane and leather. `/colony research abandon` drops the project under way (what was paid is lost).
+
+## Requests
+
+Now and then a citizen asks the players for something the stores can't give them: a pie, a few torches, feed
+for the animals, strings for the bard. `/colony requests` lists who wants what and why. Bring it and
+right-click the citizen with it in your hand (or use the link in the list). They pay you from their own
+purse if they have money, cheer up, and work 15% faster for a couple of days; the colony's stability and
+reputation rise a little too. Food is eaten on the spot and anything else goes to the stores. A request
+nobody answers lapses after three days, and the citizen is a little disappointed.
+
+## Happenings
+
+Every few days, while a member is online, something happens. `/colony today` shows what is going on.
+
+- **Festival**: a contented, well-fed colony declares a feast day. Mood rises for two days, and there are
+  fireworks over the Town Hall at dusk.
+- **Good growing weather**: fields give a third more for three days.
+- **Merchant caravan**: a merchant with a llama walks to the Town Hall and trades for a few minutes.
+  Right-click them. They sell livestock (handed over on a lead, to be walked home), bees, and things the
+  colony can't make: sugar cane, saplings, books, lapis, bookshelves, an enchanting table, beehives, mossy
+  stone, saddles. Anyone can buy, with Vault money or emeralds.
+- **Refugees**: two or three people ask for shelter. Take them in (`/colony refugees accept`) if there are
+  beds and food, or turn them away at a cost in reputation.
+- **Lucky strike**: the miners break into a pocket of diamonds, emeralds, gold, lapis, amethyst or redstone.
+- **Stray animals** wander into a staffed animal pen.
+- **Travelling scholar**: a few hours of free research, or a lesson for the school's pupils.
+- **Storm damage**: during a storm, a building may be damaged. Engineers mend it.
+
+## Raids from the wilds
+
+Once a colony has six citizens and is five days old, it is worth robbing. On the morning of a raid, scouts
+report who is coming and roughly how many. The raid arrives at nightfall and lasts until the raiders are
+dead or the sun comes up. Nobody in the colony can sleep that night.
+
+- **Barbarians** make for the stores. Those who reach the storage chest or a warehouse carry goods off.
+  Kill every one of them and the goods come back. They can be bought off beforehand with
+  `/colony raid tribute` (it costs the treasury, and a little stability).
+- **The undead** come to kill, led by a **Necromancer** who keeps raising more. Kill the Necromancer and
+  the dead still standing fall with them.
+
+Raiders are ordinary hostile mobs, so guards, soldiers and (under the militia policy) armed civilians fight
+them, and other civilians flee. Bigger, richer, more successful colonies draw bigger raids; the Watch System
+research thins them. Beating a raid pays a bounty into the treasury and lifts stability, reputation and
+mood. Losing goods or citizens to one does the opposite. The chief and the necromancer drop loot of their
+own. Downed barbarians can be bound with rope and imprisoned like any other enemy.
+
+With their chief dead and three quarters of the band down, the last barbarians break and run, dropping
+what they carried.
+
+Raids only happen while a member is on or near the colony's land and the colony is loaded, never while a
+war is on, and never in a peaceful world. `/colony raid` shows what the scouts know.
+
+## Christmas
+
+From 1 December to 6 January (by the server's calendar; `christmas.mode` can force it on or off) it is the
+Christmas season.
+
+- **The tree.** Craft a **Christmas Tree Sapling** (spruce sapling + gold nugget + red dye), or take the
+  colony's free one with `/colony christmas`, and plant it on dirt or grass under open sky in your land. It
+  grows at once into a spruce with lanterns hung in its branches and a star on top. One tree per colony per
+  season; if the star is removed, the tree no longer counts.
+- **While it stands:** everyone gets +3 mood, snow drifts round it, half the colony spends the evening
+  there, the children play by it and throw snowballs (at you too; they hurt nobody), and the bard at the
+  tavern plays carols.
+- **Father Christmas** walks in with his reindeer every few in-game days while a member is online. He leaves
+  treats in the stores and presents for the children (a mood boost for three days), and every player who
+  right-clicks him gets a **Christmas Present**. Right-click the present to unwrap it: cookies, emeralds,
+  iron, gold, diamonds, a golden apple, a saddle, a rare enchanted book... or a lump of coal.
+- **Also in season:** citizens ask for festive things (cookies, a cake, wool for stockings, snowballs for the
+  children), feast days become Christmas feasts with red, green and white fireworks, and people wish you a
+  merry Christmas as you pass.
+
+## Milestones
+
+`/colony milestones` lists seventeen marks along a colony's way: ten citizens, a first raid beaten off, a first
+discovery, a bard in the tavern, 25 requests answered. Each is rewarded once with a grant to the treasury and
+a little reputation.
 
 ## Economy
 
@@ -315,6 +473,8 @@ is down, because the world doesn't move either. Long gaps are caught up to `max-
 | Copy Wand | stick + gold nugget side by side, or `/colony wand` |
 | Rope (×2) | 3 string in a column |
 | Command Baton | stick + gold ingot + red dye (shapeless), or `/colony baton` |
+| Christmas Tree Sapling | spruce sapling + gold nugget + red dye (shapeless), or `/colony christmas` in season |
+| Christmas Present | right-click Father Christmas when he visits |
 | War Banner | red banner + iron sword + gold ingot (shapeless), or `/colony banner` |
 
 ## Commands
@@ -331,6 +491,7 @@ is down, because the world doesn't move either. Long gaps are caught up to `max-
 | Military | `military` · `recruit <citizen> <class>` · `army` · `orders <squad> <order> [here]` · `squad create\|delete\|rename\|add\|remove\|formation\|patrol\|select ...` · `mobilize` |
 | Diplomacy | `diplomacy [list\|offers\|accept\|decline\|ally\|treaty\|cancel\|gift\|trade\|contract\|calltoarms]` · `declarewar <colony> raid\|siege` · `peace <colony>` · `surrender` |
 | Prisoners | `prison` · `prison release <name>` · `prison ransom <name> [price]` · `prison exchange <ours> <theirs>` |
+| Events | `today` · `chatter [on\|off]` · `christmas` · `requests [deliver <n>]` · `research [list \| start <project> \| abandon]` · `raid [tribute]` · `refugees accept\|refuse` · `milestones` |
 
 Citizen names can have spaces: `/colony assign Rhea Pike farmer` works.
 
@@ -339,7 +500,10 @@ Citizen names can have spaces: `/colony assign Rhea Pike farmer` works.
 | production <colony> | sim | perf | db | stuck <colony> | events <colony> | simulate <colony> <hours> |
 setstock <colony> <good> <qty> | treasury <colony> set|add <n> | addcitizen <colony> [job] | endwar <colony>
 | stability <colony> <n> | shield <colony> <hours> | traveller <colony> | repair <colony> | bodies |
-demo <name> [x z]`. `inspect` lists every citizen with their position, activity and needs. `simulate`
+demo <name> [x z] | raid <colony> [barbarians|undead] [size] | event <colony> <kind> |
+research <colony> <project|all> | request <colony>`. `raid` starts a raid at once, `event` makes a happening happen (festival, harvest, caravan,
+refugees, lucky_find, strays, scholar, storm, santa), `give` also hands out `christmas_sapling` and `present`, `research` grants a project, and `request` has a citizen ask
+for something. `inspect` lists every citizen with their position, activity and needs. `simulate`
 fast-forwards a colony's background simulation, and `demo` founds a stocked test colony from the console.
 
 **Permissions:** `colonysmp.play` (default: everyone), `colonysmp.admin` (default: op).
@@ -349,17 +513,19 @@ fast-forwards a colony's background simulation, and `demo` founds a stocked test
 Every number lives in `config.yml`, with a comment on each: claims and land, protection and shields,
 citizens and bodies (speeds, work intervals, body limits), life stages and births, needs, education, the
 economy and prices, storage, the background simulation budget, health, order, the military, prisoners,
-travellers, war, diplomacy, plans, mines and the starter quest reward. `/colony admin reload` applies
+travellers, war, diplomacy, plans, mines, the starter quest reward, raids, requests, happenings,
+milestones and Christmas. Raids, requests, happenings and milestones each have an `enabled` switch. `/colony admin reload` applies
 changes.
 
 ## Persistence
 
 Everything is saved to `plugins/ColonySMP/colonies.db` (SQLite): colonies, members and roles, claims,
 storage and reservations, the armoury, citizens, buildings, build orders, plans, squads, relations,
-offers, contracts, shipments, wars, the market, and every transaction and event. Changes are saved within
+offers, contracts, shipments, wars, the market, research, open requests, milestones, and every transaction
+and event. Changes are saved within
 30 seconds, every few minutes, and on shutdown, as one transaction on a background thread. If a save
 fails it is retried. The database is backed up at every start (`general.backups-to-keep`), and its schema
 is versioned so later releases can migrate it.
 
-Citizen bodies aren't saved with the world. The plugin spawns them near players and removes them when
+Citizen bodies, raiders and visiting merchants aren't saved with the world. The plugin spawns them near players and removes them when
 they're no longer needed, so they never duplicate.

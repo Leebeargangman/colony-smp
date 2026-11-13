@@ -210,6 +210,10 @@ public final class Recipes {
         r("MASONRY", "brick", "Firing bricks").in("clay_ball", 16).in(Recipe.FUEL, 16).out("brick", 16).hours(1).skill(Skill.CONSTRUCTION).add();
         r("MASONRY", "bricks", "Laying brick blocks").in("brick", 8).out("bricks", 2).hours(0.3).skill(Skill.CONSTRUCTION).add();
         r("MASONRY", "cobblestone_wall", "Cutting wall blocks").in("cobblestone", 6).out("cobblestone_wall", 6).hours(0.4).skill(Skill.CONSTRUCTION).add();
+        // crushing and sifting: stone down to gravel, sand and flint (kept to a small stock unless a target says otherwise)
+        r("MASONRY", "gravel", "Crushing stone to gravel").in("cobblestone", 8).out("gravel", 8).hours(0.5).skill(Skill.CONSTRUCTION).add();
+        r("MASONRY", "sand", "Crushing gravel to sand").in("gravel", 8).out("sand", 8).hours(0.5).skill(Skill.CONSTRUCTION).add();
+        r("MASONRY", "flint", "Sifting gravel for flint").in("gravel", 8).out("flint", 4).hours(0.4).skill(Skill.CONSTRUCTION).add();
 
         // Workshop: ammunition, bows, leather and paper
         r("WORKSHOP", "arrows", "Fletching arrows").in("flint", 2).in("stick", 2).in("feather", 2).out("arrow", 8).hours(0.5).add();

@@ -8,6 +8,7 @@ import com.colonysmp.core.Goods;
 import com.colonysmp.core.Ledger;
 import com.colonysmp.core.Mood;
 import com.colonysmp.core.Needs;
+import com.colonysmp.core.Research;
 import com.colonysmp.core.Skill;
 import com.colonysmp.core.TxnType;
 import com.colonysmp.model.Bond;
@@ -40,7 +41,7 @@ public final class CitizenSim {
         public long day;
         public double stability, taxRate, events;
         public int services, danger;
-        public boolean school, protest, wages;
+        public boolean school, protest, wages, entertained;
         public Policies.Hours hours;
         public Building restaurant;
         public double healBonus;
@@ -90,6 +91,10 @@ public final class CitizenSim {
             x.healBonus = 0.4;
         }
         if (staffed(c, BuildingType.INN) != null) x.services++;
+        if (!c.valid(BuildingType.LIBRARY).isEmpty()) x.services++;
+        x.entertained = staffed(c, BuildingType.TAVERN) != null;
+        x.healBonus += c.bonus(Research.Effect.HEALING);
+        x.events += c.bonus(Research.Effect.MOOD) + plugin.christmas().cheer(c);
         x.school = staffed(c, BuildingType.SCHOOL) != null;
         for (Citizen ct : c.citizens.values()) if (ct.home != 0) x.occupants.merge(ct.home, 1, Integer::sum);
         return x;
@@ -201,11 +206,24 @@ public final class CitizenSim {
         if (c.ill()) f *= c.illness.work;
         if (ctx != null && ctx.protest) f *= 0.7;
         if (stage(c) == LifeStage.ELDER) f *= 0.8;
+        f *= 1 + researched(col, c.job);
+        if (c.motivatedUntil >= 0 && c.motivatedUntil >= (ctx != null ? ctx.day : plugin.sim().day(col))) f *= 1.15;
         return Math.max(0.02, f);
     }
 
     public double efficiency(Colony col, Citizen c) {
         return efficiency(col, c, null) * (col.protest ? 0.7 : 1);
+    }
+
+    /** How much faster the colony's research makes a job. */
+    public static double researched(Colony col, Job j) {
+        if (col.research.isEmpty()) return 0;
+        return switch (j) {
+            case FARMER, ANIMAL_KEEPER, FISHER, BEEKEEPER, DRUID -> col.bonus(Research.Effect.WORK_FOOD);
+            case MINER, FORESTER, BUILDER -> col.bonus(Research.Effect.WORK_INDUSTRY);
+            case RESEARCHER -> col.bonus(Research.Effect.RESEARCH);
+            default -> j.background == Job.Background.RECIPE ? col.bonus(Research.Effect.WORK_CRAFT) : 0;
+        };
     }
 
     // ───────────── meals ─────────────
@@ -333,6 +351,7 @@ public final class CitizenSim {
         in.services = ctx.services + (stage == LifeStage.CHILD && ctx.school ? 1 : 0);
         in.events = ctx.events + (ctx.wages ? col.policies.wages.mood : -2) + (c.job == Job.SOLDIER && col.policies.military == Policies.Military.CONSCRIPTION ? -4 : 0);
         in.confined = c.status.confined();
+        in.entertained = ctx.entertained;
         return Mood.target(in);
     }
 

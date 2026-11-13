@@ -3,7 +3,7 @@ version: '${version}'
 main: com.colonysmp.ColonySMP
 api-version: '1.21'
 author: ModdedRealms
-description: Colonies of simulated citizens for SMP servers - territory, buildings, jobs and production chains, an economy, diplomacy and warfare, all simulated even while nobody is there.
+description: Colonies of simulated citizens for SMP servers - territory, buildings, jobs and production chains, research, an economy, raids, diplomacy and warfare, all simulated even while nobody is there.
 softdepend: [Vault]
 
 commands:

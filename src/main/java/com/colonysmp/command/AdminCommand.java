@@ -29,7 +29,7 @@ final class AdminCommand {
 
     private static final List<String> SUBS = List.of("reload", "save", "bypass", "give", "delete", "tp", "inspect", "citizen", "building", "reservations",
             "production", "sim", "perf", "db", "stuck", "events", "simulate", "setstock", "treasury", "addcitizen", "endwar", "stability", "shield", "traveller",
-            "repair", "bodies", "demo");
+            "repair", "bodies", "demo", "raid", "event", "research", "request");
 
     private final ColonySMP plugin;
     private final Info info;
@@ -71,7 +71,7 @@ final class AdminCommand {
                     if (own != null) it = plugin.items().core(own.id, own.name);
                 }
                 if (to == null || it == null) {
-                    Text.send(s, "Usage: /colony admin give <wand|book|marker|rope|baton|war_banner|core> [player]");
+                    Text.send(s, "Usage: /colony admin give <wand|book|marker|rope|baton|war_banner|core|christmas_sapling|present> [player]");
                     return;
                 }
                 ColonyCommand.give(to, it);
@@ -284,6 +284,63 @@ final class AdminCommand {
                         + plugin.npcs().wantedBodies(x) + ", " + x.citizens.size() + " citizens" + (x.active ? "" : " (not loaded)"));
             }
             case "demo" -> demo(s, a);
+            case "raid" -> {
+                if (c == null) {
+                    Text.send(s, "Usage: /colony admin raid <colony> [barbarians|undead] [size]");
+                    return;
+                }
+                var kind = a.length > 2 ? com.colonysmp.raid.RaidManager.Kind.parse(a[2]) : com.colonysmp.raid.RaidManager.Kind.BARBARIANS;
+                if (kind == null) kind = com.colonysmp.raid.RaidManager.Kind.BARBARIANS;
+                int size = 0;
+                if (a.length > 3) {
+                    try {
+                        size = Math.max(1, Math.min(60, Integer.parseInt(a[3])));
+                    } catch (NumberFormatException ignored) {
+                        // the usual size
+                    }
+                }
+                if (size == 0) size = com.colonysmp.core.RaidPlan.size(c.population(), c.level(), c.raidsRepelled, c.bonus(com.colonysmp.core.Research.Effect.RAID_DEFENCE),
+                        plugin.settings().raidMinSize, plugin.settings().raidMaxSize);
+                String err = plugin.raids().start(c, kind, size);
+                Text.send(s, err != null ? "<red>" + err : "A " + kind.raid + " of " + size + " is attacking " + Text.esc(c.name) + ".");
+            }
+            case "event" -> {
+                var kind = a.length > 2 ? com.colonysmp.colony.Happenings.Kind.parse(a[2]) : null;
+                if (c == null || kind == null) {
+                    List<String> kinds = new ArrayList<>();
+                    for (var k : com.colonysmp.colony.Happenings.Kind.values()) kinds.add(k.name().toLowerCase(Locale.ROOT));
+                    Text.send(s, "Usage: /colony admin event <colony> <" + String.join("|", kinds) + ">");
+                    return;
+                }
+                boolean ok = plugin.happenings().fire(c, kind, plugin.sim().day(c));
+                Text.send(s, ok ? kind.display + " in " + Text.esc(c.name) + "." : "<red>That can't happen there right now (" + kind.display.toLowerCase() + " needs something the colony lacks, or it isn't loaded).");
+            }
+            case "research" -> {
+                if (c == null || a.length < 3) {
+                    Text.send(s, "Usage: /colony admin research <colony> <project|all>");
+                    return;
+                }
+                if (a[2].equalsIgnoreCase("all")) {
+                    for (var r : com.colonysmp.core.Research.values()) plugin.sim().academy().grant(c, r);
+                    Text.send(s, Text.esc(c.name) + " now knows everything.");
+                    return;
+                }
+                var r = com.colonysmp.core.Research.parse(String.join("_", Arrays.copyOfRange(a, 2, a.length)));
+                if (r == null) {
+                    Text.send(s, "<red>No such research.");
+                    return;
+                }
+                plugin.sim().academy().grant(c, r);
+                Text.send(s, Text.esc(c.name) + " now knows " + r.display + ".");
+            }
+            case "request" -> {
+                if (c == null) {
+                    Text.send(s, "Usage: /colony admin request <colony>");
+                    return;
+                }
+                var r = plugin.requests().create(c, plugin.sim().day(c));
+                Text.send(s, r == null ? "<red>Nobody in " + Text.esc(c.name) + " wants anything the stores lack." : "Request #" + r.id() + ": " + r.amount() + " " + Goods.get(r.good()).name() + ".");
+            }
             default -> Text.send(s, "Admin: " + String.join(", ", SUBS));
         }
     }
@@ -366,10 +423,16 @@ final class AdminCommand {
         String last = a.length == 0 ? "" : a[a.length - 1].toLowerCase(Locale.ROOT);
         List<String> options = new ArrayList<>();
         if (a.length <= 1) options.addAll(SUBS);
-        else if (a.length == 2 && a[0].equalsIgnoreCase("give")) options.addAll(List.of(Items.WAND, Items.BOOK, Items.MARKER, Items.ROPE, Items.BATON, Items.WAR_BANNER, "core"));
+        else if (a.length == 2 && a[0].equalsIgnoreCase("give")) options.addAll(List.of(Items.WAND, Items.BOOK, Items.MARKER, Items.ROPE, Items.BATON, Items.WAR_BANNER, Items.CHRISTMAS_SAPLING, Items.PRESENT, "core"));
         else if (a.length == 2) for (Colony c : plugin.colonies().list()) options.add(c.id);
         else if (a.length == 3 && a[0].equalsIgnoreCase("treasury")) options.addAll(List.of("set", "add"));
         else if (a.length == 3 && a[0].equalsIgnoreCase("addcitizen")) for (Job j : Job.values()) options.add(j.name().toLowerCase(Locale.ROOT));
+        else if (a.length == 3 && a[0].equalsIgnoreCase("raid")) options.addAll(List.of("barbarians", "undead"));
+        else if (a.length == 3 && a[0].equalsIgnoreCase("event")) for (var k : com.colonysmp.colony.Happenings.Kind.values()) options.add(k.name().toLowerCase(Locale.ROOT));
+        else if (a.length == 3 && a[0].equalsIgnoreCase("research")) {
+            options.add("all");
+            for (var r : com.colonysmp.core.Research.values()) options.add(r.name().toLowerCase(Locale.ROOT));
+        }
         for (String o : options) if (o.toLowerCase(Locale.ROOT).startsWith(last)) out.add(o);
         return out;
     }

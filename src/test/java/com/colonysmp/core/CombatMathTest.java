@@ -155,4 +155,21 @@ class CombatMathTest {
         assertEquals(20, m, 1e-9);
         assertEquals(35, Morale.apply(50, Morale.Event.COMMANDER_DIED, true), 1e-9, "fearless troops take it half as hard");
     }
+
+    @Test
+    void defendersGoForWhoeverIsAtACitizensThroat() {
+        // a raider chasing a farmer 10 blocks off matters more than an idle one 7 blocks off
+        assertTrue(CombatMath.urgency(100, true, false, 1) < CombatMath.urgency(49, false, false, 1));
+        // but not more than one right on top of the defender
+        assertTrue(CombatMath.urgency(4, false, false, 1) < CombatMath.urgency(100, true, false, 1));
+    }
+
+    @Test
+    void leadersAndTheNearlyBeatenCountAsNearer() {
+        double plain = CombatMath.urgency(64, false, false, 1);
+        assertTrue(CombatMath.urgency(64, false, true, 1) < plain, "the chief first");
+        assertTrue(CombatMath.urgency(64, false, false, 0.2) < plain, "finish the wounded");
+        assertEquals(plain, CombatMath.urgency(64, false, false, 5), 1e-9, "health is capped");
+        assertEquals(0, CombatMath.urgency(-3, false, false, 1), 1e-9);
+    }
 }

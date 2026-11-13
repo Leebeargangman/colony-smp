@@ -93,7 +93,7 @@ public final class Health {
         // new cases
         for (Citizen ct : people) {
             if (ct.ill() || ct.downed()) continue;
-            double chance = s.illnessChance * ct.trait.illness();
+            double chance = s.illnessChance * ct.trait.illness() * Math.max(0.1, 1 - c.bonus(com.colonysmp.core.Research.Effect.HEALING));
             if (ct.needs.satiety < 20) chance *= 3;
             if (ct.home == 0) chance *= 2;
             if (ct.needs.mealQuality < 1) chance *= 1.3;
@@ -168,6 +168,8 @@ public final class Health {
                 plugin.sim().population().die(c, ct, "died of " + d.display.toLowerCase());
             }
         }
+        // (for those walking about in body, the day's illness and treatment happened to the record: show it on them)
+        for (Citizen ct : people) if (c.citizens.containsKey(ct.id) && (ct.ill() || ct.injured || waiting.contains(ct))) plugin.npcs().pushHealth(ct);
         int now = sick(c);
         if (fell + caught > 0) {
             c.log(ColonyEvent.Type.HEALTH, day, (fell + caught) + " fell ill (" + caught + " caught it from others); " + now + " ill in total"

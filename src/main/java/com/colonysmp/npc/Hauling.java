@@ -43,7 +43,11 @@ public final class Hauling {
     /** A worker without couriers carries for their own workplace when it needs it. */
     boolean selfHaul(Npc n, Colony col, Building b, long now) {
         if (now < n.noHaulUntil) return false;
-        boolean full = b.stock.freeSlots() <= 1 && !plugin.sim().production().surplus(col, b).isEmpty();
+        var surplus = plugin.sim().production().surplus(col, b);
+        long pile = 0;
+        for (long v : surplus.values()) pile += v;
+        // the shelves are nearly full, or there's a good load waiting (two stacks: worth the walk)
+        boolean full = !surplus.isEmpty() && (b.stock.freeSlots() <= 1 || pile >= 128);
         boolean starved = b.waiting != null && !plugin.sim().production().wants(col, b).isEmpty();
         if (!full && !starved) return false;
         if (!think(n, col, b, now)) {

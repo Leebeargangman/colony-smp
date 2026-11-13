@@ -44,6 +44,7 @@ public final class CitizenBrain {
     public final Doctoring doctoring;
     public final StationWork stations;
     public final Hauling hauling;
+    public final Specialists specialists;
 
     CitizenBrain(ColonySMP plugin, NpcManager m) {
         this.plugin = plugin;
@@ -60,6 +61,7 @@ public final class CitizenBrain {
         this.doctoring = new Doctoring(plugin, m);
         this.stations = new StationWork(plugin, m);
         this.hauling = new Hauling(plugin, m);
+        this.specialists = new Specialists(plugin, m);
     }
 
     /** Cached plans that depend on a colony's buildings are dropped. */
@@ -97,8 +99,9 @@ public final class CitizenBrain {
         World w = n.body.getWorld();
         NpcManager.Phase ph = m.phase(col, w);
         var p = plugin.settings().needs;
-        if (n.sleeping && ph != NpcManager.Phase.NIGHT) wake(n);
-        if (n.resting && (ph == NpcManager.Phase.WORK && !c.needs.exhausted(p) || c.needs.energy > p.tired() + 20)) n.resting = false;
+        // (the watch sleeps when it can, whatever the hour)
+        if (n.sleeping && ph != NpcManager.Phase.NIGHT && c.job != Job.GUARD) wake(n);
+        if (n.resting && c.job != Job.GUARD && (ph == NpcManager.Phase.WORK && !c.needs.exhausted(p) || c.needs.energy > p.tired() + 20)) n.resting = false;
         if (n.patient && !c.injured && c.needs.healthFraction() > 0.8 && !c.ill()) n.patient = false;
         // the army and the watch have their own orders
         if (c.job == Job.SOLDIER) {
@@ -107,8 +110,7 @@ public final class CitizenBrain {
             if (n.sleeping) return;
         }
         if (c.job == Job.GUARD) {
-            if (n.sleeping) wake(n);
-            guarding.think(n, col, now);
+            guard(n, col, now);
             return;
         }
         // 1. danger
@@ -141,6 +143,39 @@ public final class CitizenBrain {
             case LEISURE -> leisure(n, col, now);
             case NIGHT -> sleep(n, col, now);
         }
+    }
+
+    /**
+     * The watch. An enemy in sight comes first, then someone down who can be helped up; with no alarm sounding
+     * a guard also looks after themselves (a meal, the clinic, a bed when tired, at any hour); otherwise they
+     * answer the alarm or walk their rounds.
+     */
+    private void guard(Npc n, Colony col, long now) {
+        Citizen c = n.c;
+        var p = plugin.settings().needs;
+        boolean alert = plugin.military().alert(col);
+        if (n.sleeping && (alert || c.needs.energy > 85 || c.needs.satiety < 15)) wake(n);
+        if (n.sleeping) {
+            n.doing("Sleeping off duty");
+            return;
+        }
+        if (guarding.fight(n, col, now)) return;
+        if (!c.injured && guarding.rescue(n, col, now)) return;
+        if (!alert) {
+            if (c.needs.satiety < 15 && life.meal(n, col, now, true)) return;
+            if (n.patient || (c.injured || c.needs.healthFraction() < 0.5) && clinic(n, col, now)) return;
+            if (c.needs.hungry(p) && life.meal(n, col, now, false)) return;
+            // tired: to bed, and (with no bed to wake rested in) stay down until properly rested
+            if (c.needs.tired(p) || n.resting && c.needs.energy < 70) {
+                sleep(n, col, now);
+                return;
+            }
+        } else if (c.needs.starving() && life.meal(n, col, now, true)) {
+            return;
+        }
+        n.patient = false;
+        n.resting = false;
+        guarding.duty(n, col, now);
     }
 
     // ───────────── work ─────────────
@@ -182,7 +217,15 @@ public final class CitizenBrain {
             case WARDEN -> {
                 if (!plugin.prison().warden(n, col, b, now)) stations.attend(n, col, b, now, "Keeping " + b.label());
             }
-            case UNEMPLOYED -> idle(n, col, now, "Unemployed: waiting for a job");
+            case RESEARCHER -> specialists.research(n, col, b, now);
+            case BARD -> specialists.perform(n, col, b, now);
+            case DRUID -> specialists.tend(n, col, b, now);
+            case ENCHANTER -> specialists.enchant(n, col, b, now);
+            case BEEKEEPER -> specialists.bees(n, col, b, now);
+            case UNEMPLOYED -> {
+                // idle hands carry: the jobless help move goods rather than stand about
+                if (!hauling.think(n, col, null, now)) idle(n, col, now, "Unemployed: waiting for a job");
+            }
             default -> {
                 if (c.job.background == Job.Background.RECIPE) stations.craft(n, col, b, now);
                 else stations.attend(n, col, b, now, null);
@@ -234,13 +277,51 @@ public final class CitizenBrain {
             return false;
         }
         if (n.sleeping) return false; // safe in bed
-        Vector away = n.loc().toVector().subtract(threat.getLocation().toVector()).setY(0);
-        if (away.lengthSquared() < 0.01) away = new Vector(1, 0, 0);
-        away.normalize().multiply(8);
-        Location to = Mover.safeSpot(n.loc().add(away));
+        // raise the alarm where it happened: the watch comes running
+        plugin.military().callWatch(col, threat.getLocation());
+        String[] where = new String[1];
+        Location to = refuge(n, col, threat, where);
+        if (to == null) {
+            Vector away = n.loc().toVector().subtract(threat.getLocation().toVector()).setY(0);
+            if (away.lengthSquared() < 0.01) away = new Vector(1, 0, 0);
+            away.normalize().multiply(8);
+            to = Mover.safeSpot(n.loc().add(away));
+        }
         if (to != null) n.mover.moveTo(to, plugin.settings().runSpeed, 1.5);
-        n.doing("Fleeing from " + Guarding.label(threat));
+        n.doing("Fleeing from " + Guarding.label(threat) + (where[0] == null ? "" : " " + where[0]));
         return true;
+    }
+
+    /**
+     * Somewhere safer than here to run to: behind an armed defender, home, or the Town Hall, whichever is
+     * nearest and doesn't mean running past the threat. Null when there's nowhere better than "away".
+     */
+    private Location refuge(Npc n, Colony col, LivingEntity threat, String[] where) {
+        Location me = n.loc(), danger = threat.getLocation();
+        World w = n.body.getWorld();
+        double mine = me.distanceSquared(danger);
+        Location best = null;
+        double bd = 48 * 48;
+        for (Npc o : m.of(col)) {
+            if (o == n || !o.c.job.military() || !o.c.status.free() || o.c.downed() || o.sleeping || o.body.getWorld() != w) continue;
+            Location l = o.loc();
+            double d = l.distanceSquared(me);
+            // a defender who is nearer to me than to the danger, and not already at my elbow
+            if (d < 9 || d >= bd || d >= l.distanceSquared(danger)) continue;
+            bd = d;
+            best = l;
+            where[0] = "to " + o.c.name;
+        }
+        Location home = n.c.bed != null ? n.c.bed.center(w) : null, hall = col.coreLocation();
+        for (Location l : new Location[]{home, hall}) {
+            if (l == null || l.getWorld() != w) continue;
+            double d = l.distanceSquared(me);
+            if (d < 9 || d >= bd || l.distanceSquared(danger) <= mine) continue;
+            bd = d;
+            best = l;
+            where[0] = l == home ? "for home" : "to the Town Hall";
+        }
+        return best == null ? null : Mover.safeSpot(best);
     }
 
     // ───────────── needs ─────────────
@@ -300,12 +381,33 @@ public final class CitizenBrain {
         var p = plugin.settings().needs;
         if ((c.needs.hungry(p) || c.lastMealDay != m.context(col).day) && life.meal(n, col, now, false)) return;
         if (m.returnCarried(n, col)) return;
-        // somewhere with people: an inn, the market, the restaurant, the Town Hall
+        // the bard's evening is the tavern's busiest hour
+        if (c.job == Job.BARD && plugin.sim().citizens().canWork(col, c)) {
+            Building tavern = col.building(c.workplace);
+            if (tavern != null && tavern.valid) {
+                specialists.perform(n, col, tavern, now);
+                return;
+            }
+        }
+        // somewhere with people: the tavern, an inn, the restaurant, the market, the Town Hall
         World w = n.body.getWorld();
         Location spot = null;
         String label = "Spending the evening at the Town Hall";
+        // at Christmas, half the colony is to be found round the tree
+        if (plugin.christmas().decorated(col) && Math.floorMod(c.id.hashCode() + m.context(col).day, 2) == 0) {
+            Location tree = plugin.christmas().treeLocation(col);
+            if (tree != null && tree.getWorld() == w) {
+                wander(n, tree, 5, now, "Admiring the Christmas tree");
+                return;
+            }
+        }
+        Building library = c.needs.social >= 70 || c.trait.social() <= 0 ? plugin.sim().trades().library(col) : null;
+        if (library != null && c.education < 70 && Math.floorMod(c.id.hashCode() + m.context(col).day, 3) != 0 && m.place(w, library) != null) {
+            wander(n, m.place(w, library), 3, now, "Reading at " + library.label());
+            return;
+        }
         if (c.needs.social < 70 && c.trait.social() > 0) {
-            for (BuildingType t : new BuildingType[]{BuildingType.INN, BuildingType.RESTAURANT, BuildingType.MARKET}) {
+            for (BuildingType t : new BuildingType[]{BuildingType.TAVERN, BuildingType.INN, BuildingType.RESTAURANT, BuildingType.MARKET}) {
                 Building b = plugin.sim().citizens().staffed(col, t);
                 if (b == null) continue;
                 spot = m.place(w, b);
@@ -388,6 +490,14 @@ public final class CitizenBrain {
         if (ph == NpcManager.Phase.WORK && schooling.study(n, col, now)) return;
         World w = n.body.getWorld();
         Location home = n.c.bed != null ? n.c.bed.center(w) : col.coreLocation();
+        if (plugin.christmas().decorated(col)) {
+            Location tree = plugin.christmas().treeLocation(col);
+            if (tree != null && tree.getWorld() == w) {
+                wander(n, tree, 7, now, "Playing in the snow by the Christmas tree");
+                plugin.christmas().snowball(n, col);
+                return;
+            }
+        }
         if (home == null) return;
         wander(n, home, 7, now, "Playing");
         if (ThreadLocalRandom.current().nextInt(40) == 0) w.spawnParticle(Particle.HEART, n.loc().add(0, 1.2, 0), 1, 0.2, 0.2, 0.2, 0);

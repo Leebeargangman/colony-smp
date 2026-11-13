@@ -67,6 +67,8 @@ public final class SoldierBrain {
         }
         // worn out with no alarm raised: they fall out and rest (the ordinary routine naps or sleeps)
         if (!alert && n.enemy == null && order != Squad.Order.RETREAT && (n.resting || c.needs.exhausted(plugin.settings().needs))) return false;
+        // nor does a standing order (hold, patrol, follow) starve anyone: the famished fall out to eat
+        if (!alert && n.enemy == null && c.needs.satiety < 15 && npcs().hasFood(col)) return false;
         if (c.horse && n.mount == null && k != null && k.mounted()) mm.mount(n, col);
         if (n.enemy == null && mm.wantsGear(col, c, alert) && !n.gearChecked) {
             if (!npcs().brain().guarding.gear(n, col, alert)) return true;

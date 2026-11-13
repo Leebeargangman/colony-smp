@@ -82,7 +82,7 @@ public final class EconomyManager {
     }
 
     /** Takes money from a player (Vault, or emeralds from their inventory). */
-    private boolean charge(Player p, long amount) {
+    public boolean charge(Player p, long amount) {
         if (amount <= 0) return true;
         if (vault != null) {
             try {
@@ -109,7 +109,7 @@ public final class EconomyManager {
     }
 
     /** Pays money to a player (Vault, or emeralds). Returns what was actually paid. */
-    private long pay(Player p, long amount) {
+    public long pay(Player p, long amount) {
         if (amount <= 0) return 0;
         if (vault != null) {
             try {

@@ -89,6 +89,9 @@ public final class Citizen {
     public long sentenceUntil = -1;
     public int crimes;
 
+    /** The last day they work with a will because someone brought what they asked for (-1 = not). */
+    public long motivatedUntil = -1;
+
     // record keeping
     public int miserableDays;
     public long joinedDay;
@@ -232,6 +235,7 @@ public final class Citizen {
         s.set("unfed-days", unfedDays);
         s.set("sentence-until", sentenceUntil);
         s.set("crimes", crimes);
+        s.set("motivated-until", motivatedUntil);
         s.set("miserable-days", miserableDays);
         s.set("joined", joinedDay);
         s.set("history", new ArrayList<>(history));
@@ -306,6 +310,7 @@ public final class Citizen {
         c.unfedDays = s.getInt("unfed-days");
         c.sentenceUntil = s.getLong("sentence-until", -1);
         c.crimes = s.getInt("crimes");
+        c.motivatedUntil = s.getLong("motivated-until", -1);
         c.miserableDays = s.getInt("miserable-days");
         c.joinedDay = s.getLong("joined");
         for (String h : s.getStringList("history")) c.history.addLast(h);

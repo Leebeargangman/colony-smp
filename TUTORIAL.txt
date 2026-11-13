@@ -24,9 +24,10 @@ CONTENTS
   Part 11  Guards, soldiers and squads
   Part 12  Other colonies: diplomacy and war
   Part 13  Prisoners
-  Part 14  When nobody is around
-  Part 15  Troubleshooting
-  Part 16  Cheat sheet
+  Part 14  Research, requests, raids and other happenings
+  Part 15  When nobody is around
+  Part 16  Troubleshooting
+  Part 17  Cheat sheet
 
 
 =====================================================================
@@ -201,12 +202,15 @@ WHAT THE JOBS DO
   Crafts:  Blacksmith, Craftsworker, Engineer
   Town:    Builder, Warehouse Worker, Merchant, Shopkeeper,
            Administrator, Treasurer, Innkeeper
-  People:  Teacher, Doctor, Warden
+  People:  Teacher, Doctor, Warden, Bard
+  Learning and craft:  Researcher, Enchanter
+  Nature:  Druid, Beekeeper
   Defence: Guard, Soldier
   Students and children go to school; the Unemployed wait for work.
 
   Citizens get better at the work they do. Some jobs need schooling:
-  Administrator 35, Teacher 30, Doctor 40.
+  Administrator 35, Teacher 30, Doctor 40, Enchanter 45,
+  Researcher 50.
 
 A CITIZEN'S DAY
   They work during working hours (a policy), have free time in the
@@ -435,13 +439,98 @@ colony can be ransomed or exchanged instead:
 
 
 =====================================================================
-PART 14 - WHEN NOBODY IS AROUND
+PART 14 - RESEARCH, REQUESTS, RAIDS AND OTHER HAPPENINGS
+=====================================================================
+
+Once the colony feeds itself, there is plenty to do. /colony today
+shows what is going on right now.
+
+REQUESTS
+  Citizens ask you for things from time to time: "Could someone
+  bring me 8 cookies?" /colony requests lists them. Fetch what they
+  ask for, hold it, and right-click the citizen. They pay you from
+  their own purse, cheer up, and work harder for a couple of days.
+  Nothing bad happens if you don't, but they notice.
+
+RESEARCH
+  Build a University: a room with a lectern and 8 bookshelves. Put a
+  Building Marker in it and choose University. Assign a Researcher
+  (education 50 or more), then pick a project with /colony research.
+  Projects cost money and goods (mostly paper and books) and take the
+  researchers a few days. Each one changes the colony for good:
+  faster farmers, bigger stores, tougher citizens, smaller raids.
+  Bigger universities unlock the later projects.
+
+THE RARER TRADES
+  Tavern (seats, a barrel, a note block or jukebox) and a Bard:
+    music in the evening, and everyone is happier.
+  Library (6 bookshelves and 2 seats): adults read and learn.
+  Druid's Grove (a fenced garden with a gate and 2 mossy stones)
+    and a Druid: crops grow faster.
+  Enchanter's Tower (an enchanting table and 4 bookshelves) and an
+    Enchanter: your people's tools and weapons get enchanted. Keep
+    lapis lazuli in storage.
+  Apiary (a fenced yard with a gate and 2 beehives) and a
+    Beekeeper: honeycomb, and honey if there are glass bottles in
+    storage. You bring the bees.
+
+VISITORS AND WINDFALLS
+  Every few days something happens: a festival with fireworks, a
+  spell of good growing weather, a lucky strike in the mine, stray
+  animals, a travelling scholar. A merchant's caravan sometimes
+  stops at the Town Hall for a few minutes: right-click the merchant
+  to buy animals (they come on a lead: walk them home), bees, and
+  things you can't make. Refugees may ask for shelter:
+  /colony refugees accept (they need beds and food) or refuse.
+
+RAIDS
+  When the colony has 6 citizens and is 5 days old, raiders start to
+  take an interest. You are warned in the morning: "Scouts report a
+  band of barbarians... They will attack at nightfall."
+
+  Barbarians want your stores. Any who reach the storage chest carry
+  goods away. Kill them all and you get everything back, plus a
+  bounty. You can pay them off before they come:
+  /colony raid tribute.
+
+  The undead want your people. A Necromancer leads them and keeps
+  raising more. Kill the Necromancer and the rest fall down.
+
+  Get ready during the day: post guards on watchtowers, recruit and
+  arm soldiers, /colony mobilize when it starts, and be there. The
+  raid ends at sunrise whatever happens. You can't sleep through
+  it. Raids never come while you're offline.
+
+MILESTONES
+  /colony milestones lists goals with rewards: 10 citizens, a first
+  raid beaten, a first discovery, and more.
+
+LISTEN TO YOUR PEOPLE
+  Citizens speak to you as you walk past. Mostly they tell you what
+  is wrong: "I'm stuck: waiting for 6 flour", "I haven't been paid
+  in 2 days", "I slept on the ground again". It's the quickest way
+  to find out what the colony needs. /colony chatter off if you'd
+  rather they kept quiet.
+
+CHRISTMAS (1 December to 6 January)
+  /colony christmas gives the colony a Christmas Tree Sapling (or
+  craft one: spruce sapling + gold nugget + red dye). Plant it on
+  grass under open sky in your land and it grows into a tree with
+  lanterns and a star. While it stands everyone is merrier, the
+  bard plays carols, the children throw snowballs, and Father
+  Christmas visits every few days: right-click him for a present,
+  then right-click the present to unwrap it.
+
+
+=====================================================================
+PART 15 - WHEN NOBODY IS AROUND
 =====================================================================
 
 Your colony doesn't stop when you log off. Citizens near players
 walk around as villagers; everyone else is simulated: they eat,
 sleep, work, get paid, fall ill, have children. Farms, pens,
-fisheries and workshops keep producing from real inputs. Foresters,
+fisheries, apiaries and workshops keep producing from real inputs,
+and researchers keep researching. Foresters,
 miners and builders need someone nearby to work, because they change
 the world.
 
@@ -451,7 +540,7 @@ is off. Each morning there's a report of the day: /colony events and
 
 
 =====================================================================
-PART 15 - TROUBLESHOOTING
+PART 16 - TROUBLESHOOTING
 =====================================================================
 
 "Registered" but nobody works there
@@ -477,13 +566,24 @@ Can't sell food
   The food-reserve policy keeps a few days of food back. Change it
   in the policies.
 
+Research isn't moving
+  It needs a Researcher at work in a University big enough for the
+  project. /colony research shows both.
+
+The marker says School when I wanted a University
+  A room with a lectern and bookshelves can be either. Shift +
+  right-click the marker and choose.
+
+The beekeeper collects nothing
+  Hives fill only when bees live in them and flowers grow nearby.
+
 Citizens are standing around at night
   They have free time in the evening and sleep after dusk. Check the
   working-hours policy.
 
 
 =====================================================================
-PART 16 - CHEAT SHEET
+PART 17 - CHEAT SHEET
 =====================================================================
 
   /colony create <name>          found a colony
@@ -501,6 +601,13 @@ PART 16 - CHEAT SHEET
   /colony recruit <who> <class>  enlist a soldier
   /colony squad | orders         command the army
   /colony diplomacy              other colonies
+  /colony today                  what's happening
+  /colony requests               what citizens are asking for
+  /colony research               the research tree
+  /colony raid [tribute]         what the scouts know; pay raiders off
+  /colony milestones             goals and rewards
+  /colony chatter [on|off]       citizens talking to you
+  /colony christmas              the season, the tree, a sapling
   /colony help <topic>           everything else
 
   Building Marker  place inside a building to register it

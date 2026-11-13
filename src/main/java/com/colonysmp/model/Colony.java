@@ -1,6 +1,7 @@
 package com.colonysmp.model;
 
 import com.colonysmp.core.Ledger;
+import com.colonysmp.core.Research;
 import com.colonysmp.core.Treasury;
 import com.colonysmp.util.BlockPos;
 import com.colonysmp.util.Territory;
@@ -70,6 +71,35 @@ public final class Colony {
     public final List<Modifier> modifiers = new ArrayList<>();
     public final Deque<DayStats> stats = new ArrayDeque<>();
 
+    // research
+    public final Set<Research> research = EnumSet.noneOf(Research.class);
+    /** The project under way (null = none) and the researcher hours put into it. */
+    public Research researching;
+    public double researchHours;
+
+    /** Passing good fortune and bad, by key ("harvest", "festival"...): the last day each lasts. */
+    public final Map<String, Long> boons = new TreeMap<>();
+
+    // raids from the wilds
+    /** The day raiders will come at nightfall (-1 = none expected) and who they are. */
+    public long raidDay = -1;
+    public String raidKind;
+    public int raidSize;
+    public long lastRaidDay = -1;
+    public int raidsRepelled, raidsLost;
+
+    // what citizens ask of the players
+    public final List<Request> requests = new ArrayList<>();
+    public int nextRequestId = 1;
+    public int requestsFilled;
+
+    // happenings
+    public long lastEventDay = -1, lastFestivalDay = -1, lastCaravanDay = -1, lastSantaDay = -1;
+    /** The Christmas tree: where it was planted, its star, and the season (year) it was planted for. */
+    public BlockPos christmasTree, christmasStar;
+    public int christmasYear, christmasSaplingYear;
+    public final Set<String> milestones = new java.util.LinkedHashSet<>();
+
     // history
     public final Deque<ColonyEvent> events = new ArrayDeque<>();
     public final List<ColonyEvent> unsavedEvents = new ArrayList<>();
@@ -89,6 +119,8 @@ public final class Colony {
     public int questStage = 1;
     public boolean founded;
     public final Set<UUID> questHidden = new HashSet<>();
+    /** Members who would rather the citizens didn't talk to them. */
+    public final Set<UUID> chatterMuted = new HashSet<>();
 
     // runtime only
     public final transient Set<UUID> invites = new HashSet<>();
@@ -236,6 +268,36 @@ public final class Colony {
         return targets.get(good);
     }
 
+    /** The summed value of a research effect over everything the colony has worked out. */
+    public double bonus(Research.Effect effect) {
+        return research.isEmpty() ? 0 : Research.total(research, effect);
+    }
+
+    /** Is a passing effect (a good harvest, a festival) still running on this day? */
+    public boolean boon(String key, long day) {
+        Long until = boons.get(key);
+        return until != null && until >= day;
+    }
+
+    /**
+     * Day counters that have run ahead of the calendar (an admin fast-forwarding the simulation) are pulled
+     * back to today, so they can't hold things up until the world catches up.
+     */
+    public void clampDays(long day) {
+        if (lastEventDay > day) lastEventDay = day;
+        if (lastFestivalDay > day) lastFestivalDay = day;
+        if (lastCaravanDay > day) lastCaravanDay = day;
+        if (lastSantaDay > day) lastSantaDay = day;
+        if (lastRaidDay > day) lastRaidDay = day;
+        if (raidDay > day) raidDay = -1;
+        boons.replaceAll((k, until) -> Math.min(until, day + 7));
+    }
+
+    public Request request(int id) {
+        for (Request r : requests) if (r.id() == id) return r;
+        return null;
+    }
+
     // ───────────── history ─────────────
 
     public ColonyEvent log(ColonyEvent.Type type, long day, String message) {
@@ -303,6 +365,43 @@ public final class Colony {
         List<String> hidden = new ArrayList<>();
         for (UUID u : questHidden) hidden.add(u.toString());
         s.set("quest-hidden", hidden);
+        List<String> muted = new ArrayList<>();
+        for (UUID u : chatterMuted) muted.add(u.toString());
+        s.set("chatter-muted", muted);
+        List<String> known = new ArrayList<>();
+        for (Research r : research) known.add(r.name());
+        s.set("research.done", known);
+        s.set("research.current", researching == null ? null : researching.name());
+        s.set("research.hours", researchHours);
+        for (Map.Entry<String, Long> e : boons.entrySet()) s.set("boons." + e.getKey(), e.getValue());
+        s.set("raid.day", raidDay);
+        s.set("raid.kind", raidKind);
+        s.set("raid.size", raidSize);
+        s.set("raid.last", lastRaidDay);
+        s.set("raid.repelled", raidsRepelled);
+        s.set("raid.lost", raidsLost);
+        i = 0;
+        for (Request r : requests) {
+            String k = "requests.open." + (i++);
+            s.set(k + ".id", r.id());
+            s.set(k + ".citizen", r.citizen().toString());
+            s.set(k + ".good", r.good());
+            s.set(k + ".amount", r.amount());
+            s.set(k + ".reward", r.reward());
+            s.set(k + ".reason", r.reason());
+            s.set(k + ".until", r.untilDay());
+        }
+        s.set("requests.next-id", nextRequestId);
+        s.set("requests.filled", requestsFilled);
+        s.set("happenings.last", lastEventDay);
+        s.set("happenings.festival", lastFestivalDay);
+        s.set("happenings.caravan", lastCaravanDay);
+        s.set("happenings.santa", lastSantaDay);
+        s.set("christmas.tree", christmasTree == null ? null : christmasTree.toString());
+        s.set("christmas.star", christmasStar == null ? null : christmasStar.toString());
+        s.set("christmas.year", christmasYear);
+        s.set("christmas.sapling-year", christmasSaplingYear);
+        s.set("milestones", new ArrayList<>(milestones));
     }
 
     public static Colony load(String id, ConfigurationSection s) {
@@ -392,6 +491,49 @@ public final class Colony {
                 // skip
             }
         }
+        for (String u : s.getStringList("chatter-muted")) {
+            try {
+                c.chatterMuted.add(UUID.fromString(u));
+            } catch (IllegalArgumentException ignored) {
+                // skip
+            }
+        }
+        for (String k : s.getStringList("research.done")) {
+            Research r = Research.parse(k);
+            if (r != null) c.research.add(r);
+        }
+        c.researching = Research.parse(s.getString("research.current"));
+        c.researchHours = s.getDouble("research.hours");
+        ConfigurationSection bo = s.getConfigurationSection("boons");
+        if (bo != null) for (String k : bo.getKeys(false)) c.boons.put(k, bo.getLong(k));
+        c.raidDay = s.getLong("raid.day", -1);
+        c.raidKind = s.getString("raid.kind");
+        c.raidSize = s.getInt("raid.size");
+        c.lastRaidDay = s.getLong("raid.last", -1);
+        c.raidsRepelled = s.getInt("raid.repelled");
+        c.raidsLost = s.getInt("raid.lost");
+        ConfigurationSection rq = s.getConfigurationSection("requests.open");
+        if (rq != null) {
+            for (String k : rq.getKeys(false)) {
+                try {
+                    c.requests.add(new Request(rq.getInt(k + ".id"), UUID.fromString(rq.getString(k + ".citizen", "")), rq.getString(k + ".good", "bread"),
+                            Math.max(1, rq.getInt(k + ".amount", 1)), rq.getLong(k + ".reward"), rq.getString(k + ".reason", ""), rq.getLong(k + ".until")));
+                } catch (IllegalArgumentException ignored) {
+                    // a corrupt id: that request is forgotten
+                }
+            }
+        }
+        c.nextRequestId = Math.max(1, s.getInt("requests.next-id", 1));
+        c.requestsFilled = s.getInt("requests.filled");
+        c.lastEventDay = s.getLong("happenings.last", -1);
+        c.lastFestivalDay = s.getLong("happenings.festival", -1);
+        c.lastCaravanDay = s.getLong("happenings.caravan", -1);
+        c.lastSantaDay = s.getLong("happenings.santa", -1);
+        c.christmasTree = BlockPos.parse(s.getString("christmas.tree"));
+        c.christmasStar = BlockPos.parse(s.getString("christmas.star"));
+        c.christmasYear = s.getInt("christmas.year");
+        c.christmasSaplingYear = s.getInt("christmas.sapling-year");
+        c.milestones.addAll(s.getStringList("milestones"));
         return c;
     }
 

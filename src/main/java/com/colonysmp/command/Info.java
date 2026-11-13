@@ -94,6 +94,10 @@ public final class Info {
                     + " · score " + w.attackerScore + " - " + w.defenderScore);
         }
         if (c.shielded()) out.add("<aqua>Peace shield: " + Text.duration(c.shieldUntil - System.currentTimeMillis()));
+        var raid = plugin.raids().raid(c);
+        if (raid != null) out.add("<red>Under attack: " + raid.kind.raid + ", " + raid.alive() + " " + raid.kind.members + " left.");
+        else if (c.raidDay >= 0 && c.raidDay == day) out.add("<red>Raiders are expected at nightfall (/colony raid).");
+        if (c.researching != null) out.add("<light_purple>Researching " + c.researching.display + ": " + Math.round(plugin.sim().academy().progress(c) * 100) + "%");
         List<String> problems = plugin.sim().reports().problems(c, food);
         if (!problems.isEmpty()) out.add("<yellow>⚠ " + String.join("; ", problems.subList(0, Math.min(4, problems.size()))));
         return out;
@@ -194,6 +198,17 @@ public final class Info {
             out.add("<gray>" + (b.type == BuildingType.FARM ? "Growing" : "Animals") + ": <white>" + String.join(", ", l));
         }
         if (b.type == BuildingType.FARM) out.add("<gray>Crop: <white>" + (b.crop == null ? "follow demand" : b.crop));
+        switch (b.type) {
+            case UNIVERSITY -> out.add(col.researching == null ? "<gray>Research: <white>nothing chosen</white> (/colony research)"
+                    : "<gray>Research: <white>" + col.researching.display + " (" + Math.round(plugin.sim().academy().progress(col) * 100) + "%)");
+            case ENCHANTERS_TOWER -> out.add("<gray>Enchantments up to level <white>" + plugin.sim().trades().enchantLevel(col, b) + "</white> · next one <white>"
+                    + Math.min(99, Math.round(b.progress / com.colonysmp.sim.Trades.ENCHANT_HOURS * 100)) + "%</white> · 2 lapis a level");
+            case APIARY -> out.add("<gray>Hives <white>" + b.feature(com.colonysmp.model.Feature.BEEHIVE) + "</white> · honey needs glass bottles, comb doesn't");
+            case DRUID_GROVE -> out.add("<gray>Fields grow <white>+" + Math.round(plugin.sim().trades().growthBonus(col, plugin.sim().day(col)) * 100) + "%</white> faster");
+            case LIBRARY -> out.add("<gray>Adults read here in the evening and educate themselves (up to 70)");
+            default -> {
+            }
+        }
         Recipe r = Recipes.get(b.recipe);
         if (r != null) out.add("<gray>Making: <white>" + r.name + " (" + Math.min(99, Math.round(b.progress / r.hours * 100)) + "%)");
         if (b.waiting != null) out.add("<yellow>" + Text.esc(b.waiting));

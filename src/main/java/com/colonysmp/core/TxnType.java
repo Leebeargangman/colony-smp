@@ -21,6 +21,9 @@ public enum TxnType {
     SPOILS("Spoils of war", true),
     THEFT("Theft", false),
     FINES("Fines", true),
+    RESEARCH("Research", false),
+    REWARDS("Bounties and rewards", true),
+    TRIBUTE("Tribute to raiders", false),
     ADMIN("Admin adjustment", true),
     OTHER("Other", true);
 

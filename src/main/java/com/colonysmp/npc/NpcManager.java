@@ -82,6 +82,7 @@ public final class NpcManager implements Listener {
     private final Map<UUID, Npc> byCitizen = new HashMap<>();
     private final Map<UUID, Npc> byEntity = new HashMap<>();
     private final CitizenBrain brain;
+    private final Chatter chatter;
     private int pathBudget;
     /** Players who attacked a colony's people recently: colony id -> player -> until (ms). */
     private final Map<String, Map<UUID, Long>> aggressors = new HashMap<>();
@@ -95,6 +96,11 @@ public final class NpcManager implements Listener {
     public NpcManager(ColonySMP plugin) {
         this.plugin = plugin;
         this.brain = new CitizenBrain(plugin, this);
+        this.chatter = new Chatter(plugin, this);
+    }
+
+    public Chatter chatter() {
+        return chatter;
     }
 
     public CitizenBrain brain() {
@@ -455,7 +461,7 @@ public final class NpcManager implements Listener {
             Building b = col.building(c.workplace);
             if (b != null && b.anchor != null && w != null && b.anchor.loaded(w)) {
                 Job.Background bg = c.job.background;
-                if (bg == Job.Background.NONE || bg == Job.Background.FARM || bg == Job.Background.PEN) p += 40;
+                if (bg == Job.Background.NONE || bg == Job.Background.FARM || bg == Job.Background.PEN || bg == Job.Background.GROW || bg == Job.Background.BEES) p += 40;
                 else p += 10;
             }
             Location here = c.hasLast && w != null ? new Location(w, c.lastX, c.lastY, c.lastZ) : col.coreLocation();
@@ -693,6 +699,20 @@ public final class NpcManager implements Listener {
         c.lastZ = l.getZ();
         c.hasLast = true;
         c.needs.health = Math.min(c.needs.maxHealth, n.body.getHealth());
+    }
+
+    /**
+     * Writes a citizen's health from the record into their body, after something changed it off-stage (an
+     * illness, a doctor's daily round, a brawl). The body is otherwise the truth for health, so without this a
+     * change to the record alone is undone the next time the body is read.
+     */
+    public void pushHealth(Citizen c) {
+        Npc n = npc(c);
+        if (n == null || c.downed()) return;
+        double hp = Math.max(1, Math.min(c.needs.maxHealth, c.needs.health));
+        var max = n.body.getAttribute(Attribute.MAX_HEALTH);
+        if (max != null) hp = Math.min(hp, max.getValue());
+        n.body.setHealth(hp);
     }
 
     public void rememberAll() {
@@ -949,6 +969,7 @@ public final class NpcManager implements Listener {
         if (col == null) return;
         if (plugin.prison().interact(p, n, col, hand)) return;
         if (plugin.military().interact(p, n, col, hand)) return;
+        if (plugin.requests().interact(p, n.c, col, hand)) return;
         if (col.isMember(p.getUniqueId()) || plugin.isBypassing(p)) {
             new CitizenMenu(plugin, p, col, n.c).open();
         } else {

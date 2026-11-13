@@ -30,6 +30,8 @@ public final class Doctoring {
     }
 
     void think(Npc n, Colony col, Building clinic, long now) {
+        // someone bleeding out can't wait for the round of the beds
+        if (m.brain().guarding.rescue(n, col, now)) return;
         long game = plugin.sim().gameTime(col);
         Npc patient = null;
         double best = Double.MAX_VALUE;

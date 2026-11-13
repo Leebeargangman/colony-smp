@@ -51,8 +51,8 @@ public final class Population {
         c.name = Names.random();
         c.trait = Trait.random();
         c.skin = SKINS[r.nextInt(SKINS.length)];
-        c.needs.maxHealth = s.citizenHealth;
-        c.needs.health = s.citizenHealth;
+        c.needs.maxHealth = s.citizenHealth + col.bonus(com.colonysmp.core.Research.Effect.VITALITY);
+        c.needs.health = c.needs.maxHealth;
         c.joinedDay = plugin.sim().day(col);
         if (child) {
             c.ageDays = 0;
@@ -276,7 +276,8 @@ public final class Population {
         Settings s = plugin.settings();
         double lessons = hours / 0.6;
         double shelves = 1 + Math.min(0.5, school.feature(com.colonysmp.model.Feature.BOOKSHELF) * 0.05);
-        double gain = s.perLesson * lessons * shelves * (plugin.sim().citizens().stage(c) == LifeStage.CHILD ? s.childLearning : 1) * c.trait.learning();
+        double gain = s.perLesson * lessons * shelves * (plugin.sim().citizens().stage(c) == LifeStage.CHILD ? s.childLearning : 1) * c.trait.learning()
+                * (1 + col.bonus(com.colonysmp.core.Research.Effect.LEARNING));
         c.education = Math.min(100, c.education + gain);
         c.waiting = null;
     }

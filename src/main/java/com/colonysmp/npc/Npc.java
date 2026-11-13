@@ -36,6 +36,8 @@ public final class Npc {
     public long noToolUntil;
     /** Checked for something to carry recently and found nothing. */
     public long noHaulUntil;
+    /** Looked for something to tend recently and found nothing (druids). */
+    public long searchAt;
     public Entity subject;
 
     // routine
