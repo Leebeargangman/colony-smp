@@ -78,7 +78,19 @@ public enum BuildingType {
     PRISON("Prison", Category.MILITARY, Shape.ROOM, Material.IRON_BARS, 2,
             "Cells with iron doors and a bed per prisoner. Wardens look after them."),
     ENGINEERING_WORKSHOP("Engineering Workshop", Category.MILITARY, Shape.ROOM, Material.SMITHING_TABLE, 2,
-            "Engineers maintain the colony's buildings and pack siege charges.");
+            "Engineers maintain the colony's buildings and pack siege charges."),
+    UNIVERSITY("University", Category.SERVICE, Shape.ROOM, Material.KNOWLEDGE_BOOK, 3,
+            "Researchers work through the colony's research here. Bigger universities unlock later projects."),
+    LIBRARY("Library", Category.SERVICE, Shape.ROOM, Material.BOOKSHELF, 2,
+            "A quiet room of books: adults read here in the evening and slowly educate themselves."),
+    TAVERN("Tavern", Category.COMMERCIAL, Shape.ROOM, Material.JUKEBOX, 3,
+            "Where the colony spends its evenings. A bard's music keeps everyone in good spirits."),
+    DRUID_GROVE("Druid's Grove", Category.AGRICULTURAL, Shape.PEN, Material.MOSSY_COBBLESTONE, 2,
+            "A fenced garden with mossy standing stones. Druids make the colony's crops grow faster."),
+    ENCHANTERS_TOWER("Enchanter's Tower", Category.SERVICE, Shape.ROOM, Material.ENCHANTING_TABLE, 2,
+            "An enchanter lays enchantments on the gear in the armoury, at a cost in lapis lazuli."),
+    APIARY("Apiary", Category.AGRICULTURAL, Shape.PEN, Material.BEEHIVE, 3,
+            "A fenced yard of beehives. Beekeepers collect honeycomb, and honey if they have bottles.");
 
     public enum Category {
         ADMINISTRATIVE("Administrative"), RESIDENTIAL("Residential"), AGRICULTURAL("Agricultural"), FOOD("Food"),
@@ -191,6 +203,10 @@ public enum BuildingType {
         if (u.equals("TOWER") || u.equals("GUARD_TOWER")) return WATCHTOWER;
         if (u.equals("PEN") || u.equals("PASTURE")) return ANIMAL_PEN;
         if (u.equals("SIEGE_WORKSHOP")) return ENGINEERING_WORKSHOP;
+        if (u.equals("GROVE") || u.equals("DRUIDS_GROVE")) return DRUID_GROVE;
+        if (u.equals("ENCHANTER") || u.equals("ENCHANTERS") || u.equals("ENCHANTER_TOWER")) return ENCHANTERS_TOWER;
+        if (u.equals("PUB") || u.equals("INN_TAVERN")) return TAVERN;
+        if (u.equals("BEES") || u.equals("BEE_YARD")) return APIARY;
         try {
             return valueOf(u);
         } catch (IllegalArgumentException e) {
@@ -284,6 +300,16 @@ public enum BuildingType {
         PRISON.lv(4, Feature.IRON_DOOR, 1, Feature.BED, 1).lv(9, Feature.IRON_DOOR, 1, Feature.BED, 2).job(Job.WARDEN, 1, 1).cost(50, "iron_bars", 8).upkeepPerLevel(1);
         ENGINEERING_WORKSHOP.lv(9, Feature.DOOR, 1, Feature.SMITHING_TABLE, 1, Feature.CRAFTING_TABLE, 1).lv(16, Feature.DOOR, 1, Feature.SMITHING_TABLE, 1, Feature.CRAFTING_TABLE, 2)
                 .job(Job.ENGINEER, 1, 2).cost(80, "iron_ingot", 8).upkeepPerLevel(2).stock(6);
+        UNIVERSITY.lv(16, Feature.DOOR, 1, Feature.LECTERN, 1, Feature.BOOKSHELF, 8).lv(30, Feature.DOOR, 1, Feature.LECTERN, 2, Feature.BOOKSHELF, 16)
+                .lv(45, Feature.DOOR, 1, Feature.LECTERN, 3, Feature.BOOKSHELF, 30).job(Job.RESEARCHER, 1, 2, 3).cost(120, "book", 8, "paper", 16).upkeepPerLevel(3);
+        LIBRARY.lv(12, Feature.DOOR, 1, Feature.BOOKSHELF, 6, Feature.SEAT, 2).lv(25, Feature.DOOR, 1, Feature.BOOKSHELF, 14, Feature.SEAT, 4)
+                .cost(60, "book", 6).upkeepPerLevel(1);
+        TAVERN.lv(16, Feature.DOOR, 1, Feature.SEAT, 4, Feature.BARREL, 1, Feature.MUSIC, 1).lv(30, Feature.DOOR, 1, Feature.SEAT, 8, Feature.BARREL, 2, Feature.MUSIC, 1)
+                .lv(45, Feature.DOOR, 1, Feature.SEAT, 12, Feature.BARREL, 3, Feature.MUSIC, 2).job(Job.BARD, 1, 1, 2).cost(70, "#planks", 32, "glass", 8).upkeepPerLevel(2);
+        DRUID_GROVE.lv(9, Feature.STANDING_STONE, 2).lv(25, Feature.STANDING_STONE, 4).job(Job.DRUID, 1, 2).cost(60, "bone_meal", 16).upkeepPerLevel(1);
+        ENCHANTERS_TOWER.lv(9, Feature.DOOR, 1, Feature.ENCHANTING_TABLE, 1, Feature.BOOKSHELF, 4).lv(16, Feature.DOOR, 1, Feature.ENCHANTING_TABLE, 1, Feature.BOOKSHELF, 15)
+                .job(Job.ENCHANTER, 1, 1).cost(150, "lapis_lazuli", 16, "book", 8).upkeepPerLevel(3).stock(2);
+        APIARY.lv(9, Feature.BEEHIVE, 2).lv(16, Feature.BEEHIVE, 4).lv(25, Feature.BEEHIVE, 6).job(Job.BEEKEEPER, 1, 1, 2).cost(40, "#planks", 16, "glass_bottle", 8).stock(6);
         for (BuildingType t : values()) {
             if (t.levels.isEmpty()) t.lv(0);
             if (t.stockSlots == 0 && t.workplace() && t != TOWN_HALL && t != WATCHTOWER && t != BUILDERS_HUT && t != TRADING_POST && t != WAREHOUSE && t != GRANARY) t.stock(4);

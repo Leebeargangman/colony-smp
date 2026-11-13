@@ -8,6 +8,9 @@ import com.colonysmp.core.Goods;
 import com.colonysmp.core.MilitaryClass;
 import com.colonysmp.core.Recipe;
 import com.colonysmp.core.Recipes;
+import com.colonysmp.core.Research;
+import com.colonysmp.gui.ResearchMenu;
+import com.colonysmp.model.Request;
 import com.colonysmp.gui.BuildingsMenu;
 import com.colonysmp.gui.CitizensMenu;
 import com.colonysmp.gui.ConfirmMenu;
@@ -61,7 +64,8 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
             "buildings", "building", "validate", "upgrade", "construction",
             "resources", "storage", "economy", "trade", "production", "deposit", "withdraw", "shop", "policies",
             "military", "recruit", "army", "orders", "squad", "mobilize",
-            "diplomacy", "declarewar", "peace", "surrender", "prison", "events", "stats", "admin");
+            "diplomacy", "declarewar", "peace", "surrender", "prison", "events", "stats",
+            "research", "raid", "requests", "refugees", "milestones", "today", "admin");
 
     private final ColonySMP plugin;
     private final Info info;
@@ -267,6 +271,30 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
             case "prison" -> prison(p, c, a);
             case "events" -> events(p, c, a);
             case "stats" -> stats(p, c);
+            case "research" -> research(p, c, a);
+            case "raid", "raids" -> raid(p, c, a);
+            case "requests", "request" -> requests(p, c, a);
+            case "refugees" -> {
+                if (need(p, c)) return;
+                String err = plugin.happenings().refugees(p, c, a.length == 0 || !a[0].equalsIgnoreCase("refuse"));
+                if (err != null) Text.send(p, "<red>" + err);
+            }
+            case "milestones" -> {
+                if (need(p, c)) return;
+                plugin.milestones().check(c);
+                for (String l : plugin.milestones().list(c)) Text.raw(p, l);
+            }
+            case "today" -> {
+                if (need(p, c)) return;
+                Text.raw(p, "<aqua><bold>Today in " + Text.esc(c.name));
+                for (String l : plugin.happenings().describe(c)) Text.raw(p, " " + l);
+                for (String l : plugin.raids().describe(c).subList(0, 1)) Text.raw(p, " " + l);
+                int open = c.requests.size();
+                if (open > 0) Text.raw(p, " <yellow>" + open + " citizen" + (open == 1 ? " is" : "s are") + " asking for something: <click:run_command:'/colony requests'>[Requests]</click>");
+                if (c.researching != null) {
+                    Text.raw(p, " <light_purple>Researching " + c.researching.display + ": " + Math.round(plugin.sim().academy().progress(c) * 100) + "%");
+                }
+            }
             default -> Text.send(p, "Unknown subcommand. Try <white>/colony help</white>.");
         }
     }
@@ -1422,6 +1450,74 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
         if (list.isEmpty()) Text.raw(p, " <gray>Nothing yet.");
     }
 
+    // ───────────── research, raids, requests ─────────────
+
+    private void research(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        var academy = plugin.sim().academy();
+        if (a.length == 0) {
+            new ResearchMenu(plugin, p, c).open();
+            return;
+        }
+        String sub = a[0].toLowerCase(Locale.ROOT);
+        switch (sub) {
+            case "list" -> {
+                int level = academy.universityLevel(c), staff = academy.researchers(c);
+                Text.raw(p, "<light_purple><bold>Research</bold> <gray>- University level " + level + ", " + staff + " researcher" + (staff == 1 ? "" : "s")
+                        + (c.researching == null ? "" : " · working on <white>" + c.researching.display + "</white> (" + Math.round(academy.progress(c) * 100) + "%)"));
+                for (Research r : Research.values()) {
+                    boolean known = c.research.contains(r);
+                    String why = known || c.researching == r ? null : academy.blocked(c, r);
+                    String state = known ? "<green>✔" : c.researching == r ? "<light_purple>…" : why == null ? "<white>○" : "<dark_gray>✘";
+                    Text.raw(p, " " + state + " <white>" + r.display + "</white> <dark_gray>(" + r.branch.display + ")</dark_gray> <gray>" + r.description
+                            + (known || c.researching == r ? "" : " <dark_gray>Costs " + academy.costText(r) + "." + (why == null ? "" : " <red>" + Text.esc(why))));
+                }
+            }
+            case "start", "begin" -> {
+                Research r = Research.parse(join(a, 1));
+                if (r == null) {
+                    Text.send(p, "<red>No research called " + Text.esc(join(a, 1)) + ". See /colony research list.");
+                    return;
+                }
+                String err = academy.start(p, c, r);
+                if (err != null) Text.send(p, "<red>" + err);
+            }
+            case "abandon", "cancel" -> {
+                String err = academy.abandon(p, c);
+                Text.send(p, err != null ? "<red>" + err : "<yellow>The researchers put the project aside.");
+            }
+            default -> Text.send(p, "Usage: /colony research [list | start <project> | abandon]");
+        }
+    }
+
+    private void raid(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        if (a.length > 0 && a[0].equalsIgnoreCase("tribute")) {
+            String err = plugin.raids().tribute(p, c);
+            if (err != null) Text.send(p, "<red>" + err);
+            return;
+        }
+        Text.raw(p, "<red><bold>Raids</bold> <gray>- " + Text.esc(c.name));
+        for (String l : plugin.raids().describe(c)) Text.raw(p, " " + l);
+    }
+
+    private void requests(Player p, Colony c, String[] a) {
+        if (need(p, c)) return;
+        if (a.length >= 2 && (a[0].equalsIgnoreCase("deliver") || a[0].equalsIgnoreCase("give"))) {
+            Request r;
+            try {
+                r = c.request(Integer.parseInt(a[1]));
+            } catch (NumberFormatException e) {
+                r = null;
+            }
+            String err = plugin.requests().deliver(p, c, r);
+            if (err != null) Text.send(p, "<red>" + err);
+            return;
+        }
+        Text.raw(p, "<yellow><bold>Requests</bold> <gray>- what the people of " + Text.esc(c.name) + " are asking for");
+        for (String l : plugin.requests().list(c)) Text.raw(p, l);
+    }
+
     private void stats(Player p, Colony c) {
         if (need(p, c)) return;
         Text.raw(p, "<aqua><bold>Recent days in " + Text.esc(c.name));
@@ -1445,7 +1541,7 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
 
     private void help(CommandSender s, String[] a) {
         String topic = a.length == 0 ? "" : a[0].toLowerCase(Locale.ROOT);
-        Text.raw(s, "<aqua><bold>ColonySMP</bold> <gray>- /colony help [colony|citizens|buildings|economy|military|diplomacy|prisoners|admin]");
+        Text.raw(s, "<aqua><bold>ColonySMP</bold> <gray>- /colony help [colony|citizens|buildings|economy|military|diplomacy|prisoners|events|admin]");
         List<String> l = switch (topic) {
             case "citizens" -> List.of("citizens · citizen <name> · jobs · assign <citizen> <job> [building] · home <citizen> [house] · needs [citizen]",
                     "settler (recruit from the region) · traveller recruit|dismiss · exile <citizen>",
@@ -1464,11 +1560,17 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
                     "declarewar <colony> [raid|siege] · peace <colony> [truce days] · surrender");
             case "prisoners" -> List.of("Downed enemies can be bound with Rope (3 string in a column) and led into a Prison.",
                     "prison · prison release <name> · prison ransom <name> [price] · prison exchange <ours> <theirs>");
+            case "events", "research", "raids", "requests" -> List.of("today (what's going on) · requests [deliver <n>] · research [list|start <project>|abandon] · raid [tribute] · refugees accept|refuse · milestones",
+                    "Citizens ask you for things: bring them (right-click the citizen holding the goods) and they pay you and work harder.",
+                    "Researchers at a University work through the project you choose; each one changes the colony for good.",
+                    "Raiders come at nightfall once the colony has grown: scouts warn you that morning. Barbarians can be paid off.",
+                    "Festivals, merchants' caravans, refugees, lucky strikes and storms come and go: /colony today shows what's on.");
             case "admin" -> List.of("admin reload|save|bypass|give|delete|tp|inspect|citizen|building|reservations|production|sim|perf|db|stuck|events",
-                    "admin simulate <colony> <hours> · setstock <colony> <good> <qty> · treasury <colony> set|add <n> · addcitizen <colony> [job] · endwar · shield · traveller · repair");
+                    "admin simulate <colony> <hours> · setstock <colony> <good> <qty> · treasury <colony> set|add <n> · addcitizen <colony> [job] · endwar · shield · traveller · repair",
+                    "admin raid <colony> [barbarians|undead] [size] · event <colony> <kind> · research <colony> <project|all> · request <colony>");
             default -> List.of("create <name> · info [colony] · list · map · claim · unclaim · menu · core · book [type] · wand · baton · disband · quests",
                     "invite <player> · join <colony> · leave · kick <player> · members · promote|demote <player> [role] · rename <name> · settings",
-                    "events [type] [page] · stats · and the topics above.");
+                    "today · requests · research · raid · milestones · events [type] [page] · stats · and the topics above.");
         };
         for (String line : l) Text.raw(s, " <gray>" + line);
     }
@@ -1551,10 +1653,20 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
                 if (args.length == 3) for (Role r : Role.values()) if (r.member) options.add(r.name().toLowerCase(Locale.ROOT));
             }
             case "traveller", "traveler" -> options = List.of("recruit", "dismiss");
+            case "research" -> {
+                if (args.length == 2) options = List.of("list", "start", "abandon");
+                if (args.length == 3 && args[1].equalsIgnoreCase("start")) for (Research r : Research.values()) options.add(r.name().toLowerCase(Locale.ROOT));
+            }
+            case "raid", "raids" -> options = List.of("tribute");
+            case "refugees" -> options = List.of("accept", "refuse");
+            case "requests", "request" -> {
+                if (args.length == 2) options = List.of("deliver");
+                if (args.length == 3 && c != null) for (Request r : c.requests) options.add(String.valueOf(r.id()));
+            }
             case "resources" -> {
                 for (Category cat : Category.values()) options.add(cat.name().toLowerCase(Locale.ROOT));
             }
-            case "help" -> options = List.of("colony", "citizens", "buildings", "economy", "military", "diplomacy", "prisoners", "admin");
+            case "help" -> options = List.of("colony", "citizens", "buildings", "economy", "military", "diplomacy", "prisoners", "events", "admin");
             default -> {
             }
         }

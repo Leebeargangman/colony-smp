@@ -191,7 +191,8 @@ public final class Schooling {
             double skill = Math.max(0.5, Math.min(1.5, teacher.c.education / 60)) * (1 + 0.05 * teacher.c.level(Skill.TEACHING));
             for (Npc p : pupils) {
                 boolean child = plugin.sim().citizens().stage(p.c) == LifeStage.CHILD;
-                double gain = s.perLesson * (child ? s.childLearning : 1) * book * shelves * skill * p.c.trait.learning() * (0.8 + p.c.needs.mood / 250);
+                double gain = s.perLesson * (child ? s.childLearning : 1) * book * shelves * skill * p.c.trait.learning() * (0.8 + p.c.needs.mood / 250)
+                        * (1 + col.bonus(com.colonysmp.core.Research.Effect.LEARNING));
                 p.c.education = Math.min(100, p.c.education + gain);
                 w.spawnParticle(Particle.ENCHANT, p.loc().add(0, 1.8, 0), 8, 0.3, 0.3, 0.3, 0.5);
             }

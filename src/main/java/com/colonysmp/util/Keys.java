@@ -23,6 +23,10 @@ public final class Keys {
     public static NamespacedKey MOUNT;
     /** double: base damage of a shot fired by a citizen (arrows, bolts, javelins, sling stones) */
     public static NamespacedKey SHOT;
+    /** string: colony id (raiders from the wilds attacking that colony) */
+    public static NamespacedKey RAIDER;
+    /** string: colony id (a visiting merchant and their llamas) */
+    public static NamespacedKey MERCHANT;
 
     public static NamespacedKey RECIPE_WAND, RECIPE_ROPE, RECIPE_BANNER, RECIPE_BOOK, RECIPE_BATON, RECIPE_MARKER;
 
@@ -38,6 +42,8 @@ public final class Keys {
         UNIQUE = new NamespacedKey(plugin, "unique");
         MOUNT = new NamespacedKey(plugin, "mount");
         SHOT = new NamespacedKey(plugin, "shot");
+        RAIDER = new NamespacedKey(plugin, "raider");
+        MERCHANT = new NamespacedKey(plugin, "merchant");
         RECIPE_WAND = new NamespacedKey(plugin, "colony_wand");
         RECIPE_ROPE = new NamespacedKey(plugin, "rope");
         RECIPE_BANNER = new NamespacedKey(plugin, "war_banner");

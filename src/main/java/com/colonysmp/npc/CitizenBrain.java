@@ -44,6 +44,7 @@ public final class CitizenBrain {
     public final Doctoring doctoring;
     public final StationWork stations;
     public final Hauling hauling;
+    public final Specialists specialists;
 
     CitizenBrain(ColonySMP plugin, NpcManager m) {
         this.plugin = plugin;
@@ -60,6 +61,7 @@ public final class CitizenBrain {
         this.doctoring = new Doctoring(plugin, m);
         this.stations = new StationWork(plugin, m);
         this.hauling = new Hauling(plugin, m);
+        this.specialists = new Specialists(plugin, m);
     }
 
     /** Cached plans that depend on a colony's buildings are dropped. */
@@ -182,6 +184,11 @@ public final class CitizenBrain {
             case WARDEN -> {
                 if (!plugin.prison().warden(n, col, b, now)) stations.attend(n, col, b, now, "Keeping " + b.label());
             }
+            case RESEARCHER -> specialists.research(n, col, b, now);
+            case BARD -> specialists.perform(n, col, b, now);
+            case DRUID -> specialists.tend(n, col, b, now);
+            case ENCHANTER -> specialists.enchant(n, col, b, now);
+            case BEEKEEPER -> specialists.bees(n, col, b, now);
             case UNEMPLOYED -> idle(n, col, now, "Unemployed: waiting for a job");
             default -> {
                 if (c.job.background == Job.Background.RECIPE) stations.craft(n, col, b, now);
@@ -300,12 +307,25 @@ public final class CitizenBrain {
         var p = plugin.settings().needs;
         if ((c.needs.hungry(p) || c.lastMealDay != m.context(col).day) && life.meal(n, col, now, false)) return;
         if (m.returnCarried(n, col)) return;
-        // somewhere with people: an inn, the market, the restaurant, the Town Hall
+        // the bard's evening is the tavern's busiest hour
+        if (c.job == Job.BARD && plugin.sim().citizens().canWork(col, c)) {
+            Building tavern = col.building(c.workplace);
+            if (tavern != null && tavern.valid) {
+                specialists.perform(n, col, tavern, now);
+                return;
+            }
+        }
+        // somewhere with people: the tavern, an inn, the restaurant, the market, the Town Hall
         World w = n.body.getWorld();
         Location spot = null;
         String label = "Spending the evening at the Town Hall";
+        Building library = c.needs.social >= 70 || c.trait.social() <= 0 ? plugin.sim().trades().library(col) : null;
+        if (library != null && c.education < 70 && Math.floorMod(c.id.hashCode() + m.context(col).day, 3) != 0 && m.place(w, library) != null) {
+            wander(n, m.place(w, library), 3, now, "Reading at " + library.label());
+            return;
+        }
         if (c.needs.social < 70 && c.trait.social() > 0) {
-            for (BuildingType t : new BuildingType[]{BuildingType.INN, BuildingType.RESTAURANT, BuildingType.MARKET}) {
+            for (BuildingType t : new BuildingType[]{BuildingType.TAVERN, BuildingType.INN, BuildingType.RESTAURANT, BuildingType.MARKET}) {
                 Building b = plugin.sim().citizens().staffed(col, t);
                 if (b == null) continue;
                 spot = m.place(w, b);

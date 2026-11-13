@@ -93,7 +93,7 @@ public final class Health {
         // new cases
         for (Citizen ct : people) {
             if (ct.ill() || ct.downed()) continue;
-            double chance = s.illnessChance * ct.trait.illness();
+            double chance = s.illnessChance * ct.trait.illness() * Math.max(0.1, 1 - c.bonus(com.colonysmp.core.Research.Effect.HEALING));
             if (ct.needs.satiety < 20) chance *= 3;
             if (ct.home == 0) chance *= 2;
             if (ct.needs.mealQuality < 1) chance *= 1.3;

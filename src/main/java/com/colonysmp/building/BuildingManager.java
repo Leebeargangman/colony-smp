@@ -778,7 +778,8 @@ public final class BuildingManager {
                 }
             }
         }
-        c.storage.setCapacity(general, granary);
+        double research = 1 + c.bonus(com.colonysmp.core.Research.Effect.STORAGE);
+        c.storage.setCapacity((int) Math.round(general * research), (int) Math.round(granary * research));
         c.equipment.setCapacity(equipment);
     }
 

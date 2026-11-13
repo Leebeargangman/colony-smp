@@ -33,6 +33,8 @@ public final class SimulationEngine {
     private final Order order;
     private final Housing housing;
     private final Jobs jobs;
+    private final Academy academy;
+    private final Trades trades;
     private int cursor;
     /** While an admin fast-forwards a colony: the simulated day, so everything logged in the run agrees. */
     private Colony forwarding;
@@ -52,6 +54,16 @@ public final class SimulationEngine {
         this.order = new Order(plugin);
         this.housing = new Housing(plugin);
         this.jobs = new Jobs(plugin);
+        this.academy = new Academy(plugin);
+        this.trades = new Trades(plugin);
+    }
+
+    public Academy academy() {
+        return academy;
+    }
+
+    public Trades trades() {
+        return trades;
     }
 
     public CitizenSim citizens() {
@@ -220,13 +232,19 @@ public final class SimulationEngine {
         plugin.economy().daily(c, day);
         plugin.diplomacy().daily(c, day);
         plugin.travelers().daily(c, day);
+        trades.daily(c, day);
+        plugin.requests().daily(c, day);
+        plugin.happenings().daily(c, day);
+        plugin.raids().daily(c, day);
         c.modifiers.removeIf(m -> m.untilDay() < day);
+        c.boons.values().removeIf(until -> until < day);
         report(c, day);
         for (Citizen ct : c.citizens.values()) ct.hoursToday = 0;
         c.producedToday = 0;
         c.incomeToday = 0;
         c.expensesToday = 0;
         plugin.quests().check(c);
+        plugin.milestones().check(c);
         plugin.requestSave();
     }
 

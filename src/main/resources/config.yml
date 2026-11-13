@@ -267,3 +267,53 @@ mines:
 quests:
   # Sent to storage when a colony finishes its first steps.
   reward: ["IRON_HOE:2", "IRON_AXE:1", "IRON_PICKAXE:1", "WHEAT_SEEDS:32", "CARROT:16", "BREAD:32", "OAK_LOG:32"]
+
+raids:
+  # Raiders from the wilds: barbarians after the stores, and now and then the dead behind a necromancer.
+  # Scouts warn the colony in the morning; the raid comes at nightfall and ends at sunrise.
+  # Raids only happen while a member is online and the colony is loaded, never in a peaceful world.
+  enabled: true
+  # A colony is left alone until it has this many citizens and is this many days old.
+  min-population: 6
+  grace-days: 5
+  # Days of peace after a raid, and the chance of one on the first day after that (it grows by 8% each quiet day).
+  min-days-between: 4
+  chance-per-day: 0.25
+  # Share of raids that are the undead rather than barbarians.
+  undead-share: 0.35
+  # Raid size grows with population, settlement level and raids already driven off, between these limits.
+  min-size: 3
+  max-size: 24
+  # How far outside the colony's land raiders appear.
+  spawn-distance: 14
+  # A raid that drags on ends after this long even if the sun hasn't risen.
+  max-minutes: 12
+  # Paid into the treasury per raider killed when a raid is beaten.
+  bounty-per-raider: 6
+  # What barbarians take per head to stay away (/colony raid tribute).
+  tribute-per-raider: 12
+  # Barbarians standing at the colony's storage carry goods off (returned if every raider is killed).
+  loot-storage: true
+
+requests:
+  # Citizens ask the players for things the stores lack; whoever brings them is paid from the citizen's purse.
+  enabled: true
+  max-open: 3
+  chance-per-day: 0.7
+  # Days a citizen waits before giving up, and days they work 15% faster after being answered.
+  wait-days: 3
+  motivated-days: 2
+
+events:
+  # Festivals, good growing weather, merchants' caravans, refugees, lucky strikes, strays, scholars and storms.
+  # Only while a member is online.
+  enabled: true
+  min-days-between: 2
+  chance-per-day: 0.4
+  # How long a visiting merchant trades at the Town Hall.
+  caravan-minutes: 8
+
+milestones:
+  enabled: true
+  # Multiplies the treasury grants paid for milestones (0 = renown only).
+  reward-multiplier: 1.0

@@ -7,7 +7,10 @@ import com.colonysmp.building.SelectionManager;
 import com.colonysmp.colony.Access;
 import com.colonysmp.colony.ClaimListener;
 import com.colonysmp.colony.ColonyManager;
+import com.colonysmp.colony.Happenings;
+import com.colonysmp.colony.Milestones;
 import com.colonysmp.colony.QuestManager;
+import com.colonysmp.colony.RequestManager;
 import com.colonysmp.colony.TerritoryManager;
 import com.colonysmp.colony.TownHallListener;
 import com.colonysmp.command.ColonyCommand;
@@ -21,6 +24,7 @@ import com.colonysmp.model.Colony;
 import com.colonysmp.npc.NpcManager;
 import com.colonysmp.prison.PrisonManager;
 import com.colonysmp.prison.TravelerManager;
+import com.colonysmp.raid.RaidManager;
 import com.colonysmp.sim.SimulationEngine;
 import com.colonysmp.store.Database;
 import com.colonysmp.store.Snapshot;
@@ -72,6 +76,10 @@ public final class ColonySMP extends JavaPlugin {
     private TownHallListener townHall;
     private ColonyCommand commands;
     private ChatPrompt prompt;
+    private RaidManager raids;
+    private RequestManager requests;
+    private Happenings happenings;
+    private Milestones milestones;
 
     private long tick;
     private boolean dirty, saving, loaded;
@@ -99,6 +107,10 @@ public final class ColonySMP extends JavaPlugin {
         prison = new PrisonManager(this);
         travelers = new TravelerManager(this);
         quests = new QuestManager(this);
+        raids = new RaidManager(this);
+        requests = new RequestManager(this);
+        happenings = new Happenings(this);
+        milestones = new Milestones(this);
         blueprints = new BlueprintManager(this);
         markers = new BuildingMarker(this);
         selection = new SelectionManager(this);
@@ -135,7 +147,7 @@ public final class ColonySMP extends JavaPlugin {
             sim.jobs().refreshWorkplaces(c);
         }
 
-        for (Listener l : new Listener[]{items, selection, blueprints, markers, quests, npcs, prison, travelers, wars, townHall, military,
+        for (Listener l : new Listener[]{items, selection, blueprints, markers, quests, npcs, prison, travelers, wars, townHall, military, raids, requests, happenings,
                 new CombatListener(this), new ClaimListener(this), new MenuListener(), prompt}) {
             Bukkit.getPluginManager().registerEvents(l, this);
         }
@@ -150,6 +162,7 @@ public final class ColonySMP extends JavaPlugin {
             tick++;
             npcs.tick(tick);
             travelers.move(tick);
+            happenings.move(tick);
         }, 1L, 1L);
         // every second: bodies come and go, the simulation steps, wars and offers move on
         Bukkit.getScheduler().runTaskTimer(this, () -> {
@@ -161,6 +174,8 @@ public final class ColonySMP extends JavaPlugin {
             guarded("diplomacy", diplomacy::tick);
             guarded("market", economy::tick);
             guarded("quests", quests::tick);
+            guarded("raids", raids::tick);
+            guarded("happenings", happenings::tick);
         }, 20L, 20L);
         Bukkit.getScheduler().runTaskTimer(this, () -> {
             selection.render();
@@ -199,6 +214,8 @@ public final class ColonySMP extends JavaPlugin {
         Snapshot snap = snapshot();
         npcs.despawnAll();
         travelers.shutdown();
+        raids.shutdown();
+        happenings.shutdown();
         quests.shutdown();
         wars.shutdown();
         if (!db.saveNow(snap)) getLogger().severe("The final save failed: " + db.lastError());
@@ -354,5 +371,21 @@ public final class ColonySMP extends JavaPlugin {
 
     public ChatPrompt prompt() {
         return prompt;
+    }
+
+    public RaidManager raids() {
+        return raids;
+    }
+
+    public RequestManager requests() {
+        return requests;
+    }
+
+    public Happenings happenings() {
+        return happenings;
+    }
+
+    public Milestones milestones() {
+        return milestones;
     }
 }

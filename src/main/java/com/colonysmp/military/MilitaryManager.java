@@ -303,7 +303,7 @@ public final class MilitaryManager implements Listener {
     /** Drill: training rises (faster at the class's training building). */
     public void train(Colony c, Citizen ct, double hours) {
         MilitaryClass k = ct.militaryClass;
-        double rate = plugin.settings().trainingPerHour * ct.trait.learning();
+        double rate = plugin.settings().trainingPerHour * ct.trait.learning() * (1 + c.bonus(com.colonysmp.core.Research.Effect.TRAINING));
         if (k != null && k.training != null) {
             BuildingType t = BuildingType.parse(k.training);
             if (t == null || c.valid(t).isEmpty()) rate *= 0.3;

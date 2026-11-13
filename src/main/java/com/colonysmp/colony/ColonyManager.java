@@ -210,6 +210,8 @@ public final class ColonyManager {
         plugin.npcs().despawnColony(c);
         plugin.travelers().colonyRemoved(c);
         plugin.quests().colonyRemoved(c);
+        plugin.raids().colonyRemoved(c);
+        plugin.happenings().colonyRemoved(c);
         plugin.townHall().dissolve(c);
         for (Citizen ct : new ArrayList<>(c.citizens.values())) citizenIndex.remove(ct.id);
         c.citizens.clear();

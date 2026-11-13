@@ -101,6 +101,17 @@ public final class Settings {
     public final int blueprintMaxSize, blueprintMaxBlocks, blueprintMax;
     public final int mineTargetY, mineTunnelLength, mineBranchLength, maxMines;
 
+    // raids from the wilds
+    public final boolean raidsEnabled, raidLoot;
+    public final int raidMinPopulation, raidGraceDays, raidMinDays, raidMinSize, raidMaxSize, raidSpawnDistance, raidMaxMinutes;
+    public final double raidChance, raidUndeadShare;
+    public final long raidBounty, raidTributePerRaider;
+
+    // requests, happenings and milestones
+    public final boolean requestsEnabled, eventsEnabled, milestonesEnabled;
+    public final int requestsMax, requestDays, requestMotivationDays, eventMinDays, caravanMinutes;
+    public final double requestChance, eventChance, milestoneRewardFactor;
+
     public final List<ItemStack> questReward;
     /** Provisions the first settlers bring. */
     public final List<ItemStack> startingGoods;
@@ -276,6 +287,34 @@ public final class Settings {
         mineTunnelLength = Math.max(4, c.getInt("mines.tunnel-length", 32));
         mineBranchLength = Math.max(2, c.getInt("mines.branch-length", 16));
         maxMines = Math.max(1, c.getInt("mines.max-per-colony", 3));
+
+        raidsEnabled = c.getBoolean("raids.enabled", true);
+        raidMinPopulation = Math.max(1, c.getInt("raids.min-population", 6));
+        raidGraceDays = Math.max(0, c.getInt("raids.grace-days", 5));
+        raidMinDays = Math.max(1, c.getInt("raids.min-days-between", 4));
+        raidChance = clamp(c.getDouble("raids.chance-per-day", 0.25), 0, 1);
+        raidUndeadShare = clamp(c.getDouble("raids.undead-share", 0.35), 0, 1);
+        raidMinSize = Math.max(1, c.getInt("raids.min-size", 3));
+        raidMaxSize = Math.max(raidMinSize, c.getInt("raids.max-size", 24));
+        raidSpawnDistance = clampI(c.getInt("raids.spawn-distance", 14), 2, 48);
+        raidMaxMinutes = Math.max(1, c.getInt("raids.max-minutes", 12));
+        raidBounty = Math.max(0, c.getLong("raids.bounty-per-raider", 6));
+        raidTributePerRaider = Math.max(0, c.getLong("raids.tribute-per-raider", 12));
+        raidLoot = c.getBoolean("raids.loot-storage", true);
+
+        requestsEnabled = c.getBoolean("requests.enabled", true);
+        requestsMax = Math.max(1, c.getInt("requests.max-open", 3));
+        requestChance = clamp(c.getDouble("requests.chance-per-day", 0.7), 0, 1);
+        requestDays = Math.max(1, c.getInt("requests.wait-days", 3));
+        requestMotivationDays = Math.max(0, c.getInt("requests.motivated-days", 2));
+
+        eventsEnabled = c.getBoolean("events.enabled", true);
+        eventMinDays = Math.max(1, c.getInt("events.min-days-between", 2));
+        eventChance = clamp(c.getDouble("events.chance-per-day", 0.4), 0, 1);
+        caravanMinutes = Math.max(1, c.getInt("events.caravan-minutes", 8));
+
+        milestonesEnabled = c.getBoolean("milestones.enabled", true);
+        milestoneRewardFactor = Math.max(0, c.getDouble("milestones.reward-multiplier", 1));
 
         questReward = items(c, "quests.reward", log);
         startingGoods = items(c, "citizens.starting-goods", log);

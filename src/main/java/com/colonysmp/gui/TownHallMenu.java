@@ -77,6 +77,22 @@ public final class TownHallMenu extends Menu {
             });
         }
         button(34, Material.PLAYER_HEAD, "<green>Members", List.of("<gray>" + c.members.size() + " members", "<dark_gray>Click to list in chat"), k -> chat("colony members"));
+        var academy = plugin.sim().academy();
+        List<String> res = new ArrayList<>();
+        res.add(c.researching == null ? "<gray>Nothing under way" : "<gray>" + c.researching.display + ": <white>" + Math.round(academy.progress(c) * 100) + "%");
+        res.add("<gray>Known: " + c.research.size() + " projects · University level " + academy.universityLevel(c));
+        res.add("<dark_gray>Click to open");
+        button(37, Material.KNOWLEDGE_BOOK, "<green>Research", res, k -> new ResearchMenu(plugin, viewer, c).open());
+        button(38, Material.PAPER, "<green>Requests", List.of("<gray>" + c.requests.size() + " citizens are asking for something", "<gray>Answered so far: " + c.requestsFilled,
+                "<dark_gray>Click to list in chat"), k -> chat("colony requests"));
+        List<String> raid = new ArrayList<>(plugin.raids().describe(c));
+        raid.add("<dark_gray>Click to list in chat");
+        button(39, Material.CROSSBOW, "<green>Raids", raid, k -> chat("colony raid"));
+        List<String> today = new ArrayList<>(plugin.happenings().describe(c));
+        today.add("<dark_gray>Click to list in chat");
+        button(41, Material.FIREWORK_ROCKET, "<green>Today", today, k -> chat("colony today"));
+        button(42, Material.NETHER_STAR, "<green>Milestones", List.of("<gray>" + c.milestones.size() + "/" + plugin.milestones().all().size() + " reached", "<dark_gray>Click to list in chat"),
+                k -> chat("colony milestones"));
         if (c.questStage <= QuestManager.COUNT) {
             QuestManager q = plugin.quests();
             button(40, Material.MAP, "<gold>First steps: " + q.title(c.questStage), List.of("<gray>" + Text.esc(q.task(c.questStage))), k -> chat("colony quests"));

@@ -68,6 +68,16 @@ public enum Job {
             "Hosts travellers at an inn (income, and more travellers stop by)."),
     WARDEN("Warden", Material.IRON_BARS, Skill.ADMINISTRATION, Background.SERVICE, 3, 0, null, false,
             "Feeds and talks to prisoners; holds criminals."),
+    RESEARCHER("Researcher", Material.KNOWLEDGE_BOOK, Skill.SCHOLARSHIP, Background.RESEARCH, 5, 50, null, false,
+            "Works on the colony's research at a University."),
+    BARD("Bard", Material.NOTE_BLOCK, Skill.PERFORMANCE, Background.ENTERTAIN, 3, 0, null, false,
+            "Plays at a tavern: music lifts everyone's spirits and brings people together."),
+    DRUID("Druid", Material.MOSS_BLOCK, Skill.FARMING, Background.GROW, 4, 20, null, false,
+            "Tends a grove and walks the fields, coaxing the crops to grow faster."),
+    ENCHANTER("Enchanter", Material.ENCHANTING_TABLE, Skill.SCHOLARSHIP, Background.ENCHANT, 5, 45, null, false,
+            "Enchants the tools, weapons and armour in the armoury, using lapis lazuli."),
+    BEEKEEPER("Beekeeper", Material.HONEYCOMB, Skill.HUSBANDRY, Background.BEES, 2, 0, null, false,
+            "Keeps the hives of an apiary; collects honeycomb and bottles honey."),
     // defence
     GUARD("Guard", Material.IRON_SWORD, Skill.MELEE, Background.GUARD, 3, 0, null, true,
             "Watches the towers and walls, fights intruders and monsters, keeps order."),
@@ -83,7 +93,8 @@ public enum Job {
     public enum Background {
         /** Needs the world: waits while the colony is unloaded. */
         NONE,
-        FARM, PEN, FISHING, RECIPE, SERVICE, HAUL, TEACH, STUDY, HEAL, GUARD, TRAIN
+        FARM, PEN, FISHING, RECIPE, SERVICE, HAUL, TEACH, STUDY, HEAL, GUARD, TRAIN,
+        RESEARCH, ENTERTAIN, GROW, ENCHANT, BEES
     }
 
     public final String display;
@@ -132,8 +143,8 @@ public enum Job {
 
     public Villager.Profession profession() {
         return switch (this) {
-            case FARMER, MILLER, BAKER -> Villager.Profession.FARMER;
-            case ANIMAL_KEEPER -> Villager.Profession.SHEPHERD;
+            case FARMER, MILLER, BAKER, BEEKEEPER -> Villager.Profession.FARMER;
+            case ANIMAL_KEEPER, BARD -> Villager.Profession.SHEPHERD;
             case FORESTER, CRAFTSWORKER -> Villager.Profession.FLETCHER;
             case FISHER -> Villager.Profession.FISHERMAN;
             case BUTCHER, COOK, INNKEEPER -> Villager.Profession.BUTCHER;
@@ -142,8 +153,9 @@ public enum Job {
             case BLACKSMITH -> Villager.Profession.ARMORER;
             case MASON, BUILDER -> Villager.Profession.MASON;
             case MERCHANT, SHOPKEEPER, WARDEN -> Villager.Profession.CARTOGRAPHER;
-            case ADMINISTRATOR, TREASURER, TEACHER -> Villager.Profession.LIBRARIAN;
-            case DOCTOR -> Villager.Profession.CLERIC;
+            case ADMINISTRATOR, TREASURER, TEACHER, RESEARCHER -> Villager.Profession.LIBRARIAN;
+            case DOCTOR, ENCHANTER -> Villager.Profession.CLERIC;
+            case DRUID -> Villager.Profession.NITWIT;
             case GUARD, SOLDIER -> Villager.Profession.WEAPONSMITH;
             case WAREHOUSE_WORKER, STUDENT, UNEMPLOYED -> Villager.Profession.NONE;
         };
@@ -158,7 +170,10 @@ public enum Job {
             case "SMITH" -> u = "BLACKSMITH";
             case "NONE", "IDLE" -> u = "UNEMPLOYED";
             case "COURIER", "HAULER" -> u = "WAREHOUSE_WORKER";
-            case "HEALER", "MEDIC" -> u = "DOCTOR";
+            case "HEALER", "MEDIC", "CLERIC" -> u = "DOCTOR";
+            case "SCHOLAR" -> u = "RESEARCHER";
+            case "MUSICIAN", "MINSTREL" -> u = "BARD";
+            case "APIARIST" -> u = "BEEKEEPER";
             default -> {
             }
         }

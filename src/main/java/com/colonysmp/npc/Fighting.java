@@ -144,7 +144,7 @@ public final class Fighting {
 
     private void hit(Npc n, Colony col, LivingEntity t) {
         Citizen c = n.c;
-        double dmg = Tools.meleeDamage(c.weapon) * strength(c);
+        double dmg = Tools.meleeDamage(c.weapon) * strength(c) * (1 + col.bonus(com.colonysmp.core.Research.Effect.DAMAGE));
         n.body.swingMainHand();
         t.damage(dmg, n.body);
         Fx.sound(n.loc(), "minecraft:entity.player.attack.strong", 0.7f, 1f);
@@ -166,7 +166,8 @@ public final class Fighting {
         ThreadLocalRandom r = ThreadLocalRandom.current();
         double spread = 0.05 * (1.2 - Math.min(1, c.training) * 0.6);
         dir.add(new Vector(r.nextGaussian() * spread, r.nextGaussian() * spread * 0.5, r.nextGaussian() * spread)).normalize();
-        double base = (k != null && k.ranged > 0 ? k.ranged : 2.5) * strength(c);
+        Colony col = plugin.colonies().colonyOf(c);
+        double base = (k != null && k.ranged > 0 ? k.ranged : 2.5) * strength(c) * (1 + (col == null ? 0 : col.bonus(com.colonysmp.core.Research.Effect.DAMAGE)));
         Projectile p;
         if (k == MilitaryClass.JAVELINEER) {
             Trident tr = n.body.launchProjectile(Trident.class, dir.multiply(1.8));

@@ -120,7 +120,8 @@ public final class PenScanner {
                 for (int y = minY - 1; y <= maxY + 2; y++) {
                     Material m = w.getBlockAt(x, y, z).getType();
                     for (Feature f : Feature.values()) {
-                        if (f == Feature.HAY || f == Feature.TARGET || f == Feature.COMPOSTER || f == Feature.BARREL || f == Feature.CONTAINER) {
+                        if (f == Feature.HAY || f == Feature.TARGET || f == Feature.COMPOSTER || f == Feature.BARREL || f == Feature.CONTAINER
+                                || f == Feature.BEEHIVE || f == Feature.STANDING_STONE) {
                             if (f.matches(m)) {
                                 features.merge(f, 1, Integer::sum);
                                 found.computeIfAbsent(f, k -> new ArrayList<>()).add(new BlockPos(x, y, z));

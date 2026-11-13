@@ -455,7 +455,7 @@ public final class NpcManager implements Listener {
             Building b = col.building(c.workplace);
             if (b != null && b.anchor != null && w != null && b.anchor.loaded(w)) {
                 Job.Background bg = c.job.background;
-                if (bg == Job.Background.NONE || bg == Job.Background.FARM || bg == Job.Background.PEN) p += 40;
+                if (bg == Job.Background.NONE || bg == Job.Background.FARM || bg == Job.Background.PEN || bg == Job.Background.GROW || bg == Job.Background.BEES) p += 40;
                 else p += 10;
             }
             Location here = c.hasLast && w != null ? new Location(w, c.lastX, c.lastY, c.lastZ) : col.coreLocation();
@@ -949,6 +949,7 @@ public final class NpcManager implements Listener {
         if (col == null) return;
         if (plugin.prison().interact(p, n, col, hand)) return;
         if (plugin.military().interact(p, n, col, hand)) return;
+        if (plugin.requests().interact(p, n.c, col, hand)) return;
         if (col.isMember(p.getUniqueId()) || plugin.isBypassing(p)) {
             new CitizenMenu(plugin, p, col, n.c).open();
         } else {

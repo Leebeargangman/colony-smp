@@ -57,6 +57,17 @@ public final class CitizenMenu extends Menu {
                     refresh();
                 });
             }
+            var asks = plugin.requests().of(c, ct);
+            if (asks != null) {
+                var good = com.colonysmp.core.Goods.get(asks.good());
+                button(23, Material.PAPER, "<yellow>Asks for " + asks.amount() + " " + good.name(), List.of("<gray><italic>\"" + Text.esc(asks.reason()) + "\"",
+                        asks.reward() > 0 ? "<gray>Pays <gold>" + Text.money(asks.reward(), plugin.settings().currency) : "<gray>Has no money to pay, only thanks",
+                        "<dark_gray>Click to hand it over from your inventory"), k -> {
+                    String err = plugin.requests().deliver(viewer, c, asks);
+                    if (err != null) Text.send(viewer, "<red>" + err);
+                    refresh();
+                });
+            }
             Building home = c.building(ct.home);
             button(22, Material.RED_BED, "<green>Home", List.of("<gray>" + (home == null ? "Homeless" : Text.esc(home.label())), "<dark_gray>/colony home " + ct.name + " <house id>"), null);
             button(25, Material.OAK_DOOR, "<red>Exile", List.of("<gray>Send them away for good"), k -> {
