@@ -28,7 +28,7 @@ public final class Keys {
     /** string: colony id (a visiting merchant and their llamas) */
     public static NamespacedKey MERCHANT;
 
-    public static NamespacedKey RECIPE_WAND, RECIPE_ROPE, RECIPE_BANNER, RECIPE_BOOK, RECIPE_BATON, RECIPE_MARKER;
+    public static NamespacedKey RECIPE_WAND, RECIPE_ROPE, RECIPE_BANNER, RECIPE_BOOK, RECIPE_BATON, RECIPE_MARKER, RECIPE_CHRISTMAS;
 
     private Keys() {}
 
@@ -50,5 +50,6 @@ public final class Keys {
         RECIPE_BOOK = new NamespacedKey(plugin, "blueprint_book");
         RECIPE_BATON = new NamespacedKey(plugin, "command_baton");
         RECIPE_MARKER = new NamespacedKey(plugin, "building_marker");
+        RECIPE_CHRISTMAS = new NamespacedKey(plugin, "christmas_sapling");
     }
 }

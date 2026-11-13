@@ -38,6 +38,7 @@ public final class Milestones {
         add("fed", "Land of Plenty", "Hold two weeks of food for 10 or more citizens", 80, c -> c.population() >= 10 && plugin.sim().finances().foodDays(c) >= 14);
         add("tavern", "Song and Supper", "Have a bard playing at a Tavern", 50, c -> plugin.sim().citizens().staffed(c, BuildingType.TAVERN) != null);
         add("honey", "Milk and Honey", "Have a beekeeper at an Apiary", 40, c -> plugin.sim().citizens().staffed(c, BuildingType.APIARY) != null);
+        add("yule", "Deck the Halls", "Raise a Christmas tree in the Christmas season", 40, c -> plugin.christmas().decorated(c));
         add("research1", "Eureka", "Finish a research project", 60, c -> !c.research.isEmpty());
         add("research8", "Age of Reason", "Finish 8 research projects", 300, c -> c.research.size() >= 8);
         add("raid1", "Baptism of Fire", "Drive off a raid", 80, c -> c.raidsRepelled >= 1);

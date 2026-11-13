@@ -76,6 +76,8 @@ public final class RequestManager implements Listener {
             Citizen ct = pool.remove(rnd.nextInt(pool.size()));
             LifeStage stage = plugin.sim().citizens().stage(ct);
             List<Wishes.Wish> wishes = new ArrayList<>(Wishes.pool(ct.job.name(), stage == LifeStage.CHILD, stage == LifeStage.ELDER));
+            // at Christmas, half of what people want is for the season
+            if (plugin.christmas().season() && rnd.nextBoolean()) wishes = Wishes.festive(stage == LifeStage.CHILD);
             while (!wishes.isEmpty()) {
                 Wishes.Wish w = wishes.remove(rnd.nextInt(wishes.size()));
                 if (!Goods.known(w.good())) continue;

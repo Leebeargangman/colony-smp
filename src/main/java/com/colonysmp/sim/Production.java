@@ -101,7 +101,10 @@ public final class Production {
     private void xp(Citizen c, double hours) {
         if (c.job.skill == null) return;
         int lvl = c.skills.gain(c.job.skill, hours * 10 * c.trait.learning());
-        if (lvl > 0) c.remember(0, "Reached " + c.job.skill.display + " level " + lvl);
+        if (lvl > 0) {
+            Colony col = plugin.colonies().colonyOf(c);
+            c.remember(col == null ? 0 : plugin.sim().day(col), "Reached " + c.job.skill.display + " level " + lvl);
+        }
     }
 
     /** Background models that move with time rather than with work. */

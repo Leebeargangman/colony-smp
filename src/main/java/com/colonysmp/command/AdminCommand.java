@@ -71,7 +71,7 @@ final class AdminCommand {
                     if (own != null) it = plugin.items().core(own.id, own.name);
                 }
                 if (to == null || it == null) {
-                    Text.send(s, "Usage: /colony admin give <wand|book|marker|rope|baton|war_banner|core> [player]");
+                    Text.send(s, "Usage: /colony admin give <wand|book|marker|rope|baton|war_banner|core|christmas_sapling|present> [player]");
                     return;
                 }
                 ColonyCommand.give(to, it);
@@ -423,7 +423,7 @@ final class AdminCommand {
         String last = a.length == 0 ? "" : a[a.length - 1].toLowerCase(Locale.ROOT);
         List<String> options = new ArrayList<>();
         if (a.length <= 1) options.addAll(SUBS);
-        else if (a.length == 2 && a[0].equalsIgnoreCase("give")) options.addAll(List.of(Items.WAND, Items.BOOK, Items.MARKER, Items.ROPE, Items.BATON, Items.WAR_BANNER, "core"));
+        else if (a.length == 2 && a[0].equalsIgnoreCase("give")) options.addAll(List.of(Items.WAND, Items.BOOK, Items.MARKER, Items.ROPE, Items.BATON, Items.WAR_BANNER, Items.CHRISTMAS_SAPLING, Items.PRESENT, "core"));
         else if (a.length == 2) for (Colony c : plugin.colonies().list()) options.add(c.id);
         else if (a.length == 3 && a[0].equalsIgnoreCase("treasury")) options.addAll(List.of("set", "add"));
         else if (a.length == 3 && a[0].equalsIgnoreCase("addcitizen")) for (Job j : Job.values()) options.add(j.name().toLowerCase(Locale.ROOT));

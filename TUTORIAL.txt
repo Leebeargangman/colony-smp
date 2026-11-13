@@ -505,6 +505,22 @@ MILESTONES
   /colony milestones lists goals with rewards: 10 citizens, a first
   raid beaten, a first discovery, and more.
 
+LISTEN TO YOUR PEOPLE
+  Citizens speak to you as you walk past. Mostly they tell you what
+  is wrong: "I'm stuck: waiting for 6 flour", "I haven't been paid
+  in 2 days", "I slept on the ground again". It's the quickest way
+  to find out what the colony needs. /colony chatter off if you'd
+  rather they kept quiet.
+
+CHRISTMAS (1 December to 6 January)
+  /colony christmas gives the colony a Christmas Tree Sapling (or
+  craft one: spruce sapling + gold nugget + red dye). Plant it on
+  grass under open sky in your land and it grows into a tree with
+  lanterns and a star. While it stands everyone is merrier, the
+  bard plays carols, the children throw snowballs, and Father
+  Christmas visits every few days: right-click him for a present,
+  then right-click the present to unwrap it.
+
 
 =====================================================================
 PART 15 - WHEN NOBODY IS AROUND
@@ -590,6 +606,8 @@ PART 17 - CHEAT SHEET
   /colony research               the research tree
   /colony raid [tribute]         what the scouts know; pay raiders off
   /colony milestones             goals and rewards
+  /colony chatter [on|off]       citizens talking to you
+  /colony christmas              the season, the tree, a sapling
   /colony help <topic>           everything else
 
   Building Marker  place inside a building to register it

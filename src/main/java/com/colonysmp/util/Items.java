@@ -30,7 +30,7 @@ import java.util.UUID;
 public final class Items implements Listener {
 
     public static final String WAND = "wand", CORE = "core", BOOK = "book", ROPE = "rope", BATON = "baton", WAR_BANNER = "war_banner",
-            MARKER = "marker";
+            MARKER = "marker", CHRISTMAS_SAPLING = "christmas_sapling", PRESENT = "present";
 
     private final Plugin plugin;
 
@@ -154,8 +154,28 @@ public final class Items implements Listener {
         return it;
     }
 
+    public ItemStack christmasSapling() {
+        return make(Material.SPRUCE_SAPLING, CHRISTMAS_SAPLING, "<green><bold>Christmas Tree Sapling", true, 16,
+                "<gray>Plant it on open ground in your colony",
+                "<gray>during the Christmas season: it grows at once",
+                "<gray>into the colony's <green>Christmas tree</green>, with",
+                "<gray>lanterns in its branches and a star on top.",
+                "",
+                "<gray>A colony with a tree is merrier, and",
+                "<red>Father Christmas</red> <gray>only calls where there is one.");
+    }
+
+    public ItemStack present() {
+        return make(Material.RED_BUNDLE, PRESENT, "<red><bold>Christmas Present", true, 16,
+                "<gray>From Father Christmas.",
+                "",
+                "<white>Right-Click</white><gray>: <white>unwrap it");
+    }
+
     public ItemStack byId(String id) {
         return switch (id) {
+            case CHRISTMAS_SAPLING -> christmasSapling();
+            case PRESENT -> present();
             case WAND -> wand();
             case BOOK -> book();
             case MARKER -> marker();
@@ -225,6 +245,12 @@ public final class Items implements Listener {
         marker.addIngredient(Material.GOLD_NUGGET);
         add(marker);
 
+        ShapelessRecipe tree = new ShapelessRecipe(Keys.RECIPE_CHRISTMAS, christmasSapling());
+        tree.addIngredient(Material.SPRUCE_SAPLING);
+        tree.addIngredient(Material.GOLD_NUGGET);
+        tree.addIngredient(Material.RED_DYE);
+        add(tree);
+
         ShapelessRecipe baton = new ShapelessRecipe(Keys.RECIPE_BATON, baton());
         baton.addIngredient(Material.STICK);
         baton.addIngredient(Material.GOLD_INGOT);
@@ -243,11 +269,11 @@ public final class Items implements Listener {
     }
 
     public void unregisterRecipes() {
-        for (var k : List.of(Keys.RECIPE_WAND, Keys.RECIPE_ROPE, Keys.RECIPE_BANNER, Keys.RECIPE_BOOK, Keys.RECIPE_BATON, Keys.RECIPE_MARKER)) Bukkit.removeRecipe(k);
+        for (var k : List.of(Keys.RECIPE_WAND, Keys.RECIPE_ROPE, Keys.RECIPE_BANNER, Keys.RECIPE_BOOK, Keys.RECIPE_BATON, Keys.RECIPE_MARKER, Keys.RECIPE_CHRISTMAS)) Bukkit.removeRecipe(k);
     }
 
     public void discover(Player p) {
-        p.discoverRecipes(List.of(Keys.RECIPE_WAND, Keys.RECIPE_ROPE, Keys.RECIPE_BANNER, Keys.RECIPE_BOOK, Keys.RECIPE_BATON, Keys.RECIPE_MARKER));
+        p.discoverRecipes(List.of(Keys.RECIPE_WAND, Keys.RECIPE_ROPE, Keys.RECIPE_BANNER, Keys.RECIPE_BOOK, Keys.RECIPE_BATON, Keys.RECIPE_MARKER, Keys.RECIPE_CHRISTMAS));
     }
 
     @EventHandler

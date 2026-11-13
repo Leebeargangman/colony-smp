@@ -65,7 +65,7 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
             "resources", "storage", "economy", "trade", "production", "deposit", "withdraw", "shop", "policies",
             "military", "recruit", "army", "orders", "squad", "mobilize",
             "diplomacy", "declarewar", "peace", "surrender", "prison", "events", "stats",
-            "research", "raid", "requests", "refugees", "milestones", "today", "admin");
+            "research", "raid", "requests", "refugees", "milestones", "today", "chatter", "christmas", "admin");
 
     private final ColonySMP plugin;
     private final Info info;
@@ -284,10 +284,30 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
                 plugin.milestones().check(c);
                 for (String l : plugin.milestones().list(c)) Text.raw(p, l);
             }
+            case "chatter" -> {
+                if (need(p, c)) return;
+                boolean off = a.length > 0 ? a[0].equalsIgnoreCase("off") : !c.chatterMuted.contains(p.getUniqueId());
+                if (off) c.chatterMuted.add(p.getUniqueId());
+                else c.chatterMuted.remove(p.getUniqueId());
+                plugin.requestSave();
+                Text.send(p, off ? "The citizens will keep their thoughts to themselves. <gray>(/colony chatter on to hear them again)"
+                        : "The citizens will speak to you as you pass. <gray>(/colony chatter off to stop them)");
+            }
+            case "christmas", "xmas" -> {
+                if (need(p, c)) return;
+                Text.raw(p, "<green><bold>Christmas</bold> <gray>- " + Text.esc(c.name));
+                for (String l : plugin.christmas().describe(c)) Text.raw(p, " " + l);
+                String err = plugin.christmas().freeSapling(p, c);
+                if (err != null && plugin.christmas().season()) Text.send(p, "<red>" + err);
+            }
             case "today" -> {
                 if (need(p, c)) return;
                 Text.raw(p, "<aqua><bold>Today in " + Text.esc(c.name));
                 for (String l : plugin.happenings().describe(c)) Text.raw(p, " " + l);
+                if (plugin.christmas().season()) {
+                    Text.raw(p, plugin.christmas().decorated(c) ? " <green>🎄 Christmas: the tree stands, and everyone is merrier for it."
+                            : " <green>🎄 It's Christmas, but the colony has no tree: <click:run_command:'/colony christmas'>[Christmas]</click>");
+                }
                 for (String l : plugin.raids().describe(c).subList(0, 1)) Text.raw(p, " " + l);
                 int open = c.requests.size();
                 if (open > 0) Text.raw(p, " <yellow>" + open + " citizen" + (open == 1 ? " is" : "s are") + " asking for something: <click:run_command:'/colony requests'>[Requests]</click>");
@@ -1561,6 +1581,7 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
             case "prisoners" -> List.of("Downed enemies can be bound with Rope (3 string in a column) and led into a Prison.",
                     "prison · prison release <name> · prison ransom <name> [price] · prison exchange <ours> <theirs>");
             case "events", "research", "raids", "requests" -> List.of("today (what's going on) · requests [deliver <n>] · research [list|start <project>|abandon] · raid [tribute] · refugees accept|refuse · milestones",
+                    "chatter [on|off] (citizens talking to you) · christmas (the season, the tree, a free sapling)",
                     "Citizens ask you for things: bring them (right-click the citizen holding the goods) and they pay you and work harder.",
                     "Researchers at a University work through the project you choose; each one changes the colony for good.",
                     "Raiders come at nightfall once the colony has grown: scouts warn you that morning. Barbarians can be paid off.",
@@ -1658,6 +1679,7 @@ public final class ColonyCommand implements CommandExecutor, TabCompleter {
                 if (args.length == 3 && args[1].equalsIgnoreCase("start")) for (Research r : Research.values()) options.add(r.name().toLowerCase(Locale.ROOT));
             }
             case "raid", "raids" -> options = List.of("tribute");
+            case "chatter" -> options = List.of("on", "off");
             case "refugees" -> options = List.of("accept", "refuse");
             case "requests", "request" -> {
                 if (args.length == 2) options = List.of("deliver");

@@ -220,6 +220,7 @@ public final class SimulationEngine {
     /** Everything that happens once a day (at the colony world's midnight-ish day change). */
     public void daily(Colony c, long day) {
         if (c.core == null) return;
+        if (c != forwarding) c.clampDays(day);
         plugin.buildings().dailyCheck(c, day);
         housing.assign(c);
         jobs.daily(c, day);
@@ -236,6 +237,7 @@ public final class SimulationEngine {
         plugin.requests().daily(c, day);
         plugin.happenings().daily(c, day);
         plugin.raids().daily(c, day);
+        plugin.christmas().daily(c, day);
         c.modifiers.removeIf(m -> m.untilDay() < day);
         c.boons.values().removeIf(until -> until < day);
         report(c, day);

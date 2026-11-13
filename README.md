@@ -27,16 +27,16 @@ New to it? Read [TUTORIAL.txt](TUTORIAL.txt) for a walk-through of a player's fi
 
 ## Install
 
-1. Put `ColonySMP-2.1.0.jar` in `plugins/`.
+1. Put `ColonySMP-2.2.0.jar` in `plugins/`.
 2. Start the server. `plugins/ColonySMP/config.yml` and `plugins/ColonySMP/colonies.db` are created.
 3. Optional: change the config, then run `/colony admin reload`.
 
 Build it yourself with `./gradlew build`. The jar lands in `build/libs/`.
 
-### Upgrading from 2.0
+### Upgrading from 2.0 or 2.1
 
 Drop the new jar in. Colonies, citizens and buildings load as they are; the new settings (`raids`, `requests`,
-`events`, `milestones`) use their defaults until you add them to `config.yml` (delete the file to have a fresh
+`events`, `milestones`, `christmas`, `citizens.chatter-seconds`) use their defaults until you add them to `config.yml` (delete the file to have a fresh
 one written with every comment). Established colonies are awarded the milestones they have already reached on
 their first day, and their masons start keeping a little gravel, sand and flint.
 
@@ -188,6 +188,21 @@ leave.
 shelter, flee, or fight (the emergency policy decides which). A citizen's brain checks its priorities in
 order: danger, starving, injured, exhausted, then the time of day.
 
+**They use their heads.** A citizen chased by a monster shouts for the watch and runs somewhere safer, not
+just away: behind the nearest guard or soldier, home, or to the Town Hall, whichever doesn't mean running past
+the danger. Guards answer the shout at a run, go first for whatever is attacking a citizen, then for a raid's
+leader, then for the nearly beaten, and fall back when badly hurt instead of dying where they stand. Archers
+with no blade keep their distance and go on shooting. Guards and doctors run to a downed citizen and get them
+on their feet. Off the alarm, guards eat, see the doctor and sleep when they're tired, at any hour, and wake
+if the alarm goes. A soldier left on a standing order still falls out to eat before starving. The unemployed
+carry goods instead of standing about, and a worker with two stacks waiting takes them to storage without
+waiting for the shelves to fill.
+
+**They talk.** Citizens speak to members who walk past, about whatever is most on their mind: what is stopping
+their work ("I'm stuck: waiting for 6 flour"), that they are starving, unpaid, homeless or ill, the raid
+expected tonight, the thing they asked you for, or just the time of day. One remark every 45 seconds or so
+(`citizens.chatter-seconds`, 0 for off); `/colony chatter off` silences them for you alone.
+
 **Families:** adults who get on become partners and, with a home, enough food and a good mood, have
 children. Children grow up in 5 days (by default), go to school if there is one, and get a job when they
 come of age. Elders retire from heavy work, and everyone dies of old age in the end.
@@ -317,12 +332,35 @@ research thins them. Beating a raid pays a bounty into the treasury and lifts st
 mood. Losing goods or citizens to one does the opposite. The chief and the necromancer drop loot of their
 own. Downed barbarians can be bound with rope and imprisoned like any other enemy.
 
-Raids only happen while a member is online in the colony's world and the colony is loaded, never while a
+With their chief dead and three quarters of the band down, the last barbarians break and run, dropping
+what they carried.
+
+Raids only happen while a member is on or near the colony's land and the colony is loaded, never while a
 war is on, and never in a peaceful world. `/colony raid` shows what the scouts know.
+
+## Christmas
+
+From 1 December to 6 January (by the server's calendar; `christmas.mode` can force it on or off) it is the
+Christmas season.
+
+- **The tree.** Craft a **Christmas Tree Sapling** (spruce sapling + gold nugget + red dye), or take the
+  colony's free one with `/colony christmas`, and plant it on dirt or grass under open sky in your land. It
+  grows at once into a spruce with lanterns hung in its branches and a star on top. One tree per colony per
+  season; if the star is removed, the tree no longer counts.
+- **While it stands:** everyone gets +3 mood, snow drifts round it, half the colony spends the evening
+  there, the children play by it and throw snowballs (at you too; they hurt nobody), and the bard at the
+  tavern plays carols.
+- **Father Christmas** walks in with his reindeer every few in-game days while a member is online. He leaves
+  treats in the stores and presents for the children (a mood boost for three days), and every player who
+  right-clicks him gets a **Christmas Present**. Right-click the present to unwrap it: cookies, emeralds,
+  iron, gold, diamonds, a golden apple, a saddle, a rare enchanted book... or a lump of coal.
+- **Also in season:** citizens ask for festive things (cookies, a cake, wool for stockings, snowballs for the
+  children), feast days become Christmas feasts with red, green and white fireworks, and people wish you a
+  merry Christmas as you pass.
 
 ## Milestones
 
-`/colony milestones` lists sixteen marks along a colony's way: ten citizens, a first raid beaten off, a first
+`/colony milestones` lists seventeen marks along a colony's way: ten citizens, a first raid beaten off, a first
 discovery, a bard in the tavern, 25 requests answered. Each is rewarded once with a grant to the treasury and
 a little reputation.
 
@@ -435,6 +473,8 @@ is down, because the world doesn't move either. Long gaps are caught up to `max-
 | Copy Wand | stick + gold nugget side by side, or `/colony wand` |
 | Rope (×2) | 3 string in a column |
 | Command Baton | stick + gold ingot + red dye (shapeless), or `/colony baton` |
+| Christmas Tree Sapling | spruce sapling + gold nugget + red dye (shapeless), or `/colony christmas` in season |
+| Christmas Present | right-click Father Christmas when he visits |
 | War Banner | red banner + iron sword + gold ingot (shapeless), or `/colony banner` |
 
 ## Commands
@@ -451,7 +491,7 @@ is down, because the world doesn't move either. Long gaps are caught up to `max-
 | Military | `military` · `recruit <citizen> <class>` · `army` · `orders <squad> <order> [here]` · `squad create\|delete\|rename\|add\|remove\|formation\|patrol\|select ...` · `mobilize` |
 | Diplomacy | `diplomacy [list\|offers\|accept\|decline\|ally\|treaty\|cancel\|gift\|trade\|contract\|calltoarms]` · `declarewar <colony> raid\|siege` · `peace <colony>` · `surrender` |
 | Prisoners | `prison` · `prison release <name>` · `prison ransom <name> [price]` · `prison exchange <ours> <theirs>` |
-| Events | `today` · `requests [deliver <n>]` · `research [list \| start <project> \| abandon]` · `raid [tribute]` · `refugees accept\|refuse` · `milestones` |
+| Events | `today` · `chatter [on\|off]` · `christmas` · `requests [deliver <n>]` · `research [list \| start <project> \| abandon]` · `raid [tribute]` · `refugees accept\|refuse` · `milestones` |
 
 Citizen names can have spaces: `/colony assign Rhea Pike farmer` works.
 
@@ -462,7 +502,7 @@ setstock <colony> <good> <qty> | treasury <colony> set|add <n> | addcitizen <col
 | stability <colony> <n> | shield <colony> <hours> | traveller <colony> | repair <colony> | bodies |
 demo <name> [x z] | raid <colony> [barbarians|undead] [size] | event <colony> <kind> |
 research <colony> <project|all> | request <colony>`. `raid` starts a raid at once, `event` makes a happening happen (festival, harvest, caravan,
-refugees, lucky_find, strays, scholar, storm), `research` grants a project, and `request` has a citizen ask
+refugees, lucky_find, strays, scholar, storm, santa), `give` also hands out `christmas_sapling` and `present`, `research` grants a project, and `request` has a citizen ask
 for something. `inspect` lists every citizen with their position, activity and needs. `simulate`
 fast-forwards a colony's background simulation, and `demo` founds a stocked test colony from the console.
 
@@ -473,8 +513,8 @@ fast-forwards a colony's background simulation, and `demo` founds a stocked test
 Every number lives in `config.yml`, with a comment on each: claims and land, protection and shields,
 citizens and bodies (speeds, work intervals, body limits), life stages and births, needs, education, the
 economy and prices, storage, the background simulation budget, health, order, the military, prisoners,
-travellers, war, diplomacy, plans, mines, the starter quest reward, raids, requests, happenings and
-milestones. Each of those last four has an `enabled` switch. `/colony admin reload` applies
+travellers, war, diplomacy, plans, mines, the starter quest reward, raids, requests, happenings,
+milestones and Christmas. Raids, requests, happenings and milestones each have an `enabled` switch. `/colony admin reload` applies
 changes.
 
 ## Persistence

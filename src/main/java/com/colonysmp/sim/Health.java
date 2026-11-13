@@ -168,6 +168,8 @@ public final class Health {
                 plugin.sim().population().die(c, ct, "died of " + d.display.toLowerCase());
             }
         }
+        // (for those walking about in body, the day's illness and treatment happened to the record: show it on them)
+        for (Citizen ct : people) if (c.citizens.containsKey(ct.id) && (ct.ill() || ct.injured || waiting.contains(ct))) plugin.npcs().pushHealth(ct);
         int now = sick(c);
         if (fell + caught > 0) {
             c.log(ColonyEvent.Type.HEALTH, day, (fell + caught) + " fell ill (" + caught + " caught it from others); " + now + " ill in total"

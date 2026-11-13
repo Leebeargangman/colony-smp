@@ -106,6 +106,7 @@ public final class RaidManager implements Listener {
         final Map<UUID, Integer> loads = new HashMap<>();
         BossBar bar;
         Mob leader;
+        boolean hadLeader;
         int spawned, slain, raised, citizensLost;
         long nextRaise, lootWarnAt, emptySince;
         int seconds;
@@ -247,9 +248,14 @@ public final class RaidManager implements Listener {
         }
     }
 
+    /** Members close enough to defend the colony: on its land or within a short run of it. */
     private static List<Player> defenders(Colony c, World w) {
         List<Player> out = new ArrayList<>();
-        for (Player p : c.onlineMembers()) if (p.getWorld() == w && !p.isDead()) out.add(p);
+        for (Player p : c.onlineMembers()) {
+            if (p.getWorld() != w || p.isDead()) continue;
+            Location l = p.getLocation();
+            if (c.territory.distanceTo(l.getX(), l.getZ()) <= 96) out.add(p);
+        }
         return out;
     }
 
@@ -278,7 +284,10 @@ public final class RaidManager implements Listener {
             Mob mob = spawn(c, at, roster.get(i));
             if (mob == null) continue;
             r.raiders.add(mob);
-            if (roster.get(i) == RaidPlan.Role.CHIEF || roster.get(i) == RaidPlan.Role.NECROMANCER) r.leader = mob;
+            if (roster.get(i) == RaidPlan.Role.CHIEF || roster.get(i) == RaidPlan.Role.NECROMANCER) {
+                r.leader = mob;
+                r.hadLeader = true;
+            }
         }
         if (r.raiders.isEmpty()) {
             for (Player p : c.onlineMembers()) Text.send(p, "<gray>The raiders turned back before they reached the colony.");
@@ -451,6 +460,19 @@ public final class RaidManager implements Listener {
             else withdraw(r, c, "The " + r.kind.members + " melted away into the night.");
             return;
         }
+        // barbarians are men, not monsters: with their chief dead and most of the band down, the rest run for it
+        if (r.kind == Kind.BARBARIANS && r.hadLeader && r.leader == null && r.spawned >= 5 && r.raiders.size() * 4 <= r.spawned) {
+            for (Mob mob : r.raiders) {
+                if (!mob.isValid()) continue;
+                mob.getWorld().spawnParticle(Particle.LARGE_SMOKE, mob.getLocation().add(0, 1, 0), 12, 0.3, 0.5, 0.3, 0.01);
+                mob.remove();
+            }
+            int fled = r.raiders.size();
+            r.raiders.clear();
+            for (Player p : c.onlineMembers()) Text.send(p, "<gold>The last " + (fled == 1 ? "barbarian breaks and runs" : fled + " barbarians break and run") + ", dropping what they carried.");
+            victory(r, c);
+            return;
+        }
         Settings s = plugin.settings();
         boolean dawn = w == null || plugin.sim().day(c) > r.day;
         boolean late = System.currentTimeMillis() - r.startedAt > s.raidMaxMinutes * 60_000L;
@@ -485,6 +507,20 @@ public final class RaidManager implements Listener {
         List<LivingEntity> victims = new ArrayList<>();
         for (Npc n : plugin.npcs().of(c)) if (!n.c.downed() && n.body.getWorld() == w) victims.add(n.body);
         for (Player p : defenders(c, w)) if (p.getGameMode() == GameMode.SURVIVAL || p.getGameMode() == GameMode.ADVENTURE) victims.add(p);
+        // the watch is told where the nearest of them has got to, once they're on (or at the edge of) the land
+        if (core != null) {
+            Mob nearest = null;
+            double nd = Double.MAX_VALUE;
+            for (Mob mob : r.raiders) {
+                if (mob.getWorld() != w || c.territory.distanceTo(mob.getX(), mob.getZ()) > 2) continue;
+                double d = mob.getLocation().distanceSquared(core);
+                if (d < nd) {
+                    nd = d;
+                    nearest = mob;
+                }
+            }
+            if (nearest != null) plugin.military().callWatch(c, nearest.getLocation());
+        }
         for (Mob mob : r.raiders) {
             if (mob.getWorld() != w) continue;
             LivingEntity t = mob.getTarget();
@@ -762,6 +798,8 @@ public final class RaidManager implements Listener {
         if (c == null || c.world() != p.getWorld()) return;
         boolean now = active.containsKey(c.id);
         if (!now && (c.raidDay < 0 || c.raidDay != plugin.sim().day(c))) return;
+        // someone far from home may sleep: the raiders aren't coming for them
+        if (c.territory.distanceTo(p.getLocation().getX(), p.getLocation().getZ()) > 160) return;
         e.setCancelled(true);
         Text.bar(p, now ? "<red>You can't sleep while raiders are at the gates." : "<red>Raiders are expected tonight: there'll be no sleeping.");
     }

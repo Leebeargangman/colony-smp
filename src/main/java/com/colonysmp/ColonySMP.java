@@ -5,6 +5,7 @@ import com.colonysmp.building.BuildingMarker;
 import com.colonysmp.building.BuildingManager;
 import com.colonysmp.building.SelectionManager;
 import com.colonysmp.colony.Access;
+import com.colonysmp.colony.Christmas;
 import com.colonysmp.colony.ClaimListener;
 import com.colonysmp.colony.ColonyManager;
 import com.colonysmp.colony.Happenings;
@@ -80,6 +81,7 @@ public final class ColonySMP extends JavaPlugin {
     private RequestManager requests;
     private Happenings happenings;
     private Milestones milestones;
+    private Christmas christmas;
 
     private long tick;
     private boolean dirty, saving, loaded;
@@ -111,6 +113,7 @@ public final class ColonySMP extends JavaPlugin {
         requests = new RequestManager(this);
         happenings = new Happenings(this);
         milestones = new Milestones(this);
+        christmas = new Christmas(this);
         blueprints = new BlueprintManager(this);
         markers = new BuildingMarker(this);
         selection = new SelectionManager(this);
@@ -147,7 +150,7 @@ public final class ColonySMP extends JavaPlugin {
             sim.jobs().refreshWorkplaces(c);
         }
 
-        for (Listener l : new Listener[]{items, selection, blueprints, markers, quests, npcs, prison, travelers, wars, townHall, military, raids, requests, happenings,
+        for (Listener l : new Listener[]{items, selection, blueprints, markers, quests, npcs, prison, travelers, wars, townHall, military, raids, requests, happenings, christmas,
                 new CombatListener(this), new ClaimListener(this), new MenuListener(), prompt}) {
             Bukkit.getPluginManager().registerEvents(l, this);
         }
@@ -176,6 +179,8 @@ public final class ColonySMP extends JavaPlugin {
             guarded("quests", quests::tick);
             guarded("raids", raids::tick);
             guarded("happenings", happenings::tick);
+            guarded("christmas", christmas::tick);
+            guarded("chatter", npcs.chatter()::tick);
         }, 20L, 20L);
         Bukkit.getScheduler().runTaskTimer(this, () -> {
             selection.render();
@@ -262,6 +267,7 @@ public final class ColonySMP extends JavaPlugin {
         ItemGoods.registerAll(settings.prices);
         items.registerRecipes();
         economy.configure();
+        christmas.reload();
         sim.citizens().reload();
         for (Colony c : colonies.list()) buildings.changed(c);
         requestSave();
@@ -387,5 +393,9 @@ public final class ColonySMP extends JavaPlugin {
 
     public Milestones milestones() {
         return milestones;
+    }
+
+    public Christmas christmas() {
+        return christmas;
     }
 }

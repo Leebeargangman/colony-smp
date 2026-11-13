@@ -186,6 +186,7 @@ public final class Order {
                 if (r.nextDouble() < 0.25) {
                     Citizen hurt = r.nextBoolean() ? a : b;
                     hurt.needs.health = Math.max(1, hurt.needs.health - hurt.needs.maxHealth * 0.4);
+                    plugin.npcs().pushHealth(hurt);
                     plugin.sim().citizens().updateInjury(hurt);
                     c.log(ColonyEvent.Type.CRIME, day, a.name + " and " + b.name + " came to blows; " + hurt.name + " was hurt.");
                     c.addStability(-1);

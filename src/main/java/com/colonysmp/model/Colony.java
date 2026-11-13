@@ -94,7 +94,10 @@ public final class Colony {
     public int requestsFilled;
 
     // happenings
-    public long lastEventDay = -1, lastFestivalDay = -1, lastCaravanDay = -1;
+    public long lastEventDay = -1, lastFestivalDay = -1, lastCaravanDay = -1, lastSantaDay = -1;
+    /** The Christmas tree: where it was planted, its star, and the season (year) it was planted for. */
+    public BlockPos christmasTree, christmasStar;
+    public int christmasYear, christmasSaplingYear;
     public final Set<String> milestones = new java.util.LinkedHashSet<>();
 
     // history
@@ -116,6 +119,8 @@ public final class Colony {
     public int questStage = 1;
     public boolean founded;
     public final Set<UUID> questHidden = new HashSet<>();
+    /** Members who would rather the citizens didn't talk to them. */
+    public final Set<UUID> chatterMuted = new HashSet<>();
 
     // runtime only
     public final transient Set<UUID> invites = new HashSet<>();
@@ -274,6 +279,20 @@ public final class Colony {
         return until != null && until >= day;
     }
 
+    /**
+     * Day counters that have run ahead of the calendar (an admin fast-forwarding the simulation) are pulled
+     * back to today, so they can't hold things up until the world catches up.
+     */
+    public void clampDays(long day) {
+        if (lastEventDay > day) lastEventDay = day;
+        if (lastFestivalDay > day) lastFestivalDay = day;
+        if (lastCaravanDay > day) lastCaravanDay = day;
+        if (lastSantaDay > day) lastSantaDay = day;
+        if (lastRaidDay > day) lastRaidDay = day;
+        if (raidDay > day) raidDay = -1;
+        boons.replaceAll((k, until) -> Math.min(until, day + 7));
+    }
+
     public Request request(int id) {
         for (Request r : requests) if (r.id() == id) return r;
         return null;
@@ -346,6 +365,9 @@ public final class Colony {
         List<String> hidden = new ArrayList<>();
         for (UUID u : questHidden) hidden.add(u.toString());
         s.set("quest-hidden", hidden);
+        List<String> muted = new ArrayList<>();
+        for (UUID u : chatterMuted) muted.add(u.toString());
+        s.set("chatter-muted", muted);
         List<String> known = new ArrayList<>();
         for (Research r : research) known.add(r.name());
         s.set("research.done", known);
@@ -374,6 +396,11 @@ public final class Colony {
         s.set("happenings.last", lastEventDay);
         s.set("happenings.festival", lastFestivalDay);
         s.set("happenings.caravan", lastCaravanDay);
+        s.set("happenings.santa", lastSantaDay);
+        s.set("christmas.tree", christmasTree == null ? null : christmasTree.toString());
+        s.set("christmas.star", christmasStar == null ? null : christmasStar.toString());
+        s.set("christmas.year", christmasYear);
+        s.set("christmas.sapling-year", christmasSaplingYear);
         s.set("milestones", new ArrayList<>(milestones));
     }
 
@@ -464,6 +491,13 @@ public final class Colony {
                 // skip
             }
         }
+        for (String u : s.getStringList("chatter-muted")) {
+            try {
+                c.chatterMuted.add(UUID.fromString(u));
+            } catch (IllegalArgumentException ignored) {
+                // skip
+            }
+        }
         for (String k : s.getStringList("research.done")) {
             Research r = Research.parse(k);
             if (r != null) c.research.add(r);
@@ -494,6 +528,11 @@ public final class Colony {
         c.lastEventDay = s.getLong("happenings.last", -1);
         c.lastFestivalDay = s.getLong("happenings.festival", -1);
         c.lastCaravanDay = s.getLong("happenings.caravan", -1);
+        c.lastSantaDay = s.getLong("happenings.santa", -1);
+        c.christmasTree = BlockPos.parse(s.getString("christmas.tree"));
+        c.christmasStar = BlockPos.parse(s.getString("christmas.star"));
+        c.christmasYear = s.getInt("christmas.year");
+        c.christmasSaplingYear = s.getInt("christmas.sapling-year");
         c.milestones.addAll(s.getStringList("milestones"));
         return c;
     }

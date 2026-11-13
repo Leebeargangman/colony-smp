@@ -41,17 +41,76 @@ public final class Guarding {
         return fighting.hostile(n, col, e);
     }
 
-    void think(Npc n, Colony col, long now) {
+    /** An enemy in sight: fight it, or fall back if badly hurt and not yet cornered. True if there was one. */
+    boolean fight(Npc n, Colony col, long now) {
         LivingEntity t = fighting.target(n, col, now, n.c.ranged != null && n.c.ammo > 0 ? 24 : 18, false);
-        if (t != null) {
-            fighting.engage(n, col, t, now);
-            n.working = true;
-            return;
+        if (t == null) {
+            n.enemy = null;
+            return false;
         }
+        plugin.military().callWatch(col, t.getLocation());
+        n.working = true;
+        if (n.c.needs.healthFraction() < 0.3 && t.getLocation().distanceSquared(n.loc()) > 3.5 * 3.5 && fallBack(n, col, t)) return true;
+        fighting.engage(n, col, t, now);
+        return true;
+    }
+
+    /** Badly hurt: back towards the Town Hall and the others, away from the enemy. False if there's nowhere to go. */
+    private boolean fallBack(Npc n, Colony col, LivingEntity t) {
+        Location core = col.coreLocation();
+        if (core == null || core.getWorld() != n.body.getWorld()) return false;
+        Location me = n.loc();
+        // only if that's away from the enemy, and we're not already there
+        if (core.distanceSquared(me) < 16 || core.distanceSquared(t.getLocation()) <= core.distanceSquared(me)) return false;
+        n.mover.moveTo(core, plugin.settings().runSpeed, 2.5);
+        n.doing("Falling back: badly hurt");
+        return true;
+    }
+
+    /** Someone of the colony is down nearby and nobody is fighting: get them on their feet. True while at it. */
+    boolean rescue(Npc n, Colony col, long now) {
+        Npc down = null;
+        double bd = 40 * 40;
+        for (Npc o : m.of(col)) {
+            if (o == n || !o.c.downed() || !o.c.status.free() || o.body.getWorld() != n.body.getWorld()) continue;
+            double d = o.loc().distanceSquared(n.loc());
+            if (d < bd) {
+                bd = d;
+                down = o;
+            }
+        }
+        if (down == null) return false;
+        if (!n.mover.near(down.loc(), 2.2)) {
+            n.mover.moveTo(down.loc(), plugin.settings().runSpeed, 1.6);
+            n.doing("Running to help " + down.c.name);
+            return true;
+        }
+        n.mover.stop();
+        CitizenBrain.face(n, down.loc());
+        n.body.swingMainHand();
+        plugin.prison().revive(down, 6);
+        n.doing("Helped " + down.c.name + " up");
+        for (Player p : col.onlineMembers()) Text.send(p, "<green>" + Text.esc(n.c.name) + " got " + Text.esc(down.c.name) + " back on their feet.");
+        return true;
+    }
+
+    /** No enemy in sight: draw arms if needed, answer the alarm, or walk the rounds. */
+    void duty(Npc n, Colony col, long now) {
         n.enemy = null;
         boolean alert = plugin.military().alert(col);
         if (!alert) n.gearChecked = false;
         if (!gear(n, col, alert)) return;
+        Location alarm = plugin.military().alarmPoint(col);
+        if (alarm != null && alarm.getWorld() == n.body.getWorld() && col.territory.distanceTo(alarm.getX(), alarm.getZ()) <= fighting.reach(col)) {
+            n.working = true;
+            if (!n.mover.near(alarm, 5)) {
+                n.mover.moveTo(alarm, plugin.settings().runSpeed, 3);
+                n.doing("Answering the alarm");
+            } else {
+                m.brain().wander(n, alarm, 5, now, "Searching for intruders");
+            }
+            return;
+        }
         patrol(n, col, now);
     }
 

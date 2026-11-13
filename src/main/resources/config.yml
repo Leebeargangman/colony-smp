@@ -62,6 +62,9 @@ citizens:
   # A citizen stuck this long is moved to where it was going (sooner if no player is watching).
   stuck-teleport-seconds: 20
   stuck-force-seconds: 60
+  # Citizens speak to members who walk past (what's stopping their work, what they need, the news).
+  # Seconds between remarks per player; 0 turns it off. A player can mute it with /colony chatter off.
+  chatter-seconds: 45
 
 life:
   # Ages in Minecraft days.
@@ -317,3 +320,12 @@ milestones:
   enabled: true
   # Multiplies the treasury grants paid for milestones (0 = renown only).
   reward-multiplier: 1.0
+
+christmas:
+  # "auto" follows the calendar below, "always" keeps the season on all year, "never" turns it off.
+  mode: auto
+  # The season, month-day to month-day (it may run over the new year).
+  from: "12-01"
+  to: "01-06"
+  # In-game days between Father Christmas's visits to a colony with a Christmas tree.
+  father-christmas-days-between: 6

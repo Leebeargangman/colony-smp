@@ -46,4 +46,14 @@ class WishesTest {
         assertEquals(0, Wishes.reward(1.5, 8, 0), "thanks only");
         assertEquals(1, Wishes.reward(0.1, 1, 50), "never less than a coin if they can pay");
     }
+
+    @Test
+    void christmasHasItsOwnWishes() {
+        assertTrue(Wishes.festive(false).stream().anyMatch(w -> w.good().equals("cookie")));
+        assertTrue(Wishes.festive(true).stream().anyMatch(w -> w.good().equals("snowball")));
+        assertFalse(Wishes.festive(false).stream().anyMatch(w -> w.good().equals("snowball")), "snowballs are the children's idea");
+        // a fresh list each time: the caller may pick it apart
+        Wishes.festive(false).clear();
+        assertFalse(Wishes.festive(false).isEmpty());
+    }
 }

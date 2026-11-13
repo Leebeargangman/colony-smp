@@ -112,6 +112,12 @@ public final class Settings {
     public final int requestsMax, requestDays, requestMotivationDays, eventMinDays, caravanMinutes;
     public final double requestChance, eventChance, milestoneRewardFactor;
 
+    // talk and Christmas
+    public final int chatterSeconds, santaDays;
+    /** "auto" (by the calendar), "always" or "never". */
+    public final String christmasMode;
+    public final java.time.MonthDay christmasFrom, christmasTo;
+
     public final List<ItemStack> questReward;
     /** Provisions the first settlers bring. */
     public final List<ItemStack> startingGoods;
@@ -315,6 +321,13 @@ public final class Settings {
 
         milestonesEnabled = c.getBoolean("milestones.enabled", true);
         milestoneRewardFactor = Math.max(0, c.getDouble("milestones.reward-multiplier", 1));
+
+        chatterSeconds = Math.max(0, c.getInt("citizens.chatter-seconds", 45));
+        String mode = String.valueOf(c.getString("christmas.mode", "auto")).trim().toLowerCase(java.util.Locale.ROOT);
+        christmasMode = mode.equals("always") || mode.equals("never") ? mode : "auto";
+        christmasFrom = com.colonysmp.core.Season.parse(c.getString("christmas.from"), java.time.MonthDay.of(12, 1));
+        christmasTo = com.colonysmp.core.Season.parse(c.getString("christmas.to"), java.time.MonthDay.of(1, 6));
+        santaDays = Math.max(1, c.getInt("christmas.father-christmas-days-between", 6));
 
         questReward = items(c, "quests.reward", log);
         startingGoods = items(c, "citizens.starting-goods", log);

@@ -135,4 +135,22 @@ public final class CombatMath {
     static double clamp01(double v) {
         return Math.max(0, Math.min(1, v));
     }
+
+    /**
+     * How urgent an enemy is to a defender choosing whom to fight: lower is more urgent. Nearer comes first,
+     * but one that is attacking the colony's own people, a raid's leader, or one nearly finished counts as
+     * nearer than it is.
+     *
+     * @param distSq         squared distance to the enemy
+     * @param attackingOurs  it is going for a citizen or a member right now
+     * @param leader         it leads the others (a chief, a necromancer)
+     * @param healthFraction its health, 0-1
+     */
+    public static double urgency(double distSq, boolean attackingOurs, boolean leader, double healthFraction) {
+        double s = Math.max(0, distSq);
+        if (attackingOurs) s *= 0.45;
+        if (leader) s *= 0.7;
+        s *= 0.75 + 0.25 * Math.max(0, Math.min(1, healthFraction));
+        return s;
+    }
 }

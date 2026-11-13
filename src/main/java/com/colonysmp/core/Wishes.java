@@ -20,6 +20,7 @@ public final class Wishes {
     public record Wish(String good, int min, int max, String reason) {}
 
     private static final List<Wish> ANYONE = new ArrayList<>(), CHILD = new ArrayList<>(), ELDER = new ArrayList<>();
+    private static final List<Wish> FESTIVE = new ArrayList<>(), FESTIVE_CHILD = new ArrayList<>();
     private static final Map<String, List<Wish>> BY_JOB = new HashMap<>();
 
     private Wishes() {}
@@ -61,6 +62,21 @@ public final class Wishes {
         ELDER.add(new Wish("white_wool", 3, 5, "The nights are cold at my age."));
         ELDER.add(new Wish("baked_potato", 4, 8, "Soft food suits me best now."));
         ELDER.add(new Wish("poppy", 3, 6, "For someone I still miss."));
+
+        FESTIVE.add(new Wish("cookie", 8, 16, "For the Christmas table."));
+        FESTIVE.add(new Wish("cake", 1, 1, "It isn't Christmas without a cake."));
+        FESTIVE.add(new Wish("pumpkin_pie", 2, 4, "A pie for Christmas dinner."));
+        FESTIVE.add(new Wish("cooked_chicken", 2, 4, "A roast bird for the feast."));
+        FESTIVE.add(new Wish("white_wool", 4, 8, "Stockings to hang by the fire."));
+        FESTIVE.add(new Wish("red_dye", 2, 4, "Ribbons for the door."));
+        FESTIVE.add(new Wish("spruce_sapling", 1, 2, "A little tree for my own window."));
+        FESTIVE.add(new Wish("lantern", 1, 2, "Lights for the long nights."));
+        FESTIVE.add(new Wish("sweet_berries", 8, 16, "To string up with the holly."));
+        FESTIVE.add(new Wish("honey_bottle", 1, 2, "For mulling, on a cold evening."));
+        FESTIVE_CHILD.add(new Wish("snowball", 8, 16, "For the biggest snowball fight ever!"));
+        FESTIVE_CHILD.add(new Wish("cookie", 6, 12, "Christmas cookies! Please!"));
+        FESTIVE_CHILD.add(new Wish("carrot", 2, 4, "For the reindeer, when they come."));
+        FESTIVE_CHILD.add(new Wish("cake", 1, 1, "A Christmas cake, just this once?"));
 
         job("FARMER", "bone_meal", 8, 16, "The fields are tired.");
         job("FARMER", "wheat_seeds", 16, 32, "I'd sow another row if I had the seed.");
@@ -131,9 +147,16 @@ public final class Wishes {
         return out;
     }
 
+    /** What people ask for at Christmas. */
+    public static List<Wish> festive(boolean child) {
+        return new ArrayList<>(child ? FESTIVE_CHILD : FESTIVE);
+    }
+
     /** Every wish there is (for checking the table against the goods list). */
     public static List<Wish> all() {
         List<Wish> out = new ArrayList<>(ANYONE);
+        out.addAll(FESTIVE);
+        out.addAll(FESTIVE_CHILD);
         out.addAll(CHILD);
         out.addAll(ELDER);
         for (List<Wish> l : BY_JOB.values()) out.addAll(l);

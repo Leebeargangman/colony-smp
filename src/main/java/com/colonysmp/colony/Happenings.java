@@ -71,7 +71,9 @@ public final class Happenings implements Listener {
 
     public enum Kind {
         FESTIVAL("Festival", 3), HARVEST("Good growing weather", 3), CARAVAN("Merchant caravan", 4), REFUGEES("Refugees", 2),
-        LUCKY_FIND("Lucky strike", 2), STRAYS("Stray animals", 2), SCHOLAR("Travelling scholar", 2), STORM("Storm damage", 2);
+        LUCKY_FIND("Lucky strike", 2), STRAYS("Stray animals", 2), SCHOLAR("Travelling scholar", 2), STORM("Storm damage", 2),
+        /** Only in the Christmas season, and only where there's a tree. */
+        SANTA("Father Christmas", 6);
 
         public final String display;
         final int weight;
@@ -85,6 +87,7 @@ public final class Happenings implements Listener {
             if (s == null) return null;
             String u = s.trim().toUpperCase(java.util.Locale.ROOT).replace('-', '_');
             for (Kind k : values()) if (k.name().equals(u) || k.name().startsWith(u)) return k;
+            if (u.contains("CHRISTMAS") || u.contains("FATHER")) return SANTA;
             return u.startsWith("MERCHANT") ? CARAVAN : null;
         }
     }
@@ -120,6 +123,11 @@ public final class Happenings implements Listener {
         public final List<Offer> offers = new ArrayList<>();
         boolean arrived, leaving;
         long leaveAt, goneBy;
+        /** Father Christmas: he gives rather than sells, and makes for the tree. */
+        public boolean santa;
+        Location goal;
+        /** Who has had their present this visit. */
+        public final java.util.Set<UUID> gifted = new java.util.HashSet<>();
 
         Caravan(String colonyId, String name, WanderingTrader trader) {
             this.colonyId = colonyId;
@@ -150,11 +158,13 @@ public final class Happenings implements Listener {
     public void daily(Colony c, long day) {
         Settings s = plugin.settings();
         if (!s.eventsEnabled || c.core == null || !c.anyMemberOnline()) return;
+        // Father Christmas keeps his own calendar: when he's due, he comes, whatever else is going on
+        if (eligible(c, Kind.SANTA, day) && fire(c, Kind.SANTA, day)) return;
         if (c.lastEventDay >= 0 && day - c.lastEventDay < s.eventMinDays) return;
         if (ThreadLocalRandom.current().nextDouble() >= s.eventChance) return;
         List<Kind> pool = new ArrayList<>();
         for (Kind k : Kind.values()) {
-            if (!eligible(c, k, day)) continue;
+            if (k == Kind.SANTA || !eligible(c, k, day)) continue;
             int w = k.weight;
             if (k == Kind.FESTIVAL && c.bonus(Research.Effect.MOOD) > 0) w *= 2;
             if (k == Kind.CARAVAN) w = (int) Math.round(w * (1 + c.bonus(Research.Effect.VISITORS)));
@@ -197,6 +207,8 @@ public final class Happenings implements Listener {
             case STRAYS -> c.active && strayPen(c, w) != null;
             case SCHOLAR -> c.researching != null && plugin.sim().academy().researchers(c) > 0 || plugin.sim().citizens().staffed(c, BuildingType.SCHOOL) != null;
             case STORM -> w != null && w.hasStorm() && c.buildings.size() >= 4;
+            case SANTA -> c.active && plugin.christmas().decorated(c) && !caravans.containsKey(c.id)
+                    && (c.lastSantaDay < 0 || day - c.lastSantaDay >= plugin.settings().santaDays);
         };
     }
 
@@ -217,8 +229,13 @@ public final class Happenings implements Listener {
                 c.addModifier(new Modifier("festival", "Festival", 6, day + 2));
                 c.addStability(2);
                 for (Citizen ct : c.citizens.values()) if (ct.status.free()) ct.needs.social = Math.min(100, ct.needs.social + 25);
-                tell(c, ColonyEvent.Type.COLONY, day, "<gold>✦ Festival!</gold> <gray>The people of " + Text.esc(c.name) + " have declared a feast day. Spirits are high, and there will be fireworks at the Town Hall at dusk.",
-                        "The colony held a festival.", "minecraft:entity.firework_rocket.launch");
+                if (plugin.christmas().season()) {
+                    tell(c, ColonyEvent.Type.COLONY, day, "<red>✦ A Christmas feast!</red> <gray>The tables of " + Text.esc(c.name) + " are laid and nobody is in a hurry to work. There will be fireworks at the Town Hall at dusk.",
+                            "The colony held a Christmas feast.", "minecraft:block.bell.use");
+                } else {
+                    tell(c, ColonyEvent.Type.COLONY, day, "<gold>✦ Festival!</gold> <gray>The people of " + Text.esc(c.name) + " have declared a feast day. Spirits are high, and there will be fireworks at the Town Hall at dusk.",
+                            "The colony held a festival.", "minecraft:entity.firework_rocket.launch");
+                }
             }
             case HARVEST -> {
                 c.boons.put("harvest", day + 2);
@@ -226,7 +243,10 @@ public final class Happenings implements Listener {
                         "Good growing weather: the fields give a third more for three days.", "minecraft:weather.rain");
             }
             case CARAVAN -> {
-                return summonCaravan(c, day);
+                return summonCaravan(c, day, false);
+            }
+            case SANTA -> {
+                return summonCaravan(c, day, true);
             }
             case REFUGEES -> {
                 int n = 2 + r.nextInt(2);
@@ -361,8 +381,8 @@ public final class Happenings implements Listener {
 
     // ───────────── the merchant's caravan ─────────────
 
-    /** Admin and events: a merchant sets out for the colony now. */
-    public boolean summonCaravan(Colony c, long day) {
+    /** Admin and events: a merchant (or Father Christmas) sets out for the colony now. */
+    public boolean summonCaravan(Colony c, long day, boolean santa) {
         World w = c.world();
         Location core = c.coreLocation();
         if (w == null || core == null || !c.active || caravans.containsKey(c.id)) return false;
@@ -394,7 +414,7 @@ public final class Happenings implements Listener {
             if (l != null && !l.getBlock().isLiquid()) at = l;
         }
         if (at == null) at = plugin.npcs().spotNear(core, 6, 12);
-        String name = MERCHANTS[r.nextInt(MERCHANTS.length)];
+        String name = santa ? "Father Christmas" : MERCHANTS[r.nextInt(MERCHANTS.length)];
         WanderingTrader body;
         try {
             body = w.spawn(at, WanderingTrader.class, CreatureSpawnEvent.SpawnReason.CUSTOM, wt -> {
@@ -409,7 +429,7 @@ public final class Happenings implements Listener {
                 wt.getPersistentDataContainer().set(Keys.MERCHANT, PersistentDataType.STRING, c.id);
                 AttributeInstance fr = wt.getAttribute(Attribute.FOLLOW_RANGE);
                 if (fr != null) fr.setBaseValue(96);
-                wt.customName(Text.mm("<gold>⚖ <white>" + name + " <gray>— Merchant"));
+                wt.customName(Text.mm(santa ? "<red>🎅 <white>Father Christmas" : "<gold>⚖ <white>" + name + " <gray>— Merchant"));
                 wt.setCustomNameVisible(true);
             });
         } catch (IllegalArgumentException e) {
@@ -417,7 +437,9 @@ public final class Happenings implements Listener {
         }
         if (body == null || !body.isValid()) return false;
         Caravan cv = new Caravan(c.id, name, body);
-        stock(cv);
+        cv.santa = santa;
+        if (santa) cv.goal = plugin.christmas().treeLocation(c);
+        else stock(cv);
         try {
             Location side = plugin.npcs().spotNear(at, 1, 3);
             cv.llama = w.spawn(side, TraderLlama.class, CreatureSpawnEvent.SpawnReason.CUSTOM, l -> {
@@ -425,6 +447,10 @@ public final class Happenings implements Listener {
                 l.setRemoveWhenFarAway(false);
                 l.setInvulnerable(true);
                 l.getPersistentDataContainer().set(Keys.MERCHANT, PersistentDataType.STRING, c.id);
+                if (santa) {
+                    l.customName(Text.mm("<#c9a26b>Reindeer"));
+                    l.setCustomNameVisible(true);
+                }
             });
             if (cv.llama != null && cv.llama.isValid()) cv.llama.setLeashHolder(body);
         } catch (IllegalArgumentException | IllegalStateException e) {
@@ -432,6 +458,17 @@ public final class Happenings implements Listener {
         }
         caravans.put(c.id, cv);
         byEntity.put(body.getUniqueId(), cv);
+        if (santa) {
+            c.lastSantaDay = day;
+            c.log(ColonyEvent.Type.COLONY, day, "Father Christmas came to the colony.");
+            for (Player p : c.onlineMembers()) {
+                Text.title(p, "<red>🎅 Ho, ho, ho!", "<gray>Father Christmas is coming to " + Text.esc(c.name), 10, 70, 20);
+                Text.send(p, "<red>🎅 Sleigh bells!</red> <gray>Father Christmas is on his way to the Christmas tree. Right-click him for your present.");
+                Fx.sound(p, "minecraft:block.bell.use", 1f, 1.4f);
+            }
+            plugin.requestSave();
+            return true;
+        }
         c.lastCaravanDay = day;
         c.log(ColonyEvent.Type.ECONOMY, day, "The merchant " + name + " came to trade.");
         for (Player p : c.onlineMembers()) {
@@ -544,7 +581,7 @@ public final class Happenings implements Listener {
                 remove(cv);
                 continue;
             }
-            Location core = c.coreLocation();
+            Location core = cv.goal != null && cv.goal.getWorld() == cv.trader.getWorld() ? cv.goal : c.coreLocation();
             if (cv.llama != null && cv.llama.isValid() && !cv.llama.isLeashed()) {
                 // the lead slipped: catch up and take it again
                 if (cv.llama.getLocation().distanceSquared(cv.trader.getLocation()) > 64) cv.llama.teleport(plugin.npcs().spotNear(cv.trader.getLocation(), 1, 3));
@@ -563,6 +600,11 @@ public final class Happenings implements Listener {
                     cv.mover.stop();
                     cv.arrived = true;
                     cv.leaveAt = now + s.caravanMinutes * 60_000L;
+                    if (cv.santa) {
+                        cv.leaveAt = now + Math.max(3, s.caravanMinutes / 2) * 60_000L;
+                        plugin.christmas().arrived(c, cv);
+                        continue;
+                    }
                     for (Player p : c.onlineMembers()) {
                         Text.send(p, "<gold>⚖ " + Text.esc(cv.name) + " has set out their wares at the Town Hall.</gold> <gray>They stay " + s.caravanMinutes + " minutes. Right-click them to trade.");
                     }
@@ -594,7 +636,10 @@ public final class Happenings implements Listener {
         Location out = Mover.safeSpot(new Location(here.getWorld(), cx + dx / len * reach, here.getY(), cz + dz / len * reach));
         if (out == null) out = Mover.safeSpot(here.clone().add(dx / len * 20, 0, dz / len * 20));
         if (out != null) cv.mover.moveTo(out, plugin.settings().walkSpeed, 2);
-        for (Player p : c.onlineMembers()) Text.send(p, "<gray>" + Text.esc(cv.name) + " packs up and takes to the road again.");
+        for (Player p : c.onlineMembers()) {
+            Text.send(p, cv.santa ? "<red>🎅 \"Merry Christmas to all!\"</red> <gray>Father Christmas leads his reindeer away down the road."
+                    : "<gray>" + Text.esc(cv.name) + " packs up and takes to the road again.");
+        }
         for (Player p : cv.trader.getWorld().getPlayers()) {
             if (p.getOpenInventory().getTopInventory().getHolder() instanceof MerchantMenu) p.closeInventory();
         }
@@ -621,7 +666,8 @@ public final class Happenings implements Listener {
             if (t < 12500 || t > 14200) continue;
             ThreadLocalRandom r = ThreadLocalRandom.current();
             Location at = core.clone().add(r.nextInt(-6, 7), 10 + r.nextInt(8), r.nextInt(-6, 7));
-            Color[] colors = {Color.RED, Color.YELLOW, Color.AQUA, Color.LIME, Color.FUCHSIA, Color.ORANGE, Color.WHITE};
+            Color[] colors = plugin.christmas().season() ? new Color[]{Color.RED, Color.GREEN, Color.WHITE, Color.RED, Color.LIME}
+                    : new Color[]{Color.RED, Color.YELLOW, Color.AQUA, Color.LIME, Color.FUCHSIA, Color.ORANGE, Color.WHITE};
             FireworkEffect fx = FireworkEffect.builder().with(r.nextBoolean() ? FireworkEffect.Type.BALL_LARGE : FireworkEffect.Type.STAR)
                     .withColor(colors[r.nextInt(colors.length)]).withFade(colors[r.nextInt(colors.length)]).flicker(r.nextBoolean()).trail(true).build();
             try {
@@ -666,7 +712,10 @@ public final class Happenings implements Listener {
             out.add(e.getValue() + (left > 0 ? " <gray>(" + left + " more day" + (left == 1 ? "" : "s") + ")" : " <gray>(today)"));
         }
         Caravan cv = caravans.get(c.id);
-        if (cv != null && !cv.leaving) out.add("<gold>The merchant " + Text.esc(cv.name) + " is " + (cv.arrived ? "trading at the Town Hall." : "on the way to the Town Hall."));
+        if (cv != null && !cv.leaving) {
+            out.add(cv.santa ? "<red>🎅 Father Christmas is " + (cv.arrived ? "at the Christmas tree, handing out presents." : "on his way to the Christmas tree.")
+                    : "<gold>The merchant " + Text.esc(cv.name) + " is " + (cv.arrived ? "trading at the Town Hall." : "on the way to the Town Hall."));
+        }
         long[] waiting = refugees.get(c.id);
         if (waiting != null) {
             out.add("<#c9a26b>" + waiting[0] + " refugees wait at the gates.</#c9a26b> <click:run_command:'/colony refugees accept'><green>[Take them in]</green></click> "
@@ -691,6 +740,10 @@ public final class Happenings implements Listener {
         if (e.getHand() != EquipmentSlot.HAND) return;
         if (cv.leaving) {
             Text.bar(e.getPlayer(), "<gray>" + Text.esc(cv.name) + " has packed up for the road.");
+            return;
+        }
+        if (cv.santa) {
+            plugin.christmas().gift(e.getPlayer(), cv);
             return;
         }
         new MerchantMenu(plugin, e.getPlayer(), cv).open();

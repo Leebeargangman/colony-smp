@@ -35,6 +35,8 @@ public final class Specialists {
     private static final BlockFace[] SIDES = {BlockFace.NORTH, BlockFace.SOUTH, BlockFace.EAST, BlockFace.WEST};
     /** A pentatonic scale in note-block pitches, so whatever a bard plays next sounds like a tune. */
     private static final float[] SCALE = {0.5f, 0.561f, 0.667f, 0.749f, 0.841f, 1.0f, 1.122f, 1.335f, 1.498f, 1.682f, 2.0f};
+    /** Jingle Bells, in note-block steps above F sharp: the bard's tune through the Christmas season. */
+    private static final int[] CAROL = {10, 10, 10, -1, 10, 10, 10, -1, 10, 13, 6, 8, 10, -1, -1, 11, 11, 11, 11, 11, 10, 10, 10, 10, 8, 8, 10, 8, -1, 13, -1};
     private static final String[] INSTRUMENTS = {"minecraft:block.note_block.harp", "minecraft:block.note_block.guitar", "minecraft:block.note_block.flute"};
 
     private final ColonySMP plugin;
@@ -115,15 +117,25 @@ public final class Specialists {
             CitizenBrain.face(n, music.center(world));
         } else if (!atStation(n, tavern, "Going to play at " + tavern.label())) return;
         n.working = true;
-        n.doing("Playing music at " + tavern.label());
+        boolean carols = plugin.christmas().decorated(col);
+        n.doing((carols ? "Playing carols at " : "Playing music at ") + tavern.label());
         if (now < n.actionAt) return;
         ThreadLocalRandom r = ThreadLocalRandom.current();
-        n.actionAt = now + 10 + r.nextInt(3) * 10;
-        // step up or down the scale from the last note
-        n.workIdx = Math.max(0, Math.min(SCALE.length - 1, n.workIdx + r.nextInt(-2, 3)));
         Location at = n.loc();
-        Fx.sound(at, INSTRUMENTS[Math.floorMod(n.c.id.hashCode(), INSTRUMENTS.length)], 1.4f, SCALE[n.workIdx]);
         World w = n.body.getWorld();
+        if (carols) {
+            // a carol, note by note (a rest where the tune has one)
+            n.actionAt = now + 10;
+            n.workIdx = Math.floorMod(n.workIdx + 1, CAROL.length);
+            int step = CAROL[n.workIdx];
+            if (step < 0) return;
+            Fx.sound(at, "minecraft:block.note_block.bell", 1.4f, (float) Math.pow(2, (step - 12) / 12.0));
+        } else {
+            n.actionAt = now + 10 + r.nextInt(3) * 10;
+            // step up or down the scale from the last note
+            n.workIdx = Math.max(0, Math.min(SCALE.length - 1, n.workIdx + r.nextInt(-2, 3)));
+            Fx.sound(at, INSTRUMENTS[Math.floorMod(n.c.id.hashCode(), INSTRUMENTS.length)], 1.4f, SCALE[n.workIdx]);
+        }
         w.spawnParticle(Particle.NOTE, at.clone().add(0, 2.3, 0), 1, 0.3, 0.1, 0.3, 1);
         // the people listening enjoy the company
         if (r.nextInt(4) == 0) {

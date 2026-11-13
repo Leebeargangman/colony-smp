@@ -94,7 +94,7 @@ public final class CitizenSim {
         if (!c.valid(BuildingType.LIBRARY).isEmpty()) x.services++;
         x.entertained = staffed(c, BuildingType.TAVERN) != null;
         x.healBonus += c.bonus(Research.Effect.HEALING);
-        x.events += c.bonus(Research.Effect.MOOD);
+        x.events += c.bonus(Research.Effect.MOOD) + plugin.christmas().cheer(c);
         x.school = staffed(c, BuildingType.SCHOOL) != null;
         for (Citizen ct : c.citizens.values()) if (ct.home != 0) x.occupants.merge(ct.home, 1, Integer::sum);
         return x;
